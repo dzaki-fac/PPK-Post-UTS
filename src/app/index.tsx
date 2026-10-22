@@ -1,61 +1,120 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import { router } from 'expo-router';
+import { useState } from 'react';
+import {
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
+import { usePraktikum } from '@/context/praktikum-context';
+import { DAFTAR_PRAKTIKAN, DAFTAR_ASISTEN } from '@/data';
+import { Peran, Praktikan, Asisten } from '@/data/types';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
+export default function IndexScreen() {
+  const { setPengguna } = usePraktikum();
+  const [langkah, setLangkah] = useState<'pilih-peran' | 'pilih-identitas'>('pilih-peran');
+  const [peranDipilih, setPeranDipilih] = useState<Peran>(null);
+
+  const handlePilihPeran = (peran: Peran) => {
+    if (!peran) return;
+    setPeranDipilih(peran);
+    setLangkah('pilih-identitas');
+  };
+
+  const handlePilihIdentitas = (identitas: Praktikan | Asisten) => {
+    if (peranDipilih === 'praktikan') {
+      setPengguna({ peran: 'praktikan', data: identitas as Praktikan });
+      router.replace('/praktikan/jadwal');
+    } else if (peranDipilih === 'asisten') {
+      setPengguna({ peran: 'asisten', data: identitas as Asisten });
+      router.replace('/asisten/jadwal');
+    }
+  };
+
+  const handleKembali = () => {
+    setLangkah('pilih-peran');
+    setPeranDipilih(null);
+  };
+
+  if (langkah === 'pilih-identitas' && peranDipilih) {
     return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
+      <ThemedView style={styles.container}>
+        <SafeAreaView style={styles.safeArea}>
+          <TouchableOpacity onPress={handleKembali} style={styles.backButton}>
+            <ThemedText type="defaultSemiBold">← Kembali</ThemedText>
+          </TouchableOpacity>
+
+          <ThemedText type="title" style={styles.title}>
+            Pilih Identitas
+          </ThemedText>
+          <ThemedText type="default" style={styles.subtitle}>
+            {peranDipilih === 'praktikan' ? 'Pilih nama Anda dari daftar praktikan:' : 'Pilih nama Anda dari daftar asisten:'}
+          </ThemedText>
+
+          <View style={styles.list}>
+            {peranDipilih === 'praktikan'
+              ? DAFTAR_PRAKTIKAN.map((praktikan) => (
+                  <TouchableOpacity
+                    key={praktikan.id}
+                    style={styles.card}
+                    onPress={() => handlePilihIdentitas(praktikan)}
+                  >
+                    <ThemedText type="defaultSemiBold">{praktikan.nama}</ThemedText>
+                    <ThemedText type="small">NIM: {praktikan.nim}</ThemedText>
+                    <ThemedText type="small">Kelas: {praktikan.kelas}</ThemedText>
+                  </TouchableOpacity>
+                ))
+              : DAFTAR_ASISTEN.map((asisten) => (
+                  <TouchableOpacity
+                    key={asisten.id}
+                    style={styles.card}
+                    onPress={() => handlePilihIdentitas(asisten)}
+                  >
+                    <ThemedText type="defaultSemiBold">{asisten.nama}</ThemedText>
+                    <ThemedText type="small">Asisten Praktikum</ThemedText>
+                  </TouchableOpacity>
+                ))}
+          </View>
+        </SafeAreaView>
+      </ThemedView>
     );
   }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
 
-export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          get started
+        <ThemedText type="title" style={styles.title}>
+          Presensi Praktikum
+        </ThemedText>
+        <ThemedText type="default" style={styles.subtitle}>
+          Pilih peran Anda untuk melanjutkan
         </ThemedText>
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={styles.roleButton}
+            onPress={() => handlePilihPeran('praktikan')}
+          >
+            <ThemedText type="defaultSemiBold" style={styles.buttonText}>
+              Praktikan
+            </ThemedText>
+            <ThemedText type="small">Mahasiswa peserta praktikum</ThemedText>
+          </TouchableOpacity>
 
-        {Platform.OS === 'web' && <WebBadge />}
+          <TouchableOpacity
+            style={styles.roleButton}
+            onPress={() => handlePilihPeran('asisten')}
+          >
+            <ThemedText type="defaultSemiBold" style={styles.buttonText}>
+              Asisten
+            </ThemedText>
+            <ThemedText type="small">Pengelola sesi praktikum</ThemedText>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     </ThemedView>
   );
@@ -64,35 +123,46 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
   },
   safeArea: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
+    padding: Spacing.four,
     gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
   },
   title: {
     textAlign: 'center',
+    marginTop: Spacing.six,
   },
-  code: {
-    textTransform: 'uppercase',
+  subtitle: {
+    textAlign: 'center',
+    marginBottom: Spacing.three,
   },
-  stepContainer: {
+  buttonContainer: {
     gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+    marginTop: Spacing.four,
+  },
+  roleButton: {
+    padding: Spacing.four,
+    borderRadius: Spacing.two,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    gap: Spacing.one,
+  },
+  buttonText: {
+    textAlign: 'center',
+  },
+  backButton: {
+    paddingVertical: Spacing.two,
+  },
+  list: {
+    gap: Spacing.two,
+    flex: 1,
+  },
+  card: {
+    padding: Spacing.three,
+    borderRadius: Spacing.two,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    gap: Spacing.one,
   },
 });

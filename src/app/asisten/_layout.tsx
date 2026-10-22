@@ -17,7 +17,7 @@ export default function AsistenLayout() {
     <>
       <Tabs
         screenOptions={{
-          tabBarActiveTintColor: '#0D9488',
+          tabBarActiveTintColor: '#EA580C',
           tabBarInactiveTintColor: '#64748B',
           tabBarStyle: {
             backgroundColor: '#FFFFFF',
@@ -91,9 +91,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.one,
     borderRadius: Spacing.one,
-    backgroundColor: '#F0FDFA',
+    backgroundColor: '#FFF7ED',
   },
   logoutText: {
-    color: '#0D9488',
+    color: '#EA580C',
   },
 });

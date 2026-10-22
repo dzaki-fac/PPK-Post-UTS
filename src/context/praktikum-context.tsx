@@ -1,94 +1,94 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import {
-  Sesi,
-  Presensi,
-  Praktikan,
-  Asisten,
-  IdentitasPengguna,
-  StatusSesi,
-} from '@/data/types';
-import {
-  DAFTAR_SESI,
-  DAFTAR_PRAKTIKAN,
-  DAFTAR_ASISTEN,
-  DAFTAR_PRESENSI_AWAL,
-} from '@/data';
+import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 
-type PraktikumContextType = {
-  // Data
+import {
+  DUMMY_ASISTEN,
+  DUMMY_PRAKTIKAN,
+  DUMMY_PRESENSI_AWAL,
+  DUMMY_SESI,
+} from '@/data/dummy';
+import { IdentitasPengguna, Peran } from '@/data/types';
+import { Asisten, Praktikan, Presensi, RiwayatItem, Sesi } from '@/types/praktikum';
+
+interface PraktikumContextType {
+  role: Peran;
+  currentPraktikan: Praktikan | null;
+  currentAsisten: Asisten | null;
   sesiList: Sesi[];
   presensiList: Presensi[];
+  allPraktikan: Praktikan[];
+  allAsisten: Asisten[];
+  setRole: (role: Peran) => void;
+  setCurrentPraktikan: (praktikan: Praktikan | null) => void;
+  setCurrentAsisten: (asisten: Asisten | null) => void;
+
+  pengguna: IdentitasPengguna;
   daftarPraktikan: Praktikan[];
   daftarAsisten: Asisten[];
-  pengguna: IdentitasPengguna;
-
-  // Actions - Sesi
   bukaSesi: (sesiId: string) => boolean;
   tutupSesi: (sesiId: string) => boolean;
   getSesiById: (id: string) => Sesi | undefined;
-
-  // Actions - Presensi
   tandaiPresensi: (sesiId: string, praktikanId: string) => { success: boolean; message: string };
+  isSudahPresensi: (sesiId: string, praktikanId: string) => boolean;
   sudahPresensi: (sesiId: string, praktikanId: string) => boolean;
+  getRiwayatPraktikan: (praktikanId: string) => RiwayatItem[];
+  getPresensiForSesi: (sesiId: string) => Presensi[];
   getPresensiBySesi: (sesiId: string) => Presensi[];
   getPresensiByPraktikan: (praktikanId: string) => Presensi[];
-
-  // Actions - Auth
   setPengguna: (pengguna: IdentitasPengguna) => void;
   logout: () => void;
-};
+  resetData: () => void;
+}
 
 const PraktikumContext = createContext<PraktikumContextType | undefined>(undefined);
 
-export function PraktikumProvider({ children }: { children: ReactNode }) {
-  const [sesiList, setSesiList] = useState<Sesi[]>(DAFTAR_SESI);
-  const [presensiList, setPresensiList] = useState<Presensi[]>(DAFTAR_PRESENSI_AWAL);
-  const [pengguna, setPenggunaState] = useState<IdentitasPengguna>(null);
+export function PraktikumProvider({ children }: { children: React.ReactNode }) {
+  const [role, setRole] = useState<Peran>('praktikan');
+  const [currentPraktikan, setCurrentPraktikan] = useState<Praktikan | null>(
+    DUMMY_PRAKTIKAN[0]
+  );
+  const [currentAsisten, setCurrentAsisten] = useState<Asisten | null>(
+    DUMMY_ASISTEN[0]
+  );
+  const [sesiList, setSesiList] = useState<Sesi[]>(DUMMY_SESI);
+  const [presensiList, setPresensiList] = useState<Presensi[]>(DUMMY_PRESENSI_AWAL);
 
-  const daftarPraktikan = DAFTAR_PRAKTIKAN;
-  const daftarAsisten = DAFTAR_ASISTEN;
-
-  // Buka sesi - hanya jika status "belum-dibuka"
   const bukaSesi = useCallback((sesiId: string): boolean => {
     let success = false;
     setSesiList((prev) =>
-      prev.map((sesi) => {
-        if (sesi.id === sesiId && sesi.status === 'belum-dibuka') {
+      prev.map((s) => {
+        if (s.id === sesiId && s.status === 'belum-dibuka') {
           success = true;
-          return { ...sesi, status: 'dibuka' as StatusSesi };
+          return { ...s, status: 'dibuka' as const };
         }
-        return sesi;
+        return s;
       })
     );
     return success;
   }, []);
 
-  // Tutup sesi - hanya jika status "dibuka"
   const tutupSesi = useCallback((sesiId: string): boolean => {
     let success = false;
     setSesiList((prev) =>
-      prev.map((sesi) => {
-        if (sesi.id === sesiId && sesi.status === 'dibuka') {
+      prev.map((s) => {
+        if (s.id === sesiId && s.status === 'dibuka') {
           success = true;
-          return { ...sesi, status: 'ditutup' as StatusSesi };
+          return { ...s, status: 'ditutup' as const };
         }
-        return sesi;
+        return s;
       })
     );
     return success;
   }, []);
 
-  // Get sesi by ID
   const getSesiById = useCallback(
     (id: string): Sesi | undefined => {
-      return sesiList.find((sesi) => sesi.id === id);
+      return sesiList.find((s) => s.id === id);
     },
     [sesiList]
   );
 
-  // Cek apakah sudah presensi
-  const sudahPresensi = useCallback(
-    (sesiId: string, praktikanId: string): boolean => {
+  const isSudahPresensi = useCallback(
+    (sesiId: string, praktikanId: string) => {
       return presensiList.some(
         (p) => p.sesiId === sesiId && p.praktikanId === praktikanId
       );
@@ -96,52 +96,75 @@ export function PraktikumProvider({ children }: { children: ReactNode }) {
     [presensiList]
   );
 
-  // Tandai presensi dengan validasi anti presensi ganda
   const tandaiPresensi = useCallback(
-    (sesiId: string, praktikanId: string): { success: boolean; message: string } => {
-      // Validasi: cek sesi ada dan status "dibuka"
+    (sesiId: string, praktikanId: string) => {
       const sesi = sesiList.find((s) => s.id === sesiId);
       if (!sesi) {
-        return { success: false, message: 'Sesi tidak ditemukan' };
+        return { success: false, message: 'Sesi praktikum tidak ditemukan.' };
       }
+
       if (sesi.status !== 'dibuka') {
-        return { success: false, message: 'Sesi belum dibuka atau sudah ditutup' };
+        return {
+          success: false,
+          message:
+            sesi.status === 'ditutup'
+              ? 'Sesi praktikum ini telah ditutup.'
+              : 'Sesi praktikum ini belum dibuka oleh asisten.',
+        };
       }
 
-      // Validasi: cek praktikan ada
-      const praktikan = daftarPraktikan.find((p) => p.id === praktikanId);
-      if (!praktikan) {
-        return { success: false, message: 'Praktikan tidak ditemukan' };
+      const sudah = presensiList.some(
+        (p) => p.sesiId === sesiId && p.praktikanId === praktikanId
+      );
+
+      if (sudah) {
+        return {
+          success: false,
+          message: 'Anda sudah melakukan presensi pada sesi ini.',
+        };
       }
 
-      // Validasi: anti presensi ganda
-      if (sudahPresensi(sesiId, praktikanId)) {
-        return { success: false, message: 'Anda sudah melakukan presensi pada sesi ini' };
-      }
+      const now = new Date();
+      const jam = String(now.getHours()).padStart(2, '0');
+      const menit = String(now.getMinutes()).padStart(2, '0');
+      const detik = String(now.getSeconds()).padStart(2, '0');
+      const tanggalFormat = `${sesi.tanggal}, ${jam}:${menit}:${detik} WIB`;
 
-      // Catat presensi
-      const presensiBaru: Presensi = {
+      const newPresensi: Presensi = {
         id: `pres-${Date.now()}`,
         sesiId,
         praktikanId,
-        waktuKehadiran: new Date().toISOString(),
+        waktuKehadiran: tanggalFormat,
       };
 
-      setPresensiList((prev) => [...prev, presensiBaru]);
-      return { success: true, message: 'Presensi berhasil dicatat' };
+      setPresensiList((prev) => [newPresensi, ...prev]);
+
+      return {
+        success: true,
+        message: 'Presensi berhasil dicatat! Kehadiran Anda telah terverifikasi.',
+      };
     },
-    [sesiList, daftarPraktikan, sudahPresensi]
+    [sesiList, presensiList]
   );
 
-  // Get presensi by sesi
-  const getPresensiBySesi = useCallback(
-    (sesiId: string): Presensi[] => {
+  const getRiwayatPraktikan = useCallback(
+    (praktikanId: string): RiwayatItem[] => {
+      const records = presensiList.filter((p) => p.praktikanId === praktikanId);
+      return records.map((rec) => ({
+        ...rec,
+        sesi: sesiList.find((s) => s.id === rec.sesiId),
+      }));
+    },
+    [presensiList, sesiList]
+  );
+
+  const getPresensiForSesi = useCallback(
+    (sesiId: string) => {
       return presensiList.filter((p) => p.sesiId === sesiId);
     },
     [presensiList]
   );
 
-  // Get presensi by praktikan
   const getPresensiByPraktikan = useCallback(
     (praktikanId: string): Presensi[] => {
       return presensiList.filter((p) => p.praktikanId === praktikanId);
@@ -149,43 +172,102 @@ export function PraktikumProvider({ children }: { children: ReactNode }) {
     [presensiList]
   );
 
-  // Set pengguna
   const setPengguna = useCallback((user: IdentitasPengguna) => {
-    setPenggunaState(user);
+    if (!user) {
+      setRole(null);
+      setCurrentPraktikan(null);
+      setCurrentAsisten(null);
+      return;
+    }
+    setRole(user.peran);
+    if (user.peran === 'praktikan') {
+      setCurrentPraktikan(user.data);
+      setCurrentAsisten(null);
+    } else {
+      setCurrentAsisten(user.data);
+      setCurrentPraktikan(null);
+    }
   }, []);
 
-  // Logout
   const logout = useCallback(() => {
-    setPenggunaState(null);
+    setRole(null);
+    setCurrentPraktikan(null);
+    setCurrentAsisten(null);
   }, []);
 
-  const value: PraktikumContextType = {
-    sesiList,
-    presensiList,
-    daftarPraktikan,
-    daftarAsisten,
-    pengguna,
-    bukaSesi,
-    tutupSesi,
-    getSesiById,
-    tandaiPresensi,
-    sudahPresensi,
-    getPresensiBySesi,
-    getPresensiByPraktikan,
-    setPengguna,
-    logout,
-  };
+  const resetData = useCallback(() => {
+    setSesiList(DUMMY_SESI);
+    setPresensiList(DUMMY_PRESENSI_AWAL);
+  }, []);
+
+  const pengguna = useMemo<IdentitasPengguna>(() => {
+    if (role === 'praktikan' && currentPraktikan) {
+      return { peran: 'praktikan', data: currentPraktikan };
+    }
+    if (role === 'asisten' && currentAsisten) {
+      return { peran: 'asisten', data: currentAsisten };
+    }
+    return null;
+  }, [role, currentPraktikan, currentAsisten]);
+
+  const value = useMemo(
+    () => ({
+      role,
+      currentPraktikan,
+      currentAsisten,
+      sesiList,
+      presensiList,
+      allPraktikan: DUMMY_PRAKTIKAN,
+      allAsisten: DUMMY_ASISTEN,
+      daftarPraktikan: DUMMY_PRAKTIKAN,
+      daftarAsisten: DUMMY_ASISTEN,
+      setRole,
+      setCurrentPraktikan,
+      setCurrentAsisten,
+      bukaSesi,
+      tutupSesi,
+      getSesiById,
+      tandaiPresensi,
+      isSudahPresensi,
+      sudahPresensi: isSudahPresensi,
+      getRiwayatPraktikan,
+      getPresensiForSesi,
+      getPresensiBySesi: getPresensiForSesi,
+      getPresensiByPraktikan,
+      setPengguna,
+      logout,
+      resetData,
+      pengguna,
+    }),
+    [
+      role,
+      currentPraktikan,
+      currentAsisten,
+      sesiList,
+      presensiList,
+      bukaSesi,
+      tutupSesi,
+      getSesiById,
+      tandaiPresensi,
+      isSudahPresensi,
+      getRiwayatPraktikan,
+      getPresensiForSesi,
+      getPresensiByPraktikan,
+      setPengguna,
+      logout,
+      resetData,
+      pengguna,
+    ]
+  );
 
   return (
-    <PraktikumContext.Provider value={value}>
-      {children}
-    </PraktikumContext.Provider>
+    <PraktikumContext.Provider value={value}>{children}</PraktikumContext.Provider>
   );
 }
 
 export function usePraktikum() {
   const context = useContext(PraktikumContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('usePraktikum harus digunakan di dalam PraktikumProvider');
   }
   return context;

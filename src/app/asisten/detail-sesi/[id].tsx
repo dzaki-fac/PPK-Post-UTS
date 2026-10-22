@@ -5,7 +5,7 @@ import {
   TouchableOpacity,
   View,
   ScrollView,
-  Alert,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -39,8 +39,10 @@ function getStatusLabel(status: StatusSesi): string {
 
 export default function DetailSesiAsistenScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getSesiById, bukaSesi, tutupSesi, getPresensiBySesi, daftarPraktikan, presensiList } = usePraktikum();
+  const { getSesiById, bukaSesi, tutupSesi, getPresensiBySesi, daftarPraktikan } = usePraktikum();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [modalAction, setModalAction] = useState<'buka' | 'tutup' | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
 
   const sesi = getSesiById(id);
 
@@ -65,49 +67,28 @@ export default function DetailSesiAsistenScreen() {
   const presensiSesi = getPresensiBySesi(sesi.id);
 
   const konfirmasiBukaSesi = () => {
-    Alert.alert(
-      'Konfirmasi Buka Sesi',
-      `Apakah Anda yakin ingin membuka sesi "${sesi.praktikum} - Kelas ${sesi.kelas}"?`,
-      [
-        { text: 'Batal', style: 'cancel' },
-        {
-          text: 'Buka Sesi',
-          onPress: () => {
-            setIsProcessing(true);
-            const success = bukaSesi(sesi.id);
-            setIsProcessing(false);
-            if (success) {
-              Alert.alert('Berhasil', 'Sesi berhasil dibuka. Praktikan dapat melakukan presensi.');
-            } else {
-              Alert.alert('Gagal', 'Tidak dapat membuka sesi. Sesi mungkin sudah dibuka atau ditutup.');
-            }
-          },
-        },
-      ]
-    );
+    setModalAction('buka');
   };
 
   const konfirmasiTutupSesi = () => {
-    Alert.alert(
-      'Konfirmasi Tutup Sesi',
-      `Apakah Anda yakin ingin menutup sesi "${sesi.praktikum} - Kelas ${sesi.kelas}"?\n\nSetelah ditutup, praktikan tidak dapat melakukan presensi.`,
-      [
-        { text: 'Batal', style: 'cancel' },
-        {
-          text: 'Tutup Sesi',
-          style: 'destructive',
-          onPress: () => {
-            setIsProcessing(true);
-            const success = tutupSesi(sesi.id);
-            setIsProcessing(false);
-            if (success) {
-              Alert.alert('Berhasil', 'Sesi berhasil ditutup.');
-            } else {
-              Alert.alert('Gagal', 'Tidak dapat menutup sesi. Sesi mungkin belum dibuka atau sudah ditutup.');
-            }
-          },
-        },
-      ]
+    setModalAction('tutup');
+  };
+
+  const jalankanAksi = () => {
+    if (!modalAction) return;
+
+    setIsProcessing(true);
+    const success = modalAction === 'buka' ? bukaSesi(sesi.id) : tutupSesi(sesi.id);
+    setIsProcessing(false);
+    setModalAction(null);
+    setFeedback(
+      success
+        ? modalAction === 'buka'
+          ? 'Sesi berhasil dibuka. Praktikan dapat melakukan presensi.'
+          : 'Sesi berhasil ditutup.'
+        : modalAction === 'buka'
+          ? 'Tidak dapat membuka sesi. Sesi mungkin sudah dibuka atau ditutup.'
+          : 'Tidak dapat menutup sesi. Sesi mungkin belum dibuka atau sudah ditutup.'
     );
   };
 
@@ -126,9 +107,19 @@ export default function DetailSesiAsistenScreen() {
   return (
     <ThemedView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        <TouchableOpacity
+          accessibilityRole="button"
+          onPress={() => router.replace('/')}
+          style={styles.backButton}
+        >
+          <ThemedText type="defaultSemiBold" style={styles.backButtonText}>
+            Kembali ke Beranda
+          </ThemedText>
+        </TouchableOpacity>
+
         <View style={styles.section}>
           <View style={styles.header}>
-            <ThemedText type="title">{sesi.praktikum}</ThemedText>
+            <ThemedText type="subtitle" style={styles.sessionTitle}>{sesi.praktikum}</ThemedText>
             <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
               <ThemedText type="small" style={styles.statusText}>{statusLabel}</ThemedText>
             </View>
@@ -205,6 +196,67 @@ export default function DetailSesiAsistenScreen() {
           )}
         </View>
       </ScrollView>
+
+      <Modal
+        transparent
+        visible={modalAction !== null || feedback !== null}
+        animationType="fade"
+        onRequestClose={() => {
+          setModalAction(null);
+          setFeedback(null);
+        }}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            {feedback ? (
+              <>
+                <ThemedText type="defaultSemiBold">Informasi</ThemedText>
+                <ThemedText type="default">{feedback}</ThemedText>
+                <TouchableOpacity
+                  style={styles.modalPrimaryButton}
+                  onPress={() => setFeedback(null)}
+                >
+                  <ThemedText type="defaultSemiBold" style={styles.modalPrimaryText}>
+                    Mengerti
+                  </ThemedText>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <ThemedText type="defaultSemiBold">
+                  {modalAction === 'buka' ? 'Konfirmasi Buka Sesi' : 'Konfirmasi Tutup Sesi'}
+                </ThemedText>
+                <ThemedText type="default">
+                  {modalAction === 'buka'
+                    ? `Apakah Anda yakin ingin membuka sesi "${sesi.praktikum} - Kelas ${sesi.kelas}"?`
+                    : `Apakah Anda yakin ingin menutup sesi "${sesi.praktikum} - Kelas ${sesi.kelas}"? Setelah ditutup, praktikan tidak dapat melakukan presensi.`}
+                </ThemedText>
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={styles.modalCancelButton}
+                    onPress={() => setModalAction(null)}
+                    disabled={isProcessing}
+                  >
+                    <ThemedText type="defaultSemiBold">Batal</ThemedText>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.modalPrimaryButton,
+                      modalAction === 'tutup' && styles.modalDangerButton,
+                    ]}
+                    onPress={jalankanAksi}
+                    disabled={isProcessing}
+                  >
+                    <ThemedText type="defaultSemiBold" style={styles.modalPrimaryText}>
+                      {modalAction === 'buka' ? 'Buka Sesi' : 'Tutup Sesi'}
+                    </ThemedText>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </ThemedView>
   );
 }
@@ -303,5 +355,60 @@ const styles = StyleSheet.create({
   link: {
     color: '#0D9488',
     textDecorationLine: 'underline',
+  },
+  backButton: {
+    alignSelf: 'flex-start',
+    marginBottom: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    borderRadius: Spacing.two,
+    backgroundColor: '#0D9488',
+  },
+  backButtonText: {
+    color: '#FFFFFF',
+  },
+  sessionTitle: {
+    flex: 1,
+    fontSize: 28,
+    lineHeight: 34,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.four,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 420,
+    padding: Spacing.four,
+    borderRadius: Spacing.two,
+    backgroundColor: '#fff',
+    gap: Spacing.three,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: Spacing.two,
+  },
+  modalCancelButton: {
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    borderRadius: Spacing.two,
+    backgroundColor: '#f3f4f6',
+  },
+  modalPrimaryButton: {
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    borderRadius: Spacing.two,
+    alignItems: 'center',
+    backgroundColor: '#16A34A',
+  },
+  modalDangerButton: {
+    backgroundColor: '#DC2626',
+  },
+  modalPrimaryText: {
+    color: '#fff',
   },
 });

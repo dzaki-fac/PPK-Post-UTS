@@ -1,4 +1,4 @@
-import { StyleSheet, View, FlatList, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -38,7 +38,7 @@ function formatTanggal(dateString: string): string {
 
 type RekapItem = {
   sesi: Sesi;
-  presensiList: Array<{ presensi: Presensi; praktikan: Praktikan }>;
+  presensiList: { presensi: Presensi; praktikan: Praktikan }[];
 };
 
 export default function RekapAsistenScreen() {

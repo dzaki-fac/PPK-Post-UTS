@@ -38,18 +38,23 @@ function SesiCard({ sesi }: { sesi: Sesi }) {
     <Link href={`/asisten/detail-sesi/${sesi.id}`} asChild>
       <TouchableOpacity style={styles.card}>
         <View style={styles.cardHeader}>
-          <ThemedText type="defaultSemiBold" style={styles.praktikum}>
-            {sesi.praktikum}
-          </ThemedText>
+          <View style={styles.titleGroup}>
+            <ThemedText type="defaultSemiBold" style={styles.praktikum}>
+              {sesi.praktikum}
+            </ThemedText>
+            <ThemedText type="small" style={styles.classLabel}>Kelas {sesi.kelas}</ThemedText>
+          </View>
           <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
-            <ThemedText type="small" style={styles.statusText}>{statusLabel}</ThemedText>
+            <ThemedText type="smallBold" style={styles.statusText}>{statusLabel}</ThemedText>
           </View>
         </View>
-        <ThemedText type="default">Kelas: {sesi.kelas}</ThemedText>
-        <ThemedText type="small">Tanggal: {sesi.tanggal}</ThemedText>
-        <ThemedText type="small">
-          Waktu: {sesi.waktuMulai} - {sesi.waktuSelesai}
-        </ThemedText>
+        <View style={styles.metaRow}>
+          <ThemedText type="small" style={styles.metaText}>{sesi.tanggal}</ThemedText>
+          <ThemedText type="small" style={styles.metaText}>
+            {sesi.waktuMulai} - {sesi.waktuSelesai}
+          </ThemedText>
+        </View>
+        <ThemedText type="small" style={styles.openHint}>Buka detail sesi</ThemedText>
       </TouchableOpacity>
     </Link>
   );
@@ -63,8 +68,10 @@ export default function JadwalAsistenScreen() {
       <ThemedView style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.emptyState}>
-            <ThemedText type="title">📭</ThemedText>
-            <ThemedText type="defaultSemiBold">Belum ada jadwal praktikum</ThemedText>
+            <ThemedText type="subtitle" style={styles.emptyTitle}>Jadwal kosong</ThemedText>
+            <ThemedText type="small" style={styles.emptyDescription}>
+              Belum ada sesi praktikum yang tersedia.
+            </ThemedText>
           </View>
         </SafeAreaView>
       </ThemedView>
@@ -93,15 +100,19 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
   },
   listContent: {
-    padding: Spacing.three,
-    gap: Spacing.two,
+    width: '100%',
+    maxWidth: 920,
+    alignSelf: 'center',
+    padding: Spacing.four,
+    gap: Spacing.three,
   },
   card: {
     padding: Spacing.three,
-    borderRadius: Spacing.two,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#ccc',
-    gap: Spacing.one,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+    gap: Spacing.two,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -109,21 +120,52 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   praktikum: {
+    color: '#0F172A',
+    fontSize: 18,
+    lineHeight: 24,
+  },
+  titleGroup: {
     flex: 1,
+    gap: Spacing.one,
+  },
+  classLabel: {
+    color: '#64748B',
   },
   statusBadge: {
     paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.one,
-    borderRadius: Spacing.one,
+    paddingVertical: Spacing.two,
+    borderRadius: 8,
   },
   statusText: {
     color: '#fff',
-    fontWeight: '600',
+  },
+  metaRow: {
+    flexDirection: 'row',
+    gap: Spacing.four,
+    paddingTop: Spacing.one,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  metaText: {
+    color: '#475569',
+  },
+  openHint: {
+    color: '#0D9488',
+    marginTop: Spacing.one,
   },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     gap: Spacing.two,
+    padding: Spacing.four,
+  },
+  emptyTitle: {
+    color: '#0F172A',
+    fontSize: 24,
+    lineHeight: 30,
+  },
+  emptyDescription: {
+    color: '#64748B',
   },
 });

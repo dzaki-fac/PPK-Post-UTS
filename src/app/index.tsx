@@ -1,9 +1,10 @@
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { useState } from 'react';
 import {
   StyleSheet,
   TouchableOpacity,
   View,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -28,7 +29,7 @@ export default function IndexScreen() {
   const handlePilihIdentitas = (identitas: Praktikan | Asisten) => {
     if (peranDipilih === 'praktikan') {
       setPengguna({ peran: 'praktikan', data: identitas as Praktikan });
-      router.replace('/praktikan/jadwal');
+      router.replace('/praktikan/jadwal' as Href);
     } else if (peranDipilih === 'asisten') {
       setPengguna({ peran: 'asisten', data: identitas as Asisten });
       router.replace('/asisten/jadwal');
@@ -45,17 +46,19 @@ export default function IndexScreen() {
       <ThemedView style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
           <TouchableOpacity onPress={handleKembali} style={styles.backButton}>
-            <ThemedText type="defaultSemiBold">← Kembali</ThemedText>
+            <ThemedText type="defaultSemiBold" style={styles.backButtonText}>
+              Kembali
+            </ThemedText>
           </TouchableOpacity>
 
-          <ThemedText type="title" style={styles.title}>
+          <ThemedText type="title" style={styles.identityTitle}>
             Pilih Identitas
           </ThemedText>
-          <ThemedText type="default" style={styles.subtitle}>
+          <ThemedText type="default" style={styles.identitySubtitle}>
             {peranDipilih === 'praktikan' ? 'Pilih nama Anda dari daftar praktikan:' : 'Pilih nama Anda dari daftar asisten:'}
           </ThemedText>
 
-          <View style={styles.list}>
+          <ScrollView contentContainerStyle={styles.list}>
             {peranDipilih === 'praktikan'
               ? DAFTAR_PRAKTIKAN.map((praktikan) => (
                   <TouchableOpacity
@@ -63,9 +66,8 @@ export default function IndexScreen() {
                     style={styles.card}
                     onPress={() => handlePilihIdentitas(praktikan)}
                   >
-                    <ThemedText type="defaultSemiBold">{praktikan.nama}</ThemedText>
-                    <ThemedText type="small">NIM: {praktikan.nim}</ThemedText>
-                    <ThemedText type="small">Kelas: {praktikan.kelas}</ThemedText>
+                    <ThemedText type="defaultSemiBold" style={styles.cardTitle}>{praktikan.nama}</ThemedText>
+                    <ThemedText type="small" style={styles.cardDetail}>NIM {praktikan.nim}  ·  Kelas {praktikan.kelas}</ThemedText>
                   </TouchableOpacity>
                 ))
               : DAFTAR_ASISTEN.map((asisten) => (
@@ -74,11 +76,11 @@ export default function IndexScreen() {
                     style={styles.card}
                     onPress={() => handlePilihIdentitas(asisten)}
                   >
-                    <ThemedText type="defaultSemiBold">{asisten.nama}</ThemedText>
-                    <ThemedText type="small">Asisten Praktikum</ThemedText>
+                    <ThemedText type="defaultSemiBold" style={styles.cardTitle}>{asisten.nama}</ThemedText>
+                    <ThemedText type="small" style={styles.cardDetail}>Asisten praktikum</ThemedText>
                   </TouchableOpacity>
                 ))}
-          </View>
+          </ScrollView>
         </SafeAreaView>
       </ThemedView>
     );
@@ -87,34 +89,39 @@ export default function IndexScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedText type="title" style={styles.title}>
-          Presensi Praktikum
-        </ThemedText>
-        <ThemedText type="default" style={styles.subtitle}>
-          Pilih peran Anda untuk melanjutkan
-        </ThemedText>
-
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={styles.roleButton}
-            onPress={() => handlePilihPeran('praktikan')}
-          >
-            <ThemedText type="defaultSemiBold" style={styles.buttonText}>
-              Praktikan
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.hero}>
+            <ThemedText type="smallBold" style={styles.eyebrow}>
+              PORTAL PRAKTIKUM
             </ThemedText>
-            <ThemedText type="small">Mahasiswa peserta praktikum</ThemedText>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.roleButton}
-            onPress={() => handlePilihPeran('asisten')}
-          >
-            <ThemedText type="defaultSemiBold" style={styles.buttonText}>
-              Asisten
+            <ThemedText type="title" style={styles.title}>
+              Presensi Praktikum
             </ThemedText>
-            <ThemedText type="small">Pengelola sesi praktikum</ThemedText>
-          </TouchableOpacity>
-        </View>
+            <ThemedText type="default" style={styles.subtitle}>
+              Kelola kehadiran praktikum dengan alur yang sederhana.
+            </ThemedText>
+          </View>
+
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={styles.roleButton}
+              onPress={() => handlePilihPeran('praktikan')}
+            >
+              <ThemedText type="smallBold" style={styles.roleLabel}>PRAKTIKAN</ThemedText>
+              <ThemedText type="subtitle" style={styles.roleTitle}>Masuk sebagai praktikan</ThemedText>
+              <ThemedText type="small" style={styles.roleDescription}>Lihat jadwal dan lakukan presensi.</ThemedText>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.roleButton}
+              onPress={() => handlePilihPeran('asisten')}
+            >
+              <ThemedText type="smallBold" style={styles.roleLabel}>ASISTEN</ThemedText>
+              <ThemedText type="subtitle" style={styles.roleTitle}>Masuk sebagai asisten</ThemedText>
+              <ThemedText type="small" style={styles.roleDescription}>Buka sesi dan pantau presensi.</ThemedText>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       </SafeAreaView>
     </ThemedView>
   );
@@ -126,43 +133,98 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+  },
+  scrollContent: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
     padding: Spacing.four,
-    gap: Spacing.three,
+    gap: Spacing.four,
+    flexGrow: 1,
+    justifyContent: 'center',
   },
   title: {
     textAlign: 'center',
-    marginTop: Spacing.six,
+    fontSize: 42,
+    lineHeight: 48,
   },
   subtitle: {
     textAlign: 'center',
+    color: '#64748B',
+  },
+  hero: {
+    alignItems: 'center',
+    gap: Spacing.two,
     marginBottom: Spacing.three,
+  },
+  eyebrow: {
+    color: '#0D9488',
+    letterSpacing: 1.5,
   },
   buttonContainer: {
     gap: Spacing.three,
-    marginTop: Spacing.four,
   },
   roleButton: {
     padding: Spacing.four,
-    borderRadius: Spacing.two,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#D1FAE5',
+    backgroundColor: '#F0FDFA',
     gap: Spacing.one,
   },
-  buttonText: {
-    textAlign: 'center',
+  roleLabel: {
+    color: '#0D9488',
+    letterSpacing: 1,
+  },
+  roleTitle: {
+    fontSize: 22,
+    lineHeight: 28,
+    color: '#134E4A',
+  },
+  roleDescription: {
+    color: '#475569',
   },
   backButton: {
+    alignSelf: 'flex-start',
+    margin: Spacing.three,
+    paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
+    borderRadius: Spacing.two,
+    backgroundColor: '#F0FDFA',
+  },
+  backButtonText: {
+    color: '#0D9488',
   },
   list: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
     gap: Spacing.two,
-    flex: 1,
+    paddingHorizontal: Spacing.three,
+    paddingBottom: Spacing.four,
   },
   card: {
     padding: Spacing.three,
-    borderRadius: Spacing.two,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#CCFBF1',
+    backgroundColor: '#F0FDFA',
     gap: Spacing.one,
+  },
+  identityTitle: {
+    alignSelf: 'center',
+    fontSize: 36,
+    lineHeight: 42,
+  },
+  identitySubtitle: {
+    alignSelf: 'center',
+    marginBottom: Spacing.two,
+    color: '#64748B',
+  },
+  cardTitle: {
+    color: '#134E4A',
+  },
+  cardDetail: {
+    color: '#475569',
   },
 });

@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.three,
   },
   eyebrow: {
-    color: '#0D9488',
+    color: '#EA580C',
     letterSpacing: 1.5,
   },
   buttonContainer: {
@@ -169,18 +169,18 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#D1FAE5',
-    backgroundColor: '#F0FDFA',
+    borderColor: '#FFEDD5',
+    backgroundColor: '#FFF7ED',
     gap: Spacing.one,
   },
   roleLabel: {
-    color: '#0D9488',
+    color: '#EA580C',
     letterSpacing: 1,
   },
   roleTitle: {
     fontSize: 22,
     lineHeight: 28,
-    color: '#134E4A',
+    color: '#9A3412',
   },
   roleDescription: {
     color: '#475569',
@@ -191,10 +191,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     borderRadius: Spacing.two,
-    backgroundColor: '#F0FDFA',
+    backgroundColor: '#FFF7ED',
   },
   backButtonText: {
-    color: '#0D9488',
+    color: '#EA580C',
   },
   list: {
     width: '100%',
@@ -208,8 +208,8 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#CCFBF1',
-    backgroundColor: '#F0FDFA',
+    borderColor: '#FFEDD5',
+    backgroundColor: '#FFF7ED',
     gap: Spacing.one,
   },
   identityTitle: {
@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
   },
   cardTitle: {
-    color: '#134E4A',
+    color: '#9A3412',
   },
   cardDetail: {
     color: '#475569',

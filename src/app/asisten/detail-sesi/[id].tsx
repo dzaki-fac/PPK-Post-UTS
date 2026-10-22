@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     borderRadius: Spacing.two,
-    backgroundColor: '#0D9488',
+    backgroundColor: '#EA580C',
   },
   backButtonText: {
     color: '#FFFFFF',

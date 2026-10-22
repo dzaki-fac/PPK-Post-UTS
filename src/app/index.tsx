@@ -12,8 +12,9 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { usePraktikum } from '@/context/praktikum-context';
-import { DAFTAR_PRAKTIKAN, DAFTAR_ASISTEN } from '@/data';
-import { Peran, Praktikan, Asisten } from '@/data/types';
+import { DUMMY_PRAKTIKAN as DAFTAR_PRAKTIKAN, DUMMY_ASISTEN as DAFTAR_ASISTEN } from '@/data/dummy';
+import { Peran } from '@/data/types';
+import { Praktikan, Asisten } from '@/types/praktikum';
 
 export default function IndexScreen() {
   const { setPengguna } = usePraktikum();

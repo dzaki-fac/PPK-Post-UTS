@@ -1,0 +1,58 @@
+import { Sesi } from './types';
+
+export const DAFTAR_SESI: Sesi[] = [
+  {
+    id: 's1',
+    praktikum: 'Praktikum PPK',
+    kelas: 'A',
+    tanggal: '2024-10-28',
+    waktuMulai: '07:00',
+    waktuSelesai: '09:00',
+    status: 'belum-dibuka',
+  },
+  {
+    id: 's2',
+    praktikum: 'Praktikum PPK',
+    kelas: 'B',
+    tanggal: '2024-10-28',
+    waktuMulai: '09:00',
+    waktuSelesai: '11:00',
+    status: 'belum-dibuka',
+  },
+  {
+    id: 's3',
+    praktikum: 'Praktikum Basis Data',
+    kelas: 'A',
+    tanggal: '2024-10-29',
+    waktuMulai: '13:00',
+    waktuSelesai: '15:00',
+    status: 'belum-dibuka',
+  },
+  {
+    id: 's4',
+    praktikum: 'Praktikum Basis Data',
+    kelas: 'B',
+    tanggal: '2024-10-29',
+    waktuMulai: '15:00',
+    waktuSelesai: '17:00',
+    status: 'belum-dibuka',
+  },
+  {
+    id: 's5',
+    praktikum: 'Praktikum Jaringan',
+    kelas: 'C',
+    tanggal: '2024-10-30',
+    waktuMulai: '07:00',
+    waktuSelesai: '09:00',
+    status: 'belum-dibuka',
+  },
+  {
+    id: 's6',
+    praktikum: 'Praktikum Algoritma',
+    kelas: 'A',
+    tanggal: '2024-10-30',
+    waktuMulai: '09:00',
+    waktuSelesai: '11:00',
+    status: 'belum-dibuka',
+  },
+];

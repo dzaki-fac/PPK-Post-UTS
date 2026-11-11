@@ -162,3 +162,34 @@ Aplikasi menyediakan data dummy siap pakai untuk simulasi alur:
 - **Citra Dewi** (NIM: `22/503456/TK/54323` — Kelas A)
 - **Dimas Prasetyo** (NIM: `22/504567/TK/54324` — Kelas B)
 - *Dan 6 mahasiswa lainnya di Kelas A & Kelas B.*
+
+---
+
+## 🎬 8. Panduan Skenario Evaluasi Alur Praktikum (Sprint 1)
+
+Untuk mendemonstrasikan hasil akhir: **Asisten membuka sesi → Praktikan melakukan presensi → Asisten melihat rekap → Asisten menutup sesi**, ikuti langkah simulasi berikut:
+
+1. **Langkah 1 (Asisten Buka Sesi)**:
+   - Di halaman portal utama, pilih **Masuk sebagai Asisten Lab** lalu pilih akun **Kak Dzaki M.**.
+   - Pada tab **Jadwal**, pilih sesi yang berstatus `Belum Dibuka` (misalnya: *Praktikum PPK - Modul 3*).
+   - Tekan tombol **🔓 Buka Sesi Praktikum** dan konfirmasi pada dialog modal.
+   - Status sesi langsung berubah menjadi `Dibuka` (hijau).
+
+2. **Langkah 2 (Praktikan Presensi)**:
+   - Tekan tombol **`Ganti Akun`** di header kanan atas lalu pilih **Ganti Peran / Keluar ke Beranda** (atau langsung pilih akun mahasiswa jika beralih sesama mahasiswa).
+   - Pilih **Masuk sebagai Praktikan** lalu pilih **Ahmad Dahlan** (Kelas A).
+   - Buka sesi *Praktikum PPK - Modul 3* yang baru saja dibuka oleh asisten.
+   - Isi form catatan kehadiran (opsional), centang persetujuan integritas, lalu tekan **Kirim Presensi Kehadiran**.
+   - Konfirmasi modal; muncul notifikasi berhasil beserta catatan waktu kehadiran WIB.
+   - Tombol otomatis terkunci menjadi `Sudah Presensi` untuk mencegah presensi ganda (anti-duplikasi).
+
+3. **Langkah 3 (Asisten Melihat Rekap & Roster)**:
+   - Tekan tombol **`Ganti Akun`** di header dan kembali ke akun **Kak Dzaki M.**.
+   - Buka sesi *Praktikum PPK - Modul 3* atau buka tab **Rekap Presensi**.
+   - Terlihat nama **Ahmad Dahlan** kini tercatat **Hadir** lengkap dengan timestamp kehadirannya, serta persentase kehadiran kelas terbarui secara real-time.
+
+4. **Langkah 4 (Asisten Menutup Sesi)**:
+   - Di halaman detail sesi *Praktikum PPK - Modul 3*, tekan tombol **🔒 Tutup Sesi Praktikum**.
+   - Konfirmasi dialog modal. Status sesi kini berubah menjadi `Ditutup` (merah).
+   - Saat mahasiswa membuka sesi tersebut kembali, formulir presensi telah terkunci permanen dengan keterangan *"Sesi Telah Ditutup"*.
+

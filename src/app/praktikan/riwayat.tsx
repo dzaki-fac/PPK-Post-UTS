@@ -76,7 +76,7 @@ export default function PraktikanRiwayatScreen() {
         </View>
 
         <View style={styles.timestampContainer}>
-          <Text style={styles.timestampIcon}>🕒</Text>
+          <View style={styles.timestampDot} />
           <View style={{ flex: 1 }}>
             <Text style={styles.timestampLabel}>Waktu Presensi Tercatat:</Text>
             <Text style={styles.timestampValue}>{item.waktuKehadiran}</Text>
@@ -137,7 +137,6 @@ export default function PraktikanRiwayatScreen() {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <EmptyState
-            icon="📝"
             title="Belum Ada Riwayat Presensi"
             message={`Praktikan ${currentPraktikan?.nama ?? ''} belum memiliki catatan presensi. Buka tab Jadwal untuk melakukan presensi pada sesi yang sedang dibuka.`}
             actionText="Lihat Jadwal Praktikum"
@@ -343,8 +342,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#DCFCE7',
   },
-  timestampIcon: {
-    fontSize: 16,
+  timestampDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#16A34A',
   },
   timestampLabel: {
     fontSize: 11,

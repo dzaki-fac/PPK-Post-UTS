@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 
 import { RoleHeader } from '@/components/role-header';
 
@@ -17,8 +17,12 @@ export default function PraktikanLayout() {
             styles.tabBar,
             Platform.OS === 'web' && styles.tabBarWeb,
           ],
+          tabBarItemStyle: {
+            justifyContent: 'center',
+            alignItems: 'center',
+          },
           tabBarLabelStyle: {
-            fontSize: 12,
+            fontSize: 13,
             fontWeight: '700',
           },
         }}>
@@ -27,9 +31,6 @@ export default function PraktikanLayout() {
           options={{
             title: 'Jadwal Praktikum',
             tabBarLabel: 'Jadwal Sesi',
-            tabBarIcon: ({ color }) => (
-              <Text style={{ fontSize: 18, color }}>📅</Text>
-            ),
           }}
         />
         <Tabs.Screen
@@ -37,9 +38,6 @@ export default function PraktikanLayout() {
           options={{
             title: 'Riwayat Kehadiran',
             tabBarLabel: 'Riwayat Presensi',
-            tabBarIcon: ({ color }) => (
-              <Text style={{ fontSize: 18, color }}>📝</Text>
-            ),
           }}
         />
         <Tabs.Screen

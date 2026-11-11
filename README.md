@@ -2,11 +2,11 @@
 
 > **Sprint 1: Antarmuka dan Alur Praktikum**  
 > Praktikum Pemrograman Perangkat Bergerak (PPK) · Semester Ganjil 2026/2027  
-> Dibangun dengan **React Native**, **Expo SDK 57**, dan **Expo Router**. Mendukung penuh **Android (Expo Go)**, **iOS**, dan **Web Browser**.
+> Dibangun dengan **React Native**, **Expo**, dan **Expo Router**. Mendukung penuh **Android (Expo Go)**, **iOS**, dan **Web Browser**.
 
 ---
 
-## 📌 1. Deskripsi Proyek
+## 1. Deskripsi Proyek
 
 **PPK LabPortal** adalah aplikasi pencatatan kehadiran laboratorium praktikum terpadu yang dirancang dari dua sudut pandang pengguna: **Mahasiswa / Praktikan** dan **Asisten Laboratorium**.
 
@@ -19,7 +19,7 @@ Pada Sprint 1 ini, aplikasi mendemonstrasikan siklus lengkap kegiatan praktikum:
 
 ---
 
-## 🚀 2. Fitur Utama (Sprint 1)
+## 2. Fitur Utama (Sprint 1)
 
 ### A. Sudut Pandang Praktikan
 - **Jadwal & Detail Sesi Praktikum**: Daftar sesi lengkap dengan modul, nama praktikum, kelas, ruang laboratorium, waktu, dan status sesi (`Dibuka`, `Belum Dibuka`, `Ditutup`).
@@ -41,12 +41,12 @@ Pada Sprint 1 ini, aplikasi mendemonstrasikan siklus lengkap kegiatan praktikum:
   - Badge peran aktif (`MAHASISWA` atau `ASISTEN LAB`), nama pengguna, dan NIM/kelas.
   - Tombol **`Ganti Akun`** yang memunculkan modal pemilihan pengguna tanpa perlu reload aplikasi.
 - **Desain Responsif Web & Mobile**:
-  - Pada layar lebar (Web Browser), konten dibatasi proporsional (`maxWidth: 840`) dan navigasi tab bar dipusatkan secara proporsional (*floating centered nav*).
+  - Pada layar lebar (Web Browser), konten dibatasi proporsional (`maxWidth: 960`) dan navigasi tab bar dipusatkan secara proporsional (*floating centered nav*).
   - Pada layar ponsel (Android/iOS), layout full-width dengan safe-area insets dan touch targets minimal 44px.
 
 ---
 
-## 🎨 3. Desain Sistem (E-Stock Inspired)
+## 3. Desain Sistem (E-Stock Inspired)
 
 Antarmuka aplikasi dibangun mengacu pada referensi dashboard modern *E-Stock Management* (`e-stock.hancreativemedia.com`), menghindari tampilan kaku, kosong, atau *slop*:
 
@@ -64,14 +64,14 @@ Antarmuka aplikasi dibangun mengacu pada referensi dashboard modern *E-Stock Man
 
 ---
 
-## 📁 4. Struktur Proyek
+## 4. Struktur Proyek
 
 ```
 PPK-Post-UTS/
 ├── DESIGN.md                     # Spesifikasi lengkap sistem desain LabPortal
 ├── SRS.md                        # Software Requirements Specification (Sprint 1)
 ├── README.md                     # Dokumentasi proyek & panduan instalasi
-├── app.json                      # Konfigurasi Expo SDK 57
+├── app.json                      # Konfigurasi Expo
 ├── package.json                  # Dependensi proyek (clean Expo Go)
 ├── tsconfig.json                 # Konfigurasi TypeScript
 ├── src/
@@ -107,7 +107,7 @@ PPK-Post-UTS/
 
 ---
 
-## 💻 5. Cara Menjalankan Aplikasi
+## 5. Cara Menjalankan Aplikasi
 
 ### Prasyarat
 - **Node.js** versi 18 atau lebih baru.
@@ -131,7 +131,7 @@ Setelah server Expo aktif:
 
 ---
 
-## 🧪 6. Pengujian & Verifikasi Kualitas
+## 6. Pengujian & Verifikasi Kualitas
 
 Aplikasi ini bebas dari kesalahan kompilasi dan mengikuti standar kualitas kode yang ketat:
 
@@ -148,7 +148,7 @@ npx expo-doctor
 
 ---
 
-## 👥 7. Informasi Pengguna Dummy untuk Pengujian
+## 7. Informasi Pengguna Dummy untuk Pengujian
 
 Aplikasi menyediakan data dummy siap pakai untuk simulasi alur:
 
@@ -165,14 +165,14 @@ Aplikasi menyediakan data dummy siap pakai untuk simulasi alur:
 
 ---
 
-## 🎬 8. Panduan Skenario Evaluasi Alur Praktikum (Sprint 1)
+## 8. Panduan Skenario Evaluasi Alur Praktikum (Sprint 1)
 
 Untuk mendemonstrasikan hasil akhir: **Asisten membuka sesi → Praktikan melakukan presensi → Asisten melihat rekap → Asisten menutup sesi**, ikuti langkah simulasi berikut:
 
 1. **Langkah 1 (Asisten Buka Sesi)**:
    - Di halaman portal utama, pilih **Masuk sebagai Asisten Lab** lalu pilih akun **Kak Dzaki M.**.
    - Pada tab **Jadwal**, pilih sesi yang berstatus `Belum Dibuka` (misalnya: *Praktikum PPK - Modul 3*).
-   - Tekan tombol **🔓 Buka Sesi Praktikum** dan konfirmasi pada dialog modal.
+   - Tekan tombol **Buka Sesi Praktikum** dan konfirmasi pada dialog modal.
    - Status sesi langsung berubah menjadi `Dibuka` (hijau).
 
 2. **Langkah 2 (Praktikan Presensi)**:
@@ -189,7 +189,7 @@ Untuk mendemonstrasikan hasil akhir: **Asisten membuka sesi → Praktikan melaku
    - Terlihat nama **Ahmad Dahlan** kini tercatat **Hadir** lengkap dengan timestamp kehadirannya, serta persentase kehadiran kelas terbarui secara real-time.
 
 4. **Langkah 4 (Asisten Menutup Sesi)**:
-   - Di halaman detail sesi *Praktikum PPK - Modul 3*, tekan tombol **🔒 Tutup Sesi Praktikum**.
+   - Di halaman detail sesi *Praktikum PPK - Modul 3*, tekan tombol **Tutup Sesi Praktikum**.
    - Konfirmasi dialog modal. Status sesi kini berubah menjadi `Ditutup` (merah).
    - Saat mahasiswa membuka sesi tersebut kembali, formulir presensi telah terkunci permanen dengan keterangan *"Sesi Telah Ditutup"*.
 

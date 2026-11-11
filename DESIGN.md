@@ -14,7 +14,7 @@
    - Header selalu menyediakan tombol navigasi yang jelas (`← Beranda` atau `← Kembali ke Jadwal`) sehingga pengguna tidak pernah terjebak di layar tertentu tanpa jalan keluar.
    - Informasi pengguna aktif (nama, peran, NIM/kelas) dan tombol `Ganti Akun` selalu dapat diakses dari header.
 3. **Penyelarasan Responsif (Web vs Mobile)**:
-   - **Pada Web**: Konten dibatasi dalam kontainer elegan (`maxWidth: 840, width: '100%', alignSelf: 'center'`). Bar navigasi tab tidak diregangkan dari ujung ke ujung monitor, melainkan dipusatkan (*floating centered pill navigation*) yang proporsional dan sedap dipandang.
+   - **Pada Web**: Konten dibatasi dalam kontainer elegan (`maxWidth: 960, width: '100%', alignSelf: 'center'`). Bar navigasi tab tidak diregangkan dari ujung ke ujung monitor, melainkan dipusatkan (*floating centered pill navigation*) yang proporsional dan sedap dipandang.
    - **Pada Mobile**: Full-width dengan padding 16px, touch targets $\ge 44$px, dan perlindungan safe-area terhadap kamera punch-hole / notch.
 
 ---
@@ -61,9 +61,9 @@ Mengikuti palet terkurasi dari referensi E-Stock:
    - Menampilkan angka besar tebal, label deskriptif, dan ikon penjelas.
 3. **`SesiCard` (Kartu Sesi Praktikum)**:
    - Judul praktikum, chip kelas, badge status sesi dengan dot warna.
-   - Garis waktu pelaksanaan (`📅 Tanggal • ⏰ Jam WIB`) dan ruang laboratorium (`📍 Lab`).
-   - Sisi Asisten: Badge jumlah mahasiswa yang telah hadir (`👥 X Mahasiswa Hadir`).
-   - Sisi Praktikan: Banner hijau verifikasi kehadiran jika sudah presensi (`✓ Sudah Presensi [Waktu]`).
+   - Garis waktu pelaksanaan (`Tanggal • Jam WIB`) dan ruang laboratorium (`Lab`).
+   - Sisi Asisten: Badge jumlah mahasiswa yang telah hadir (`X Mahasiswa Hadir`).
+   - Sisi Praktikan: Banner hijau verifikasi kehadiran jika sudah presensi (`Sudah Presensi [Waktu]`).
 4. **`ConfirmationModal`**:
    - Bottom sheet / dialog konfirmasi elegan untuk aksi buka sesi, tutup sesi, kirim presensi, dan dialog feedback.
 5. **`EmptyState`**:

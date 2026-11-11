@@ -10,7 +10,6 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({
-  icon = '📋',
   title,
   message,
   actionText,
@@ -18,15 +17,16 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <View style={styles.container}>
-      <View style={styles.iconCircle}>
-        <Text style={styles.icon}>{icon}</Text>
+      <View style={styles.indicatorBox}>
+        <View style={styles.indicatorInnerDot} />
       </View>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.message}>{message}</Text>
       {actionText && onAction ? (
         <Pressable
           style={({ pressed }) => [styles.actionButton, pressed && styles.actionPressed]}
-          onPress={onAction}>
+          onPress={onAction}
+          accessibilityRole="button">
           <Text style={styles.actionText}>{actionText}</Text>
         </Pressable>
       ) : null}
@@ -37,28 +37,31 @@ export function EmptyState({
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 24,
-    paddingVertical: 40,
+    paddingVertical: 48,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconCircle: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+  indicatorBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#CBD5E1',
   },
-  icon: {
-    fontSize: 32,
+  indicatorInnerDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#94A3B8',
   },
   title: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1E293B',
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0F172A',
     textAlign: 'center',
     marginBottom: 8,
   },
@@ -66,22 +69,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#64748B',
     textAlign: 'center',
-    lineHeight: 19,
-    maxWidth: 280,
+    lineHeight: 20,
+    maxWidth: 320,
   },
   actionButton: {
     marginTop: 20,
     paddingHorizontal: 18,
     paddingVertical: 10,
     backgroundColor: '#EA580C',
-    borderRadius: 8,
+    borderRadius: 10,
   },
   actionPressed: {
     opacity: 0.85,
   },
   actionText: {
     color: '#FFFFFF',
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: 13,
   },
 });

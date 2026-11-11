@@ -154,7 +154,6 @@ export default function PraktikanJadwalScreen() {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <EmptyState
-            icon="📅"
             title="Tidak Ada Sesi"
             message={
               filter === 'semua'

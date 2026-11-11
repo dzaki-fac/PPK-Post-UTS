@@ -45,19 +45,19 @@ export function ConfirmationModal({
     }
   };
 
-  const getIcon = () => {
+  const getBadgeInfo = () => {
     switch (confirmVariant) {
       case 'danger':
-        return { emoji: '⚠️', bg: '#FEE2E2', border: '#FCA5A5' };
+        return { text: 'PERINGATAN', bg: '#FEE2E2', border: '#FCA5A5', color: '#B91C1C' };
       case 'success':
-        return { emoji: '✓', bg: '#DCFCE7', border: '#86EFAC' };
+        return { text: 'BERHASIL', bg: '#DCFCE7', border: '#86EFAC', color: '#15803D' };
       case 'primary':
       default:
-        return { emoji: '📋', bg: '#FFF7ED', border: '#FED7AA' };
+        return { text: 'KONFIRMASI', bg: '#FFF7ED', border: '#FED7AA', color: '#EA580C' };
     }
   };
 
-  const iconInfo = getIcon();
+  const badge = getBadgeInfo();
 
   return (
     <Modal
@@ -70,10 +70,10 @@ export function ConfirmationModal({
         <View style={styles.popupCard}>
           <View
             style={[
-              styles.iconCircle,
-              { backgroundColor: iconInfo.bg, borderColor: iconInfo.border },
+              styles.typeBadge,
+              { backgroundColor: badge.bg, borderColor: badge.border },
             ]}>
-            <Text style={styles.iconEmoji}>{iconInfo.emoji}</Text>
+            <Text style={[styles.typeBadgeText, { color: badge.color }]}>{badge.text}</Text>
           </View>
 
           <Text style={styles.title}>{title}</Text>
@@ -119,7 +119,7 @@ export function ConfirmationModal({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -142,18 +142,18 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
     zIndex: 1,
   },
-  iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  typeBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
     borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
+    marginBottom: 12,
   },
-  iconEmoji: {
-    fontSize: 22,
-    fontWeight: '700',
+  typeBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   title: {
     fontSize: 19,

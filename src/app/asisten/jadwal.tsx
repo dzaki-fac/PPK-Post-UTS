@@ -142,7 +142,6 @@ export default function JadwalAsistenScreen() {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <EmptyState
-            icon="📅"
             title="Tidak Ada Sesi"
             message={
               filter === 'semua'

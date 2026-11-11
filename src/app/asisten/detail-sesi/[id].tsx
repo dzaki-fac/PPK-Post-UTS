@@ -88,7 +88,6 @@ export default function DetailSesiAsistenScreen() {
           </Pressable>
         </View>
         <EmptyState
-          icon="🔍"
           title="Sesi Tidak Ditemukan"
           message="Sesi praktikum yang Anda cari tidak terdaftar dalam jadwal."
           actionText="Kembali ke Jadwal"
@@ -155,12 +154,12 @@ export default function DetailSesiAsistenScreen() {
 
             <View style={styles.grid}>
               <View style={styles.gridItem}>
-                <Text style={styles.gridLabel}>📅 Tanggal</Text>
+                <Text style={styles.gridLabel}>Tanggal</Text>
                 <Text style={styles.gridValue}>{sesi.tanggal}</Text>
               </View>
 
               <View style={styles.gridItem}>
-                <Text style={styles.gridLabel}>⏰ Waktu Pelaksanaan</Text>
+                <Text style={styles.gridLabel}>Waktu Pelaksanaan</Text>
                 <Text style={styles.gridValue}>
                   {sesi.waktuMulai} - {sesi.waktuSelesai} WIB
                 </Text>
@@ -168,13 +167,13 @@ export default function DetailSesiAsistenScreen() {
 
               {sesi.ruang ? (
                 <View style={styles.gridItem}>
-                  <Text style={styles.gridLabel}>📍 Ruang Laboratorium</Text>
+                  <Text style={styles.gridLabel}>Ruang Laboratorium</Text>
                   <Text style={styles.gridValue}>{sesi.ruang}</Text>
                 </View>
               ) : null}
 
               <View style={styles.gridItem}>
-                <Text style={styles.gridLabel}>📊 Tingkat Kehadiran</Text>
+                <Text style={styles.gridLabel}>Tingkat Kehadiran</Text>
                 <Text style={[styles.gridValue, { color: '#15803D' }]}>
                   {totalHadir}/{totalMahasiswa} Mahasiswa ({persentaseHadir}%)
                 </Text>
@@ -201,14 +200,14 @@ export default function DetailSesiAsistenScreen() {
                     pressed && styles.buttonPressed,
                   ]}
                   onPress={() => setModalAction('buka')}>
-                  <Text style={styles.btnTextWhite}>🔓 Buka Sesi Praktikum</Text>
+                  <Text style={styles.btnTextWhite}>Buka Sesi Praktikum</Text>
                 </Pressable>
               </View>
             ) : sesi.status === 'dibuka' ? (
               <View style={styles.actionNoticeBox}>
                 <View style={styles.actionNoticeInfo}>
                   <Text style={[styles.actionNoticeTitle, { color: '#15803D' }]}>
-                    🟢 Sesi Sedang Berlangsung
+                    Sesi Sedang Berlangsung
                   </Text>
                   <Text style={styles.actionNoticeSubtitle}>
                     Praktikan dapat melakukan presensi saat ini. Tutup sesi jika kegiatan praktikum telah selesai.
@@ -221,12 +220,12 @@ export default function DetailSesiAsistenScreen() {
                     pressed && styles.buttonPressed,
                   ]}
                   onPress={() => setModalAction('tutup')}>
-                  <Text style={styles.btnTextWhite}>🔒 Tutup Sesi Praktikum</Text>
+                  <Text style={styles.btnTextWhite}>Tutup Sesi Praktikum</Text>
                 </Pressable>
               </View>
             ) : (
               <View style={styles.closedNoticeBox}>
-                <Text style={styles.closedNoticeIcon}>✓</Text>
+                <View style={styles.closedNoticeDot} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.closedNoticeTitle}>Sesi Praktikum Telah Ditutup</Text>
                   <Text style={styles.closedNoticeSubtitle}>
@@ -323,7 +322,7 @@ export default function DetailSesiAsistenScreen() {
                     <View style={styles.studentStatusWrap}>
                       {hadir ? (
                         <View style={styles.hadirBadge}>
-                          <Text style={styles.hadirBadgeText}>✓ Hadir</Text>
+                          <Text style={styles.hadirBadgeText}>Hadir</Text>
                           {waktuHadir ? (
                             <Text style={styles.hadirTimeText}>
                               {waktuHadir.includes(',')
@@ -401,8 +400,9 @@ const styles = StyleSheet.create({
   },
   contentWrap: {
     width: '100%',
-    maxWidth: 840,
+    maxWidth: 960,
     alignSelf: 'center',
+    paddingHorizontal: 20,
     gap: 16,
   },
   topBar: {
@@ -437,8 +437,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 40,
+    paddingVertical: 20,
+    paddingBottom: 48,
   },
   card: {
     backgroundColor: '#FFFFFF',
@@ -583,10 +583,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
-  closedNoticeIcon: {
-    fontSize: 18,
-    color: '#16A34A',
-    fontWeight: '800',
+  closedNoticeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#64748B',
   },
   closedNoticeTitle: {
     fontSize: 13,

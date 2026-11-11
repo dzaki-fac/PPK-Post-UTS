@@ -48,7 +48,6 @@ export default function PraktikanDetailSesiScreen() {
           </Pressable>
         </View>
         <EmptyState
-          icon="🔍"
           title="Sesi Tidak Ditemukan"
           message="Sesi praktikum yang Anda cari tidak terdaftar atau telah dihapus."
           actionText="Kembali ke Jadwal"
@@ -125,12 +124,12 @@ export default function PraktikanDetailSesiScreen() {
           {/* Schedule Info Grid */}
           <View style={styles.grid}>
             <View style={styles.gridItem}>
-              <Text style={styles.gridLabel}>📅 Tanggal</Text>
+              <Text style={styles.gridLabel}>Tanggal</Text>
               <Text style={styles.gridValue}>{sesi.tanggal}</Text>
             </View>
 
             <View style={styles.gridItem}>
-              <Text style={styles.gridLabel}>⏰ Waktu Pelaksanaan</Text>
+              <Text style={styles.gridLabel}>Waktu Pelaksanaan</Text>
               <Text style={styles.gridValue}>
                 {sesi.waktuMulai} - {sesi.waktuSelesai} WIB
               </Text>
@@ -138,13 +137,13 @@ export default function PraktikanDetailSesiScreen() {
 
             {sesi.ruang ? (
               <View style={styles.gridItem}>
-                <Text style={styles.gridLabel}>📍 Ruang Laboratorium</Text>
+                <Text style={styles.gridLabel}>Ruang Laboratorium</Text>
                 <Text style={styles.gridValue}>{sesi.ruang}</Text>
               </View>
             ) : null}
 
             <View style={styles.gridItem}>
-              <Text style={styles.gridLabel}>🏷️ Status Saat Ini</Text>
+              <Text style={styles.gridLabel}>Status Saat Ini</Text>
               <Text style={styles.gridValue}>
                 {sesi.status === 'dibuka'
                   ? 'Sesi Sedang Dibuka'
@@ -187,7 +186,7 @@ export default function PraktikanDetailSesiScreen() {
           {alreadyPresensi ? (
             <View style={styles.alreadyBox}>
               <View style={styles.successIconCircle}>
-                <Text style={styles.successIconText}>✓</Text>
+                <View style={styles.successIconDot} />
               </View>
               <Text style={styles.alreadyTitle}>Anda Sudah Presensi</Text>
               <Text style={styles.alreadySubtitle}>
@@ -195,7 +194,7 @@ export default function PraktikanDetailSesiScreen() {
               </Text>
               <View style={styles.timestampBadge}>
                 <Text style={styles.timestampText}>
-                  🕒 {currentPresensiRecord?.waktuKehadiran ?? 'Tercatat'}
+                  {currentPresensiRecord?.waktuKehadiran ?? 'Tercatat'}
                 </Text>
               </View>
               <Text style={styles.alreadyNotice}>
@@ -208,14 +207,14 @@ export default function PraktikanDetailSesiScreen() {
                 style={[styles.actionBtn, styles.actionBtnDisabled]}
                 disabled>
                 <Text style={styles.actionBtnTextDisabled}>
-                  ✓ Presensi Telah Lengkap
+                  Presensi Telah Lengkap
                 </Text>
               </Pressable>
             </View>
           ) : sesi.status === 'belum-dibuka' ? (
             /* Case 2: Sesi Belum Dibuka (FR-4.1) */
             <View style={styles.warningBox}>
-              <Text style={styles.warningIcon}>⏳</Text>
+              <View style={styles.warningDot} />
               <Text style={styles.warningTitle}>Sesi Belum Dibuka</Text>
               <Text style={styles.warningMessage}>
                 Asisten praktikum belum membuka sesi ini. Tombol presensi akan
@@ -232,7 +231,7 @@ export default function PraktikanDetailSesiScreen() {
           ) : sesi.status === 'ditutup' ? (
             /* Case 3: Sesi Ditutup (FR-4.1, FR-3.4) */
             <View style={styles.dangerBox}>
-              <Text style={styles.dangerIcon}>🔒</Text>
+              <View style={styles.dangerDot} />
               <Text style={styles.dangerTitle}>Sesi Telah Ditutup</Text>
               <Text style={styles.dangerMessage}>
                 Waktu sesi praktikum ini telah berakhir dan ditutup oleh
@@ -251,7 +250,7 @@ export default function PraktikanDetailSesiScreen() {
             /* Case 4: Sesi Dibuka & Belum Presensi (FR-4.1, FR-4.5) */
             <View style={styles.formContainer}>
               <View style={styles.openNoticeBox}>
-                <Text style={styles.openNoticeIcon}>📢</Text>
+                <View style={styles.openNoticeDot} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.openNoticeTitle}>Sesi Sedang Berlangsung</Text>
                   <Text style={styles.openNoticeDesc}>
@@ -285,7 +284,7 @@ export default function PraktikanDetailSesiScreen() {
                     agreementChecked && styles.checkboxBoxChecked,
                   ]}>
                   {agreementChecked ? (
-                    <Text style={styles.checkboxCheck}>✓</Text>
+                    <View style={styles.checkboxInner} />
                   ) : null}
                 </View>
                 <Text style={styles.checkboxLabel}>
@@ -306,7 +305,7 @@ export default function PraktikanDetailSesiScreen() {
                 onPress={handleOpenPresensiModal}
                 disabled={!agreementChecked || !currentPraktikan}>
                 <Text style={styles.actionBtnTextActive}>
-                  ✍️ Presensi Sekarang
+                  Kirim Presensi Kehadiran
                 </Text>
               </Pressable>
             </View>
@@ -354,7 +353,7 @@ export default function PraktikanDetailSesiScreen() {
       {/* Success Feedback Modal (FR-4.3) */}
       <ConfirmationModal
         visible={isSuccessModalVisible}
-        title="Presensi Berhasil! 🎉"
+        title="Presensi Berhasil"
         description={successMessage}
         confirmText="Selesai"
         cancelText="Tutup"
@@ -379,8 +378,9 @@ const styles = StyleSheet.create({
   },
   contentWrap: {
     width: '100%',
-    maxWidth: 840,
+    maxWidth: 960,
     alignSelf: 'center',
+    paddingHorizontal: 20,
     gap: 16,
   },
   topBar: {
@@ -415,9 +415,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 40,
-    gap: 16,
+    paddingVertical: 20,
+    paddingBottom: 48,
   },
   pageHeader: {
     gap: 4,
@@ -578,10 +577,11 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#86EFAC',
   },
-  successIconText: {
-    fontSize: 26,
-    color: '#16A34A',
-    fontWeight: '800',
+  successIconDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#16A34A',
   },
   alreadyTitle: {
     fontSize: 17,
@@ -623,9 +623,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FDE68A',
   },
-  warningIcon: {
-    fontSize: 32,
-    marginBottom: 6,
+  warningDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#EAB308',
+    marginBottom: 8,
   },
   warningTitle: {
     fontSize: 15,
@@ -648,9 +651,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FECACA',
   },
-  dangerIcon: {
-    fontSize: 32,
-    marginBottom: 6,
+  dangerDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#DC2626',
+    marginBottom: 8,
   },
   dangerTitle: {
     fontSize: 15,
@@ -678,8 +684,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#CCFBF1',
   },
-  openNoticeIcon: {
-    fontSize: 20,
+  openNoticeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#0D9488',
   },
   openNoticeTitle: {
     fontSize: 13,
@@ -729,10 +738,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#EA580C',
     borderColor: '#EA580C',
   },
-  checkboxCheck: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '900',
+  checkboxInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 2,
+    backgroundColor: '#FFFFFF',
   },
   checkboxLabel: {
     flex: 1,

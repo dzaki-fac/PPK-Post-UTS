@@ -65,7 +65,7 @@ export default function IndexScreen() {
             <View style={styles.navInner}>
               <View style={styles.brandRow}>
                 <View style={styles.logoBadge}>
-                  <Text style={styles.logoBadgeIcon}>🏛️</Text>
+                  <Text style={styles.logoBadgeText}>PPK</Text>
                 </View>
                 <View>
                   <Text style={styles.brandTitle}>PPK LabPortal</Text>
@@ -261,7 +261,7 @@ export default function IndexScreen() {
           <View style={styles.navInner}>
             <View style={styles.brandRow}>
               <View style={styles.logoBadge}>
-                <Text style={styles.logoBadgeIcon}>🏛️</Text>
+                <Text style={styles.logoBadgeText}>PPK</Text>
               </View>
               <View>
                 <Text style={styles.brandTitle}>PPK LabPortal</Text>
@@ -271,7 +271,7 @@ export default function IndexScreen() {
 
             <View style={styles.systemStatusPill}>
               <View style={styles.liveDot} />
-              <Text style={styles.systemStatusText}>Sistem Aktif · Expo SDK 57</Text>
+              <Text style={styles.systemStatusText}>Sistem Presensi Aktif</Text>
             </View>
           </View>
         </View>
@@ -339,7 +339,7 @@ export default function IndexScreen() {
             <View style={styles.roleCard}>
               <View style={styles.roleCardHeader}>
                 <View style={styles.roleIconWrapPraktikan}>
-                  <Text style={styles.roleIcon}>🎓</Text>
+                  <Text style={styles.roleTagMarkPraktikan}>MHS</Text>
                 </View>
                 <View style={styles.roleBadgePraktikan}>
                   <Text style={styles.roleBadgeTextPraktikan}>PORTAL MAHASISWA</Text>
@@ -354,19 +354,19 @@ export default function IndexScreen() {
 
               <View style={styles.featureList}>
                 <View style={styles.featureItem}>
-                  <Text style={styles.checkIcon}>✓</Text>
+                  <View style={styles.featureDot} />
                   <Text style={styles.featureText}>Jadwal dan rincian modul praktikum</Text>
                 </View>
                 <View style={styles.featureItem}>
-                  <Text style={styles.checkIcon}>✓</Text>
+                  <View style={styles.featureDot} />
                   <Text style={styles.featureText}>Form presensi mandiri saat sesi dibuka</Text>
                 </View>
                 <View style={styles.featureItem}>
-                  <Text style={styles.checkIcon}>✓</Text>
+                  <View style={styles.featureDot} />
                   <Text style={styles.featureText}>Validasi anti-duplikasi presensi</Text>
                 </View>
                 <View style={styles.featureItem}>
-                  <Text style={styles.checkIcon}>✓</Text>
+                  <View style={styles.featureDot} />
                   <Text style={styles.featureText}>Riwayat kehadiran dan persentase aktif</Text>
                 </View>
               </View>
@@ -387,7 +387,7 @@ export default function IndexScreen() {
             <View style={[styles.roleCard, styles.roleCardAsisten]}>
               <View style={styles.roleCardHeader}>
                 <View style={styles.roleIconWrapAsisten}>
-                  <Text style={styles.roleIcon}>🔬</Text>
+                  <Text style={styles.roleTagMarkAsisten}>AST</Text>
                 </View>
                 <View style={styles.roleBadgeAsisten}>
                   <Text style={styles.roleBadgeTextAsisten}>ASISTEN LABORATORIUM</Text>
@@ -404,19 +404,19 @@ export default function IndexScreen() {
 
               <View style={styles.featureList}>
                 <View style={styles.featureItem}>
-                  <Text style={[styles.checkIcon, { color: '#0D9488' }]}>✓</Text>
+                  <View style={[styles.featureDot, { backgroundColor: '#0D9488' }]} />
                   <Text style={styles.featureText}>Buka dan tutup sesi praktikum</Text>
                 </View>
                 <View style={styles.featureItem}>
-                  <Text style={[styles.checkIcon, { color: '#0D9488' }]}>✓</Text>
+                  <View style={[styles.featureDot, { backgroundColor: '#0D9488' }]} />
                   <Text style={styles.featureText}>Dialog konfirmasi modal interaktif</Text>
                 </View>
                 <View style={styles.featureItem}>
-                  <Text style={[styles.checkIcon, { color: '#0D9488' }]}>✓</Text>
+                  <View style={[styles.featureDot, { backgroundColor: '#0D9488' }]} />
                   <Text style={styles.featureText}>Roster kelas (Daftar Hadir & Belum Hadir)</Text>
                 </View>
                 <View style={styles.featureItem}>
-                  <Text style={[styles.checkIcon, { color: '#0D9488' }]}>✓</Text>
+                  <View style={[styles.featureDot, { backgroundColor: '#0D9488' }]} />
                   <Text style={styles.featureText}>Rekapitulasi per sesi dengan statistik</Text>
                 </View>
               </View>
@@ -476,7 +476,7 @@ export default function IndexScreen() {
               Praktikum Pemrograman Perangkat Bergerak (PPK) · Semester Ganjil 2026/2027
             </Text>
             <Text style={styles.footerSubText}>
-              Built with Expo SDK 57 · React Native · Expo Router · Native Flexbox Design
+              Sistem Presensi Praktikum Laboratorium · Teknik Elektro & Teknologi Informasi
             </Text>
           </View>
         </ScrollView>
@@ -523,8 +523,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoBadgeIcon: {
-    fontSize: 20,
+  logoBadgeText: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#EA580C',
+    letterSpacing: 0.5,
   },
   brandTitle: {
     fontSize: 16,
@@ -704,8 +707,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#99F6E4',
   },
-  roleIcon: {
-    fontSize: 22,
+  roleTagMarkPraktikan: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#EA580C',
+    letterSpacing: 0.5,
+  },
+  roleTagMarkAsisten: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#0D9488',
+    letterSpacing: 0.5,
   },
   roleBadgePraktikan: {
     backgroundColor: '#FFF7ED',
@@ -758,10 +770,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  checkIcon: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#EA580C',
+  featureDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#EA580C',
   },
   featureText: {
     fontSize: 13,

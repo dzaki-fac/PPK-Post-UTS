@@ -172,7 +172,7 @@ export default function RekapAsistenScreen() {
                   <View style={styles.statusCol}>
                     {hadir ? (
                       <View style={styles.hadirBadge}>
-                        <Text style={styles.hadirBadgeText}>✓ Hadir</Text>
+                        <Text style={styles.hadirBadgeText}>Hadir</Text>
                         {waktuHadir ? (
                           <Text style={styles.hadirTimeText}>
                             {waktuHadir.includes(',')
@@ -247,7 +247,6 @@ export default function RekapAsistenScreen() {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <EmptyState
-            icon="📋"
             title="Belum Ada Rekap Presensi"
             message="Rekap kehadiran akan muncul setelah Anda membuka sesi praktikum pada tab Jadwal."
             actionText="Buka Jadwal Praktikum"

@@ -69,10 +69,11 @@ export function RoleHeader() {
         style={[
           styles.navInner,
           {
-            paddingTop: Platform.OS === 'web' ? 0 : Math.max(insets.top - 8, 0),
+            paddingTop: Platform.OS === 'web' ? 10 : Math.max(insets.top - 6, 8),
+            paddingBottom: 10,
           },
         ]}>
-        {/* Brand Group (Exact same logo & typography as Halaman 1) */}
+        {/* Brand Group (Clean lettermark badge, zero emojis) */}
         <View style={styles.leftGroup}>
           <Pressable
             style={({ pressed }) => [styles.brandRow, pressed && styles.btnPressed]}
@@ -80,7 +81,7 @@ export function RoleHeader() {
             accessibilityRole="button"
             accessibilityLabel="Kembali ke Beranda Portal">
             <View style={styles.logoBadge}>
-              <Text style={styles.logoBadgeIcon}>🏛️</Text>
+              <Text style={styles.logoBadgeText}>PPK</Text>
             </View>
             <View>
               <Text style={styles.brandTitle}>PPK LabPortal</Text>
@@ -108,15 +109,6 @@ export function RoleHeader() {
               styles.userPill,
               isPraktikan ? styles.userPillPraktikan : styles.userPillAsisten,
             ]}>
-            <Text style={styles.userIcon}>{isPraktikan ? '🎓' : '🔬'}</Text>
-            <View style={styles.userInfoWrap}>
-              <Text style={styles.userName} numberOfLines={1}>
-                {name}
-              </Text>
-              <Text style={styles.userSub} numberOfLines={1}>
-                {subInfo}
-              </Text>
-            </View>
             <View
               style={[
                 styles.roleMiniBadge,
@@ -128,6 +120,14 @@ export function RoleHeader() {
                   isPraktikan ? styles.textPraktikan : styles.textAsisten,
                 ]}>
                 {isPraktikan ? 'MAHASISWA' : 'ASISTEN'}
+              </Text>
+            </View>
+            <View style={styles.userInfoWrap}>
+              <Text style={styles.userName} numberOfLines={1}>
+                {name}
+              </Text>
+              <Text style={styles.userSub} numberOfLines={1}>
+                {subInfo}
               </Text>
             </View>
           </View>
@@ -160,8 +160,12 @@ export function RoleHeader() {
                   styles.modalIconWrap,
                   isPraktikan ? styles.modalIconPraktikan : styles.modalIconAsisten,
                 ]}>
-                <Text style={styles.modalIconEmoji}>
-                  {isPraktikan ? '🎓' : '🔬'}
+                <Text
+                  style={[
+                    styles.modalIconText,
+                    isPraktikan ? styles.textPraktikan : styles.textAsisten,
+                  ]}>
+                  {isPraktikan ? 'MHS' : 'AST'}
                 </Text>
               </View>
               <View style={{ flex: 1 }}>
@@ -226,10 +230,10 @@ export function RoleHeader() {
                       </View>
                       {isSelected ? (
                         <View style={styles.selectedCheckBadge}>
-                          <Text style={styles.checkText}>✓</Text>
+                          <Text style={styles.checkText}>PILIHAN</Text>
                         </View>
                       ) : (
-                        <Text style={styles.selectArrow}>→</Text>
+                        <Text style={styles.selectArrow}>Pilih →</Text>
                       )}
                     </Pressable>
                   );
@@ -288,10 +292,10 @@ export function RoleHeader() {
                       </View>
                       {isSelected ? (
                         <View style={[styles.selectedCheckBadge, { backgroundColor: '#0D9488' }]}>
-                          <Text style={styles.checkText}>✓</Text>
+                          <Text style={styles.checkText}>PILIHAN</Text>
                         </View>
                       ) : (
-                        <Text style={[styles.selectArrow, { color: '#0D9488' }]}>→</Text>
+                        <Text style={[styles.selectArrow, { color: '#0D9488' }]}>Pilih →</Text>
                       )}
                     </Pressable>
                   );
@@ -308,7 +312,7 @@ export function RoleHeader() {
                 ]}
                 onPress={handleKembaliKeBeranda}>
                 <Text style={styles.btnSwitchRoleText}>
-                  🚪 Keluar ke Pemilihan Peran
+                  Keluar ke Pemilihan Peran
                 </Text>
               </Pressable>
 
@@ -333,14 +337,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
     zIndex: 10,
   },
   navInner: {
     maxWidth: 960,
     width: '100%',
     alignSelf: 'center',
+    paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -362,13 +365,16 @@ const styles = StyleSheet.create({
     height: 38,
     borderRadius: 10,
     backgroundColor: '#FFF7ED',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#FED7AA',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoBadgeIcon: {
-    fontSize: 18,
+  logoBadgeText: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#EA580C',
+    letterSpacing: 0.5,
   },
   brandTitle: {
     fontSize: 15,
@@ -393,7 +399,7 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   navPillIcon: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
     color: '#334155',
   },
@@ -423,9 +429,6 @@ const styles = StyleSheet.create({
   userPillAsisten: {
     backgroundColor: '#F0FDFA',
     borderColor: '#99F6E4',
-  },
-  userIcon: {
-    fontSize: 16,
   },
   userInfoWrap: {
     gap: 1,
@@ -532,8 +535,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0FDFA',
     borderColor: '#99F6E4',
   },
-  modalIconEmoji: {
-    fontSize: 22,
+  modalIconText: {
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
   modalTitle: {
     fontSize: 18,
@@ -641,20 +646,21 @@ const styles = StyleSheet.create({
     color: '#64748B',
   },
   selectedCheckBadge: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
     backgroundColor: '#EA580C',
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '800',
+    letterSpacing: 0.5,
   },
   selectArrow: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '700',
     color: '#EA580C',
   },

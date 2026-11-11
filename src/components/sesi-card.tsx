@@ -51,12 +51,12 @@ export function SesiCard({
 
       <View style={styles.metaRow}>
         <View style={styles.metaItem}>
-          <Text style={styles.metaIcon}>📅</Text>
+          <Text style={styles.metaLabel}>Tanggal:</Text>
           <Text style={styles.metaText}>{sesi.tanggal}</Text>
         </View>
 
         <View style={styles.metaItem}>
-          <Text style={styles.metaIcon}>⏰</Text>
+          <Text style={styles.metaLabel}>Waktu:</Text>
           <Text style={styles.metaText}>
             {sesi.waktuMulai} - {sesi.waktuSelesai} WIB
           </Text>
@@ -65,7 +65,7 @@ export function SesiCard({
 
       {sesi.ruang ? (
         <View style={styles.locationRow}>
-          <Text style={styles.metaIcon}>📍</Text>
+          <Text style={styles.metaLabel}>Ruang:</Text>
           <Text style={styles.locationText}>{sesi.ruang}</Text>
         </View>
       ) : null}
@@ -74,7 +74,7 @@ export function SesiCard({
       {isAsisten ? (
         <View style={styles.asistenFooter}>
           <View style={styles.attendanceCountBadge}>
-            <Text style={styles.attendanceCountIcon}>👥</Text>
+            <View style={styles.miniDotAsisten} />
             <Text style={styles.attendanceCountText}>
               {totalHadir !== undefined ? `${totalHadir} Mahasiswa Hadir` : 'Kelola Kehadiran'}
             </Text>
@@ -86,7 +86,9 @@ export function SesiCard({
       {/* Praktikan attendance banner if student already attended */}
       {!isAsisten && isHadir ? (
         <View style={styles.attendanceBanner}>
-          <Text style={styles.attendanceIcon}>✓</Text>
+          <View style={styles.attendanceTag}>
+            <Text style={styles.attendanceTagText}>TERVERIFIKASI</Text>
+          </View>
           <View style={styles.attendanceTextWrap}>
             <Text style={styles.attendanceTitle}>Sudah Presensi</Text>
             {waktuHadir ? (
@@ -103,15 +105,13 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
-    padding: 16,
-    marginVertical: 6,
-    marginHorizontal: 16,
+    padding: 18,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
-    shadowRadius: 4,
+    shadowRadius: 5,
     elevation: 2,
   },
   cardPressed: {
@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 8,
   },
   titleContainer: {
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
   },
   praktikumTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#0F172A',
   },
   kelasChip: {
@@ -147,24 +147,23 @@ const styles = StyleSheet.create({
   },
   kelasText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#475569',
   },
   materiText: {
     fontSize: 13,
-    color: '#64748B',
-    marginTop: 6,
-    lineHeight: 18,
+    color: '#475569',
+    marginTop: 8,
+    lineHeight: 19,
   },
   metaDivider: {
     height: 1,
     backgroundColor: '#F1F5F9',
-    marginVertical: 10,
+    marginVertical: 12,
   },
   metaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
     flexWrap: 'wrap',
     gap: 12,
   },
@@ -173,13 +172,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  metaIcon: {
-    fontSize: 13,
+  metaLabel: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '600',
   },
   metaText: {
     fontSize: 12,
-    color: '#334155',
-    fontWeight: '500',
+    color: '#0F172A',
+    fontWeight: '600',
   },
   locationRow: {
     flexDirection: 'row',
@@ -189,35 +190,39 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: 12,
-    color: '#64748B',
+    color: '#475569',
+    fontWeight: '600',
   },
   asistenFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginTop: 12,
     paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: '#F8FAFC',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
   },
   attendanceCountBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F0FDFA',
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#CCFBF1',
   },
-  attendanceCountIcon: {
-    fontSize: 12,
+  miniDotAsisten: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#0D9488',
   },
   attendanceCountText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#334155',
+    fontWeight: '700',
+    color: '#0F766E',
   },
   actionHint: {
     fontSize: 12,
@@ -225,21 +230,27 @@ const styles = StyleSheet.create({
     color: '#EA580C',
   },
   attendanceBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     marginTop: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    padding: 10,
     backgroundColor: '#F0FDF4',
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#BBF7D0',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
   },
-  attendanceIcon: {
-    color: '#16A34A',
-    fontSize: 14,
-    fontWeight: 'bold',
+  attendanceTag: {
+    backgroundColor: '#16A34A',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  attendanceTagText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   attendanceTextWrap: {
     flex: 1,
@@ -251,7 +262,7 @@ const styles = StyleSheet.create({
   },
   attendanceSub: {
     fontSize: 11,
-    color: '#166534',
+    color: '#16A34A',
     marginTop: 1,
   },
 });

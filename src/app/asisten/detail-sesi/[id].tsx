@@ -1,10 +1,12 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +17,7 @@ import { StatusBadge } from '@/components/status-badge';
 import { usePraktikum } from '@/context/praktikum-context';
 
 type KehadiranFilter = 'semua' | 'hadir' | 'belum-hadir';
+type ModalAction = 'buka' | 'tutup' | 'buka-kembali' | 'hapus';
 
 export default function DetailSesiAsistenScreen() {
   const insets = useSafeAreaInsets();
@@ -23,13 +26,24 @@ export default function DetailSesiAsistenScreen() {
     getSesiById,
     bukaSesi,
     tutupSesi,
+    bukaKembaliSesi,
+    editSesi,
+    hapusSesi,
     getPresensiBySesi,
     daftarPraktikan,
   } = usePraktikum();
 
-  const [modalAction, setModalAction] = useState<'buka' | 'tutup' | null>(null);
+  const [modalAction, setModalAction] = useState<ModalAction | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [filterKehadiran, setFilterKehadiran] = useState<KehadiranFilter>('semua');
+
+  // Edit Modal State
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [editMateri, setEditMateri] = useState('');
+  const [editRuang, setEditRuang] = useState('');
+  const [editTanggal, setEditTanggal] = useState('');
+  const [editWaktuMulai, setEditWaktuMulai] = useState('');
+  const [editWaktuSelesai, setEditWaktuSelesai] = useState('');
 
   const sesi = getSesiById(id);
 
@@ -97,6 +111,31 @@ export default function DetailSesiAsistenScreen() {
     );
   }
 
+  const handleOpenEdit = () => {
+    setEditMateri(sesi.materi || '');
+    setEditRuang(sesi.ruang || '');
+    setEditTanggal(sesi.tanggal || '');
+    setEditWaktuMulai(sesi.waktuMulai || '');
+    setEditWaktuSelesai(sesi.waktuSelesai || '');
+    setIsEditModalVisible(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editMateri.trim()) {
+      alert('Materi praktikum tidak boleh kosong');
+      return;
+    }
+    editSesi(sesi.id, {
+      materi: editMateri.trim(),
+      ruang: editRuang.trim(),
+      tanggal: editTanggal.trim(),
+      waktuMulai: editWaktuMulai.trim(),
+      waktuSelesai: editWaktuSelesai.trim(),
+    });
+    setIsEditModalVisible(false);
+    setFeedbackMessage('Informasi sesi praktikum berhasil diperbarui.');
+  };
+
   const handleEksekusiAksi = () => {
     if (!modalAction) return;
 
@@ -116,6 +155,18 @@ export default function DetailSesiAsistenScreen() {
           ? 'Sesi berhasil ditutup. Pencatatan presensi praktikan resmi diakhiri.'
           : 'Gagal menutup sesi.'
       );
+    } else if (modalAction === 'buka-kembali') {
+      const ok = bukaKembaliSesi(sesi.id);
+      setModalAction(null);
+      setFeedbackMessage(
+        ok
+          ? 'Sesi berhasil dibuka kembali! Praktikan sekarang dapat melakukan presensi kehadiran susulan.'
+          : 'Gagal membuka kembali sesi praktikum.'
+      );
+    } else if (modalAction === 'hapus') {
+      setModalAction(null);
+      hapusSesi(sesi.id);
+      router.replace('/asisten/jadwal');
     }
   };
 
@@ -233,16 +284,49 @@ export default function DetailSesiAsistenScreen() {
                 </Pressable>
               </View>
             ) : (
-              <View style={styles.closedNoticeBox}>
-                <View style={styles.closedNoticeDot} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.closedNoticeTitle}>Sesi Praktikum Telah Ditutup</Text>
-                  <Text style={styles.closedNoticeSubtitle}>
-                    Pencatatan presensi telah berakhir. Rekap kehadiran telah dikunci.
-                  </Text>
+              <View style={styles.actionNoticeBox}>
+                <View style={styles.closedNoticeBox}>
+                  <View style={styles.closedNoticeDot} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.closedNoticeTitle}>Sesi Praktikum Telah Ditutup</Text>
+                    <Text style={styles.closedNoticeSubtitle}>
+                      Pencatatan presensi telah berakhir. Anda dapat membuka kembali sesi jika diperlukan presensi susulan.
+                    </Text>
+                  </View>
                 </View>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.primaryBtn,
+                    styles.reopenBtn,
+                    pressed && styles.buttonPressed,
+                  ]}
+                  onPress={() => setModalAction('buka-kembali')}>
+                  <Text style={styles.btnTextWhite}>Buka Kembali Sesi Praktikum</Text>
+                </Pressable>
               </View>
             )}
+
+            {/* Secondary Controls: Edit & Hapus Sesi */}
+            <View style={styles.secondaryDivider} />
+            <View style={styles.secondaryControlsRow}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.secondaryActionBtn,
+                  pressed && styles.buttonPressed,
+                ]}
+                onPress={handleOpenEdit}>
+                <Text style={styles.secondaryActionBtnText}>Edit Informasi Sesi</Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.dangerOutlineBtn,
+                  pressed && styles.buttonPressed,
+                ]}
+                onPress={() => setModalAction('hapus')}>
+                <Text style={styles.dangerOutlineBtnText}>Hapus Sesi</Text>
+              </Pressable>
+            </View>
           </View>
 
           {/* Attendance Roster Section (FR-5.1, FR-5.3) */}
@@ -354,25 +438,151 @@ export default function DetailSesiAsistenScreen() {
         </View>
       </ScrollView>
 
-      {/* Confirmation Modal Buka / Tutup Sesi (FR-6.2, FR-3.1, FR-3.2) */}
+      {/* Confirmation Modal Buka / Tutup / Buka Kembali / Hapus (FR-6.2, FR-3.1, FR-3.2) */}
       <ConfirmationModal
         visible={modalAction !== null}
         title={
           modalAction === 'buka'
             ? 'Buka Sesi Praktikum?'
-            : 'Tutup Sesi Praktikum?'
+            : modalAction === 'tutup'
+            ? 'Tutup Sesi Praktikum?'
+            : modalAction === 'buka-kembali'
+            ? 'Buka Kembali Sesi Praktikum?'
+            : 'Hapus Sesi Praktikum?'
         }
         description={
           modalAction === 'buka'
             ? `Buka sesi "${sesi.praktikum} (${sesi.kelas})"? Praktikan akan dapat langsung melakukan presensi.`
-            : `Apakah Anda yakin ingin menutup sesi "${sesi.praktikum} (${sesi.kelas})"? Setelah ditutup, praktikan tidak dapat melakukan presensi lagi.`
+            : modalAction === 'tutup'
+            ? `Apakah Anda yakin ingin menutup sesi "${sesi.praktikum} (${sesi.kelas})"? Setelah ditutup, praktikan tidak dapat melakukan presensi lagi.`
+            : modalAction === 'buka-kembali'
+            ? `Buka kembali sesi "${sesi.praktikum} (${sesi.kelas})"? Mahasiswa yang belum presensi akan dapat mengisi kehadiran susulan.`
+            : `Apakah Anda yakin ingin menghapus sesi "${sesi.praktikum} (${sesi.kelas})"? Seluruh rekaman presensi terkait sesi ini akan dihapus permanen.`
         }
-        confirmText={modalAction === 'buka' ? 'Ya, Buka Sesi' : 'Ya, Tutup Sesi'}
+        confirmText={
+          modalAction === 'buka'
+            ? 'Ya, Buka Sesi'
+            : modalAction === 'tutup'
+            ? 'Ya, Tutup Sesi'
+            : modalAction === 'buka-kembali'
+            ? 'Ya, Buka Kembali'
+            : 'Ya, Hapus Sesi'
+        }
         cancelText="Batal"
-        confirmVariant={modalAction === 'buka' ? 'primary' : 'danger'}
+        confirmVariant={
+          modalAction === 'buka' || modalAction === 'buka-kembali'
+            ? 'primary'
+            : 'danger'
+        }
         onConfirm={handleEksekusiAksi}
         onCancel={() => setModalAction(null)}
       />
+
+      {/* Edit Session Popup Modal */}
+      <Modal
+        visible={isEditModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsEditModalVisible(false)}>
+        <View style={styles.modalBackdrop}>
+          <Pressable
+            style={styles.modalDismiss}
+            onPress={() => setIsEditModalVisible(false)}
+          />
+          <View style={styles.modalPopupCard}>
+            <View style={styles.editModalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.editModalTitle}>Edit Informasi Sesi</Text>
+                <Text style={styles.editModalSubtitle}>
+                  {sesi.praktikum} • {sesi.kelas}
+                </Text>
+              </View>
+              <Pressable
+                style={({ pressed }) => [styles.closeBtnCircle, pressed && styles.buttonPressed]}
+                onPress={() => setIsEditModalVisible(false)}>
+                <Text style={styles.closeBtnCircleText}>✕</Text>
+              </Pressable>
+            </View>
+
+            <ScrollView style={styles.editModalBody} showsVerticalScrollIndicator={false}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Materi Praktikum</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={editMateri}
+                  onChangeText={setEditMateri}
+                  placeholder="Contoh: Modul 3: Navigasi Lanjutan"
+                  placeholderTextColor="#94A3B8"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Ruang Laboratorium</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={editRuang}
+                  onChangeText={setEditRuang}
+                  placeholder="Contoh: Lab Komputasi 1"
+                  placeholderTextColor="#94A3B8"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Tanggal Pelaksanaan</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={editTanggal}
+                  onChangeText={setEditTanggal}
+                  placeholder="Contoh: 29 Okt 2026"
+                  placeholderTextColor="#94A3B8"
+                />
+              </View>
+
+              <View style={styles.timeRow}>
+                <View style={[styles.inputGroup, { flex: 1 }]}>
+                  <Text style={styles.inputLabel}>Jam Mulai</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={editWaktuMulai}
+                    onChangeText={setEditWaktuMulai}
+                    placeholder="07.30"
+                    placeholderTextColor="#94A3B8"
+                  />
+                </View>
+                <View style={[styles.inputGroup, { flex: 1 }]}>
+                  <Text style={styles.inputLabel}>Jam Selesai</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={editWaktuSelesai}
+                    onChangeText={setEditWaktuSelesai}
+                    placeholder="09.30"
+                    placeholderTextColor="#94A3B8"
+                  />
+                </View>
+              </View>
+            </ScrollView>
+
+            <View style={styles.editModalFooter}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.cancelBtn,
+                  pressed && styles.buttonPressed,
+                ]}
+                onPress={() => setIsEditModalVisible(false)}>
+                <Text style={styles.cancelBtnText}>Batal</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.saveBtn,
+                  pressed && styles.buttonPressed,
+                ]}
+                onPress={handleSaveEdit}>
+                <Text style={styles.saveBtnText}>Simpan Perubahan</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Feedback Modal */}
       <ConfirmationModal
@@ -744,5 +954,172 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#64748B',
+  },
+  reopenBtn: {
+    backgroundColor: '#0D9488',
+  },
+  secondaryDivider: {
+    height: 1,
+    backgroundColor: '#F1F5F9',
+    marginTop: 16,
+    marginBottom: 12,
+  },
+  secondaryControlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  secondaryActionBtn: {
+    flex: 1,
+    minWidth: 150,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryActionBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  dangerOutlineBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    backgroundColor: '#FEF2F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dangerOutlineBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+
+  /* Edit Modal Styles */
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalDismiss: {
+    ...StyleSheet.absoluteFill,
+  },
+  modalPopupCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 22,
+    maxWidth: 480,
+    width: '100%',
+    maxHeight: '85%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 25,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    zIndex: 1,
+  },
+  editModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    marginBottom: 14,
+  },
+  editModalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.3,
+  },
+  editModalSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  closeBtnCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeBtnCircleText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#64748B',
+  },
+  editModalBody: {
+    maxHeight: 380,
+  },
+  inputGroup: {
+    marginBottom: 12,
+    gap: 6,
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  textInput: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    fontSize: 13,
+    color: '#0F172A',
+  },
+  timeRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  editModalFooter: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 16,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  cancelBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+  },
+  cancelBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  saveBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 8,
+    backgroundColor: '#0D9488',
+    alignItems: 'center',
+  },
+  saveBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

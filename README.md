@@ -1,7 +1,7 @@
 # PPK LabPortal — Sistem Presensi & Manajemen Sesi Praktikum
 
 > **Sprint 1: Antarmuka dan Alur Praktikum**  
-> Praktikum Pemrograman Perangkat Bergerak (PPK) · Semester Ganjil 2026/2027  
+> Praktikum Pengembangan Platform Khusus (PPK) · Departemen Informatika, Fakultas Sains dan Matematika, Universitas Diponegoro (UNDIP)  
 > Dibangun dengan **React Native**, **Expo**, dan **Expo Router**. Mendukung penuh **Android (Expo Go)**, **iOS**, dan **Web Browser**.
 
 ---
@@ -11,11 +11,11 @@
 **PPK LabPortal** adalah aplikasi pencatatan kehadiran laboratorium praktikum terpadu yang dirancang dari dua sudut pandang pengguna: **Mahasiswa / Praktikan** dan **Asisten Laboratorium**.
 
 Pada Sprint 1 ini, aplikasi mendemonstrasikan siklus lengkap kegiatan praktikum:
-1. **Asisten Membuka Sesi**: Asisten memilih jadwal sesi berstatus `Belum Dibuka` dan mengonfirmasi pembukaan sesi melalui dialog modal.
+1. **Asisten Mengelola & Membuka Sesi**: Asisten dapat membuat sesi baru (`+ Tambah Sesi`), memilih jadwal sesi berstatus `Belum Dibuka`, dan mengonfirmasi pembukaan sesi melalui dialog modal.
 2. **Praktikan Melakukan Presensi**: Praktikan melihat sesi yang `Dibuka`, mengisi catatan kehadiran, menyetujui pernyataan integritas, dan mencatat kehadiran. Waktu kehadiran tercatat secara otomatis. Praktikan dilindungi dari presensi ganda (anti-duplikasi).
 3. **Asisten Memantau Rekap & Roster Kelas**: Asisten melihat daftar lengkap mahasiswa kelas tersebut (status `Hadir` beserta jam presensi, atau `Belum Hadir`) dan statistik persentase kehadiran kelas.
 4. **Praktikan Memeriksa Riwayat Kehadiran**: Praktikan memantau daftar sesi yang telah dihadiri beserta banner statistik keaktifan pribadi.
-5. **Asisten Menutup Sesi**: Asisten mengakhiri praktikum dengan menutup sesi melalui dialog modal konfirmasi; form presensi praktikan otomatis terkunci.
+5. **Asisten Menutup & Membuka Kembali Sesi**: Asisten dapat menutup sesi praktikum saat selesai atau membuka kembali sesi (`Buka Kembali Sesi`) jika diperlukan presensi susulan bagi mahasiswa. Serta dapat menyunting materi/ruang (`Edit Sesi`) atau menghapus sesi (`Hapus Sesi`).
 
 ---
 
@@ -31,18 +31,23 @@ Pada Sprint 1 ini, aplikasi mendemonstrasikan siklus lengkap kegiatan praktikum:
 
 ### B. Sudut Pandang Asisten Laboratorium
 - **Manajemen Sesi Real-Time**: Buka sesi (`Belum Dibuka` → `Dibuka`) dan tutup sesi (`Dibuka` → `Ditutup`) dengan perubahan status instan pada seluruh antarmuka.
-- **Dialog Modal Konfirmasi**: Setiap aksi pembukaan atau penutupan sesi diamankan dengan `ConfirmationModal` untuk mencegah kesalahan penekanan.
+- **Buka Kembali Sesi Praktikum**: Sesi yang telah ditutup dapat dibuka kembali oleh asisten untuk memberikan kesempatan presensi susulan.
+- **CRUD Sesi Praktikum**:
+  - **Tambah Sesi Baru**: Asisten dapat menjadwalkan sesi modul baru lengkap dengan form modal.
+  - **Edit Informasi Sesi**: Asisten dapat memperbarui materi modul, ruang lab, jam, dan tanggal pelaksanaan.
+  - **Hapus Sesi**: Asisten dapat menghapus sesi dengan dialog konfirmasi aman.
+- **Dialog Modal Konfirmasi**: Setiap aksi pembukaan, penutupan, buka kembali, atau penghapusan sesi diamankan dengan `ConfirmationModal` untuk mencegah kesalahan penekanan.
 - **Roster Lengkap Kelas (Hadir vs Belum Hadir)**: Menampilkan seluruh mahasiswa terdaftar pada kelas sesi tersebut, membedakan siapa yang sudah presensi (disertai jam kehadiran) dan siapa yang belum hadir, dilengkapi filter tab.
 - **Rekapitulasi Kehadiran Sesi**: Halaman rekapitulasi kelas per sesi dengan indikator persentase kehadiran, jumlah mahasiswa hadir, dan daftar rincian nama mahasiswa.
 
 ### C. Komponen Universal & Aksesibilitas
 - **`RoleHeader` Seragam**:
-  - Tombol **`← Beranda`** di pojok kiri atas untuk kembali ke portal pemilihan peran kapan saja.
+  - Identitas institusi & laboratorium: **Pengembangan Platform Khusus (PPK) · Departemen Informatika, Universitas Diponegoro**.
   - Badge peran aktif (`MAHASISWA` atau `ASISTEN LAB`), nama pengguna, dan NIM/kelas.
-  - Tombol **`Ganti Akun`** yang memunculkan modal pemilihan pengguna tanpa perlu reload aplikasi.
+  - Tombol **`Ganti Akun`** yang memunculkan modal popup terpusat untuk beralih akun atau keluar ke portal utama tanpa perlu reload aplikasi.
 - **Desain Responsif Web & Mobile**:
   - Pada layar lebar (Web Browser), konten dibatasi proporsional (`maxWidth: 960`) dan navigasi tab bar dipusatkan secara proporsional (*floating centered nav*).
-  - Pada layar ponsel (Android/iOS), layout full-width dengan safe-area insets dan touch targets minimal 44px.
+  - Pada layar ponsel (Android/iOS), layout full-width responsif dengan safe-area insets dan touch targets terstandarisasi.
 
 ---
 
@@ -80,10 +85,10 @@ PPK-Post-UTS/
 │   │   ├── index.tsx             # Halaman portal landing & pemilihan identitas
 │   │   ├── asisten/
 │   │   │   ├── _layout.tsx       # Tab navigator asisten dengan RoleHeader
-│   │   │   ├── jadwal.tsx        # Pengelolaan sesi & metrik asisten
+│   │   │   ├── jadwal.tsx        # Pengelolaan sesi, tambah sesi & metrik asisten
 │   │   │   ├── rekap.tsx         # Rekapitulasi kehadiran kelas per sesi
 │   │   │   └── detail-sesi/
-│   │   │       └── [id].tsx      # Detail kontrol sesi & roster mahasiswa
+│   │   │       └── [id].tsx      # Detail kontrol sesi, edit, buka kembali & roster mahasiswa
 │   │   └── praktikan/
 │   │       ├── _layout.tsx       # Tab navigator praktikan dengan RoleHeader
 │   │       ├── jadwal.tsx        # Jadwal praktikum & status sesi
@@ -93,14 +98,13 @@ PPK-Post-UTS/
 │   ├── components/               # Komponen UI modular
 │   │   ├── confirmation-modal.tsx# Modal konfirmasi aksi & feedback
 │   │   ├── empty-state.tsx       # State kosong terstruktur
-│   │   ├── role-header.tsx       # Universal header dengan tombol Beranda & Ganti Akun
+│   │   ├── role-header.tsx       # Universal header dengan navigasi & popup ganti akun
 │   │   ├── sesi-card.tsx         # Kartu sesi seragam untuk asisten & praktikan
 │   │   └── status-badge.tsx      # Badge status sesi & kehadiran
 │   ├── context/
-│   │   └── praktikum-context.tsx # State management aplikasi (sesi, presensi, pengguna)
+│   │   └── praktikum-context.tsx # State management aplikasi (sesi, CRUD, presensi, pengguna)
 │   ├── data/
-│   │   ├── dummy.ts              # Data dummy mahasiswa, asisten, sesi, dan presensi
-│   │   └── types.ts              # Tipe data lokal
+│   │   └── dummy.ts              # Data dummy mahasiswa, asisten, sesi, dan presensi (NIM UNDIP)
 │   └── types/
 │       └── praktikum.ts          # Definisi antarmuka TypeScript
 ```
@@ -156,27 +160,27 @@ Aplikasi menyediakan data dummy siap pakai untuk simulasi alur:
 - **Kak Dzaki M.** (Pengampu Laboratorium Komputasi)
 - **Kak Akmal R.** (Pengampu Laboratorium Komputasi)
 
-### Akun Praktikan:
-- **Ahmad Dahlan** (NIM: `22/501234/TK/54321` — Kelas A)
-- **Budi Santoso** (NIM: `22/502345/TK/54322` — Kelas A)
-- **Citra Dewi** (NIM: `22/503456/TK/54323` — Kelas A)
-- **Dimas Prasetyo** (NIM: `22/504567/TK/54324` — Kelas B)
+### Akun Praktikan (Informatika UNDIP):
+- **Ahmad Dahlan** (NIM: `24060122130001` — Kelas A)
+- **Budi Santoso** (NIM: `24060122130002` — Kelas A)
+- **Citra Dewi** (NIM: `24060122130003` — Kelas A)
+- **Dimas Prasetyo** (NIM: `24060122140004` — Kelas B)
 - *Dan 6 mahasiswa lainnya di Kelas A & Kelas B.*
 
 ---
 
 ## 8. Panduan Skenario Evaluasi Alur Praktikum (Sprint 1)
 
-Untuk mendemonstrasikan hasil akhir: **Asisten membuka sesi → Praktikan melakukan presensi → Asisten melihat rekap → Asisten menutup sesi**, ikuti langkah simulasi berikut:
+Untuk mendemonstrasikan hasil akhir: **Asisten membuka sesi → Praktikan melakukan presensi → Asisten melihat rekap → Asisten menutup sesi (dan membuka kembali jika diperlukan)**, ikuti langkah simulasi berikut:
 
-1. **Langkah 1 (Asisten Buka Sesi)**:
+1. **Langkah 1 (Asisten Buka Sesi / Tambah Sesi)**:
    - Di halaman portal utama, pilih **Masuk sebagai Asisten Lab** lalu pilih akun **Kak Dzaki M.**.
-   - Pada tab **Jadwal**, pilih sesi yang berstatus `Belum Dibuka` (misalnya: *Praktikum PPK - Modul 3*).
+   - Asisten dapat membuat sesi baru dengan menekan **+ Tambah Sesi**, atau memilih sesi yang ada berstatus `Belum Dibuka` (misalnya: *Praktikum PPK - Modul 3*).
    - Tekan tombol **Buka Sesi Praktikum** dan konfirmasi pada dialog modal.
    - Status sesi langsung berubah menjadi `Dibuka` (hijau).
 
 2. **Langkah 2 (Praktikan Presensi)**:
-   - Tekan tombol **`Ganti Akun`** di header kanan atas lalu pilih **Ganti Peran / Keluar ke Beranda** (atau langsung pilih akun mahasiswa jika beralih sesama mahasiswa).
+   - Tekan tombol **`Ganti Akun`** di header kanan atas lalu pilih **Ganti Peran ke Portal Utama**.
    - Pilih **Masuk sebagai Praktikan** lalu pilih **Ahmad Dahlan** (Kelas A).
    - Buka sesi *Praktikum PPK - Modul 3* yang baru saja dibuka oleh asisten.
    - Isi form catatan kehadiran (opsional), centang persetujuan integritas, lalu tekan **Kirim Presensi Kehadiran**.
@@ -191,5 +195,10 @@ Untuk mendemonstrasikan hasil akhir: **Asisten membuka sesi → Praktikan melaku
 4. **Langkah 4 (Asisten Menutup Sesi)**:
    - Di halaman detail sesi *Praktikum PPK - Modul 3*, tekan tombol **Tutup Sesi Praktikum**.
    - Konfirmasi dialog modal. Status sesi kini berubah menjadi `Ditutup` (merah).
-   - Saat mahasiswa membuka sesi tersebut kembali, formulir presensi telah terkunci permanen dengan keterangan *"Sesi Telah Ditutup"*.
+   - Saat mahasiswa membuka sesi tersebut kembali, formulir presensi telah terkunci dengan keterangan *"Sesi Telah Ditutup"*.
+
+5. **Langkah 5 (Buka Kembali & Edit Sesi)**:
+   - Sebagai asisten, pada sesi yang telah ditutup, tekan tombol **Buka Kembali Sesi Praktikum** dan konfirmasi dialog modal. Status sesi kembali menjadi `Dibuka`.
+   - Asisten juga dapat menekan **Edit Informasi Sesi** untuk memperbarui materi modul atau ruang laboratorium.
+
 

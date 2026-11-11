@@ -74,13 +74,6 @@ export default function IndexScreen() {
               </View>
 
               <View style={styles.rightNavRow}>
-                <Pressable
-                  onPress={handleKembali}
-                  style={({ pressed }) => [styles.backButton, pressed && styles.btnPressed]}
-                  accessibilityRole="button"
-                  accessibilityLabel="Kembali ke Pemilihan Peran">
-                  <Text style={styles.backButtonText}>← Kembali ke Beranda</Text>
-                </Pressable>
                 <View style={styles.liveBadge}>
                   <View style={styles.liveDot} />
                   <Text style={styles.liveBadgeText}>
@@ -94,6 +87,15 @@ export default function IndexScreen() {
           <ScrollView
             contentContainerStyle={styles.identityScrollContent}
             showsVerticalScrollIndicator={false}>
+            {/* Breadcrumb Back Button - Identical to Gambar 2 */}
+            <Pressable
+              onPress={handleKembali}
+              style={({ pressed }) => [styles.backBreadcrumb, pressed && styles.btnPressed]}
+              accessibilityRole="button"
+              accessibilityLabel="Kembali ke Pemilihan Peran">
+              <Text style={styles.backBreadcrumbText}>← Kembali ke Pemilihan Peran</Text>
+            </Pressable>
+
             <View style={styles.identityHeader}>
               <View
                 style={[
@@ -289,13 +291,13 @@ export default function IndexScreen() {
             </View>
 
             <Text style={styles.heroHeadline}>
-              Presensi Praktikum & Kontrol Sesi Laboratorium.
+              Presensi Praktikum Pengembangan Platform Khusus.
             </Text>
 
             <Text style={styles.heroSubtitle}>
-              Platform demonstrasi alur praktikum lengkap: asisten membuka sesi praktikum,
-              mahasiswa mencatat kehadiran mandiri dengan validasi anti-duplikasi, hingga
-              rekapitulasi kelas secara real-time.
+              Laboratorium Komputasi · Departemen Informatika, Fakultas Sains dan Matematika,
+              Universitas Diponegoro. Platform terpadu pembukaan sesi, presensi mandiri,
+              dan rekapitulasi kehadiran kelas secara real-time.
             </Text>
           </View>
 
@@ -473,10 +475,10 @@ export default function IndexScreen() {
           {/* Footer */}
           <View style={styles.footer}>
             <Text style={styles.footerText}>
-              Praktikum Pemrograman Perangkat Bergerak (PPK) · Semester Ganjil 2026/2027
+              Praktikum Pengembangan Platform Khusus (PPK) · Departemen Informatika, Universitas Diponegoro
             </Text>
             <Text style={styles.footerSubText}>
-              Sistem Presensi Praktikum Laboratorium · Teknik Elektro & Teknologi Informasi
+              Sistem Presensi Praktikum Laboratorium · Fakultas Sains dan Matematika UNDIP
             </Text>
           </View>
         </ScrollView>
@@ -891,15 +893,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  backButton: {
+  backBreadcrumb: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
     paddingVertical: 7,
     paddingHorizontal: 12,
     borderRadius: 8,
-    backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#E2E8F0',
+    marginBottom: 16,
   },
-  backButtonText: {
+  backBreadcrumbText: {
     fontSize: 12,
     fontWeight: '700',
     color: '#334155',

@@ -1,5 +1,7 @@
 # PPK LabPortal Design System
 
+> **Institusi**: Departemen Informatika, Fakultas Sains dan Matematika, Universitas Diponegoro (UNDIP)  
+> **Mata Praktikum**: Praktikum Pengembangan Platform Khusus (PPK)  
 > **Referensi Desain**: Terinspirasi oleh antarmuka dashboard modern *E-Stock Management* (`e-stock.hancreativemedia.com`).  
 > **Tujuan**: Menghadirkan portal akademik laboratorium yang fungsional, bersih, berorientasi data, tidak membosankan (*anti-slop*), dan tampil selaras di **Android (Expo Go)**, **iOS**, maupun **Web Browser**.
 
@@ -9,13 +11,14 @@
 
 1. **Dashboard-Forward & Data-Centric**:
    - Setiap halaman utama dilengkapi kartu metrik (*stats overview cards*) di bagian atas untuk memberikan visibilitas cepat terhadap data esensial (total sesi, sesi dibuka, tingkat kehadiran, mahasiswa hadir).
-   - Tampilan tidak pernah terasa kosong atau sekadar "dua kotak di tengah layar putih".
+   - Tampilan berimbang, modern, dan profesional tanpa elemen kosong.
 2. **Navigasi Terintegrasi & Aksesibel**:
-   - Header selalu menyediakan tombol navigasi yang jelas (`← Beranda` atau `← Kembali ke Jadwal`) sehingga pengguna tidak pernah terjebak di layar tertentu tanpa jalan keluar.
-   - Informasi pengguna aktif (nama, peran, NIM/kelas) dan tombol `Ganti Akun` selalu dapat diakses dari header.
+   - Header universal menyediakan brand logo interaktif `PPK LabPortal` untuk kembali ke portal utama.
+   - Halaman detail dilengkapi breadcrumb navigasi yang konsisten di atas judul konten (`← Kembali ke Jadwal Praktikum` / `← Kembali ke Pemilihan Peran`).
+   - Informasi pengguna aktif (nama, peran, kelas/pengampu) dan tombol `Ganti Akun` selalu dapat diakses dari header dengan modal popup terpusat.
 3. **Penyelarasan Responsif (Web vs Mobile)**:
    - **Pada Web**: Konten dibatasi dalam kontainer elegan (`maxWidth: 960, width: '100%', alignSelf: 'center'`). Bar navigasi tab tidak diregangkan dari ujung ke ujung monitor, melainkan dipusatkan (*floating centered pill navigation*) yang proporsional dan sedap dipandang.
-   - **Pada Mobile**: Full-width dengan padding 16px, touch targets $\ge 44$px, dan perlindungan safe-area terhadap kamera punch-hole / notch.
+   - **Pada Mobile (Android & iOS)**: Full-width dengan padding 14px–20px, touch targets $\ge 44$px, dan perlindungan safe-area terhadap kamera punch-hole / notch.
 
 ---
 
@@ -53,18 +56,24 @@ Mengikuti palet terkurasi dari referensi E-Stock:
 ## 3. Komponen Utama & Pola Antarmuka
 
 1. **`RoleHeader` (Universal Top Bar)**:
-   - Sisi Kiri: Tombol `← Beranda` yang langsung mengembalikan pengguna ke halaman portal utama, logo brand `PPK LabPortal`, dan pill peran aktif.
-   - Sisi Kanan: Avatar inisial, nama pengguna, dan tombol `Ganti Akun`.
-   - Digunakan seragam di seluruh alur Praktikan dan Asisten.
-2. **`StatCard` / Metrics Overview Row**:
-   - Baris 3–4 kartu ringkasan di bagian atas layar Jadwal, Rekap, dan Riwayat.
-   - Menampilkan angka besar tebal, label deskriptif, dan ikon penjelas.
-3. **`SesiCard` (Kartu Sesi Praktikum)**:
+   - Sisi Kiri: Logo brand badge `PPK` dan teks `PPK LabPortal Presensi & Manajemen Sesi` yang dapat diklik untuk kembali ke portal utama.
+   - Sisi Kanan: Badge peran aktif (`MAHASISWA` atau `ASISTEN`), nama pengguna, dan tombol `Ganti Akun`.
+   - Beralih akun memunculkan modal popup terpusat dengan daftar akun dan opsi keluar ke portal peran.
+2. **`BreadcrumbBack` (Navigasi Kembali Antar-Halaman)**:
+   - Tombol pil bersih di atas judul konten (`← Kembali ke Jadwal Praktikum` / `← Kembali ke Pemilihan Peran`) yang sejajar dengan layout konten utama.
+3. **`StatCard` / Metrics Overview Row**:
+   - Baris 4 kartu ringkasan di bagian atas layar Jadwal, Rekap, dan Riwayat.
+   - Menampilkan angka besar tebal, label deskriptif, dan status visual.
+4. **`SesiCard` (Kartu Sesi Praktikum)**:
    - Judul praktikum, chip kelas, badge status sesi dengan dot warna.
    - Garis waktu pelaksanaan (`Tanggal • Jam WIB`) dan ruang laboratorium (`Lab`).
    - Sisi Asisten: Badge jumlah mahasiswa yang telah hadir (`X Mahasiswa Hadir`).
    - Sisi Praktikan: Banner hijau verifikasi kehadiran jika sudah presensi (`Sudah Presensi [Waktu]`).
-4. **`ConfirmationModal`**:
-   - Bottom sheet / dialog konfirmasi elegan untuk aksi buka sesi, tutup sesi, kirim presensi, dan dialog feedback.
-5. **`EmptyState`**:
+5. **Modal Manajemen Sesi (Asisten CRUD)**:
+   - Modal popup Tambah Sesi: Form terpusat untuk menambahkan materi, kelas (A/B), ruang, tanggal, dan jam.
+   - Modal popup Edit Sesi: Form terpusat untuk menyunting materi, ruang, dan jam.
+   - Tombol Buka Kembali Sesi: Mengizinkan asisten membuka sesi yang telah ditutup untuk presensi susulan.
+6. **`ConfirmationModal`**:
+   - Dialog konfirmasi elegan untuk aksi buka sesi, tutup sesi, buka kembali, hapus sesi, kirim presensi, dan dialog feedback.
+7. **`EmptyState`**:
    - Ikon konteks bulat, judul tegas, pesan informatif, dan tombol aksi pemulih.

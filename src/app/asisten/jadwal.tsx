@@ -2,10 +2,13 @@ import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
   FlatList,
+  Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 
@@ -17,8 +20,18 @@ import { Sesi, SesiStatus } from '@/types/praktikum';
 type FilterType = 'semua' | SesiStatus;
 
 export default function JadwalAsistenScreen() {
-  const { sesiList, presensiList } = usePraktikum();
+  const { sesiList, presensiList, tambahSesi } = usePraktikum();
   const [filter, setFilter] = useState<FilterType>('semua');
+
+  // Add Session Modal State
+  const [modalTambahVisible, setModalTambahVisible] = useState(false);
+  const [newPraktikum, setNewPraktikum] = useState('Praktikum PPK');
+  const [newMateri, setNewMateri] = useState('');
+  const [newKelas, setNewKelas] = useState<'Kelas A' | 'Kelas B'>('Kelas A');
+  const [newTanggal, setNewTanggal] = useState('05 Nov 2026');
+  const [newWaktuMulai, setNewWaktuMulai] = useState('07.30');
+  const [newWaktuSelesai, setNewWaktuSelesai] = useState('09.30');
+  const [newRuang, setNewRuang] = useState('Lab Komputasi 1');
 
   const filteredSesiList = useMemo(() => {
     if (filter === 'semua') return sesiList;
@@ -35,6 +48,25 @@ export default function JadwalAsistenScreen() {
       pathname: '/asisten/detail-sesi/[id]',
       params: { id: sesi.id },
     });
+  };
+
+  const handleSimpanSesiBaru = () => {
+    if (!newMateri.trim()) {
+      alert('Materi praktikum harus diisi.');
+      return;
+    }
+    tambahSesi({
+      praktikum: newPraktikum.trim() || 'Praktikum PPK',
+      kelas: newKelas,
+      tanggal: newTanggal.trim() || '05 Nov 2026',
+      waktuMulai: newWaktuMulai.trim() || '07.30',
+      waktuSelesai: newWaktuSelesai.trim() || '09.30',
+      ruang: newRuang.trim() || 'Lab Komputasi 1',
+      materi: newMateri.trim(),
+      status: 'belum-dibuka',
+    });
+    setNewMateri('');
+    setModalTambahVisible(false);
   };
 
   const renderItem = ({ item }: { item: Sesi }) => {
@@ -63,10 +95,19 @@ export default function JadwalAsistenScreen() {
         </View>
       </View>
 
-      <Text style={styles.headerTitle}>Pengelolaan Sesi Praktikum</Text>
-      <Text style={styles.headerSubtitle}>
-        Buka sesi praktikum, pantau presensi kehadiran mahasiswa, atau tutup sesi setelah kegiatan selesai
-      </Text>
+      <View style={styles.titleActionRow}>
+        <View style={styles.titleWrap}>
+          <Text style={styles.headerTitle}>Pengelolaan Sesi Praktikum</Text>
+          <Text style={styles.headerSubtitle}>
+            Buka sesi praktikum, pantau presensi kehadiran mahasiswa, atau tutup sesi setelah kegiatan selesai
+          </Text>
+        </View>
+        <Pressable
+          style={({ pressed }) => [styles.tambahBtn, pressed && styles.chipPressed]}
+          onPress={() => setModalTambahVisible(true)}>
+          <Text style={styles.tambahBtnText}>+ Tambah Sesi</Text>
+        </Pressable>
+      </View>
 
       {/* Metrics Overview Cards (Matching Halaman 1 style) */}
       <View style={styles.metricsGrid}>
@@ -153,6 +194,157 @@ export default function JadwalAsistenScreen() {
           />
         }
       />
+
+      {/* Modal Tambah Sesi Praktikum Baru */}
+      <Modal
+        visible={modalTambahVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalTambahVisible(false)}>
+        <View style={styles.modalBackdrop}>
+          <Pressable
+            style={styles.modalDismiss}
+            onPress={() => setModalTambahVisible(false)}
+          />
+          <View style={styles.modalPopupCard}>
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Tambah Sesi Praktikum</Text>
+                <Text style={styles.modalSubtitle}>
+                  Jadwalkan sesi praktikum baru untuk mahasiswa
+                </Text>
+              </View>
+              <Pressable
+                style={({ pressed }) => [styles.closeBtnCircle, pressed && styles.chipPressed]}
+                onPress={() => setModalTambahVisible(false)}>
+                <Text style={styles.closeBtnCircleText}>✕</Text>
+              </Pressable>
+            </View>
+
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Mata Praktikum</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={newPraktikum}
+                  onChangeText={setNewPraktikum}
+                  placeholder="Praktikum PPK"
+                  placeholderTextColor="#94A3B8"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Materi Praktikum *</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={newMateri}
+                  onChangeText={setNewMateri}
+                  placeholder="Mis. Modul 4: Integrasi Form & Modal"
+                  placeholderTextColor="#94A3B8"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Kelas Praktikum</Text>
+                <View style={styles.kelasOptionRow}>
+                  <Pressable
+                    style={[
+                      styles.kelasOptionBtn,
+                      newKelas === 'Kelas A' && styles.kelasOptionBtnActive,
+                    ]}
+                    onPress={() => setNewKelas('Kelas A')}>
+                    <Text
+                      style={[
+                        styles.kelasOptionText,
+                        newKelas === 'Kelas A' && styles.kelasOptionTextActive,
+                      ]}>
+                      Kelas A
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    style={[
+                      styles.kelasOptionBtn,
+                      newKelas === 'Kelas B' && styles.kelasOptionBtnActive,
+                    ]}
+                    onPress={() => setNewKelas('Kelas B')}>
+                    <Text
+                      style={[
+                        styles.kelasOptionText,
+                        newKelas === 'Kelas B' && styles.kelasOptionTextActive,
+                      ]}>
+                      Kelas B
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Tanggal Pelaksanaan</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={newTanggal}
+                  onChangeText={setNewTanggal}
+                  placeholder="05 Nov 2026"
+                  placeholderTextColor="#94A3B8"
+                />
+              </View>
+
+              <View style={styles.timeRow}>
+                <View style={[styles.inputGroup, { flex: 1 }]}>
+                  <Text style={styles.inputLabel}>Jam Mulai</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={newWaktuMulai}
+                    onChangeText={setNewWaktuMulai}
+                    placeholder="07.30"
+                    placeholderTextColor="#94A3B8"
+                  />
+                </View>
+                <View style={[styles.inputGroup, { flex: 1 }]}>
+                  <Text style={styles.inputLabel}>Jam Selesai</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={newWaktuSelesai}
+                    onChangeText={setNewWaktuSelesai}
+                    placeholder="09.30"
+                    placeholderTextColor="#94A3B8"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Ruang Laboratorium</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={newRuang}
+                  onChangeText={setNewRuang}
+                  placeholder="Lab Komputasi 1"
+                  placeholderTextColor="#94A3B8"
+                />
+              </View>
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.cancelBtn,
+                  pressed && styles.chipPressed,
+                ]}
+                onPress={() => setModalTambahVisible(false)}>
+                <Text style={styles.cancelBtnText}>Batal</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.saveBtn,
+                  pressed && styles.chipPressed,
+                ]}
+                onPress={handleSimpanSesiBaru}>
+                <Text style={styles.saveBtnText}>Simpan & Buat Sesi</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -397,6 +589,181 @@ const styles = StyleSheet.create({
     color: '#475569',
   },
   countTextActive: {
+    color: '#FFFFFF',
+  },
+  titleActionRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 16,
+    flexWrap: 'wrap',
+  },
+  titleWrap: {
+    flex: 1,
+    minWidth: 260,
+    gap: 4,
+  },
+  tambahBtn: {
+    backgroundColor: '#0D9488',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    shadowColor: '#0D9488',
+    shadowOpacity: 0.25,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 6,
+    elevation: 3,
+    alignSelf: 'flex-start',
+  },
+  tambahBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+
+  /* Add Session Modal Styles */
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalDismiss: {
+    ...StyleSheet.absoluteFill,
+  },
+  modalPopupCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 22,
+    maxWidth: 480,
+    width: '100%',
+    maxHeight: '88%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 25,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    zIndex: 1,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    marginBottom: 14,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.3,
+  },
+  modalSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  closeBtnCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeBtnCircleText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#64748B',
+  },
+  modalBody: {
+    maxHeight: 400,
+  },
+  inputGroup: {
+    marginBottom: 12,
+    gap: 6,
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  textInput: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    fontSize: 13,
+    color: '#0F172A',
+  },
+  kelasOptionRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  kelasOptionBtn: {
+    flex: 1,
+    paddingVertical: 9,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+  },
+  kelasOptionBtnActive: {
+    borderColor: '#0D9488',
+    backgroundColor: '#F0FDFA',
+  },
+  kelasOptionText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  kelasOptionTextActive: {
+    color: '#0F766E',
+  },
+  timeRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 16,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  cancelBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+  },
+  cancelBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  saveBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 8,
+    backgroundColor: '#0D9488',
+    alignItems: 'center',
+  },
+  saveBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
 });

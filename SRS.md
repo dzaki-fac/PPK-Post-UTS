@@ -1,6 +1,8 @@
 # SRS — Aplikasi Pencatatan Kehadiran Praktikum
 
 **Sprint 1: Antarmuka dan Alur Praktikum**  
+**Institusi:** Departemen Informatika, Fakultas Sains dan Matematika, Universitas Diponegoro (UNDIP)  
+**Mata Praktikum:** Praktikum Pengembangan Platform Khusus (PPK)  
 **Teknologi:** React Native (Expo + Expo Router), data dummy lokal, React Context state management.  
 **Platform Target:** Android (Expo Go & standalone), iOS, dan Web Browser.
 
@@ -13,11 +15,11 @@ Dokumen ini mendefinisikan spesifikasi kebutuhan perangkat lunak (Software Requi
 
 ### 1.2 Ruang Lingkup
 - Membangun aplikasi React Native lintas platform yang mendemonstrasikan alur lengkap praktikum:
-  1. Pemilihan peran & identitas pengguna mandiri.
-  2. Asisten membuka sesi praktikum terjadwal.
+  1. Pemilihan peran & identitas pengguna mandiri (Informatika UNDIP).
+  2. Asisten mengelola sesi: menambah sesi baru, membuka sesi praktikum terjadwal, dan menyunting detail sesi.
   3. Praktikan melakukan presensi kehadiran saat sesi dibuka.
   4. Asisten memantau daftar kehadiran mahasiswa dan rekapitulasi kelas secara real-time.
-  5. Asisten menutup sesi praktikum setelah kegiatan selesai.
+  5. Asisten menutup sesi praktikum setelah kegiatan selesai, dan dapat membuka kembali sesi jika diperlukan presensi susulan.
 - Menggunakan **data dummy lokal terstruktur** (`src/data/`). Perubahan data dikelola menggunakan React Context selama runtime aplikasi berjalan.
 - Fokus utama: **antarmuka responsif, presisi perataan layout di Android/iOS/Web, interaksi jelas, serta bersih tanpa elemen artifisial / emoji slop**.
 
@@ -25,7 +27,7 @@ Dokumen ini mendefinisikan spesifikasi kebutuhan perangkat lunak (Software Requi
 | Istilah | Definisi |
 |---|---|
 | **Praktikan** | Mahasiswa peserta praktikum yang melihat jadwal dan melakukan presensi kehadiran. |
-| **Asisten** | Pengelola laboratorium yang mengontrol sesi (buka/tutup sesi) dan memantau rekap kehadiran kelas. |
+| **Asisten** | Pengelola laboratorium yang mengontrol sesi (buka/tutup/buka kembali sesi, CRUD sesi) dan memantau rekap kehadiran kelas. |
 | **Sesi** | Pertemuan praktikum terjadwal dengan status: `Belum Dibuka`, `Dibuka`, atau `Ditutup`. |
 | **Presensi** | Pencatatan bukti kehadiran praktikan saat sesi berstatus `Dibuka` dengan verifikasi integritas. |
 
@@ -37,7 +39,7 @@ Dokumen ini mendefinisikan spesifikasi kebutuhan perangkat lunak (Software Requi
 | Peran | Kebutuhan Utama |
 |---|---|
 | **Praktikan** | Melihat jadwal praktikum, memeriksa detail sesi & materi, melakukan presensi saat sesi dibuka, melihat catatan riwayat kehadiran pribadi beserta statistik kehadiran. |
-| **Asisten** | Melihat daftar jadwal sesi, membuka sesi saat praktikum dimulai, memantau kehadiran mahasiswa (hadir vs belum hadir), melihat statistik rekap kelas, dan menutup sesi praktikum. |
+| **Asisten** | Melihat daftar jadwal sesi, membuat sesi baru, membuka sesi saat praktikum dimulai, menyunting materi/ruang, memantau kehadiran mahasiswa (hadir vs belum hadir), melihat statistik rekap kelas, menutup sesi praktikum, dan membuka kembali sesi jika diperlukan. |
 
 ### 2.2 Pemilihan Peran dan Identitas
 - Pengguna memilih peran di halaman portal utama (`/`): *Praktikan* atau *Asisten*.
@@ -69,7 +71,10 @@ Dokumen ini mendefinisikan spesifikasi kebutuhan perangkat lunak (Software Requi
 - **FR-3.1**: Asisten dapat **membuka sesi** yang berstatus `Belum Dibuka` melalui dialog popup konfirmasi (`ConfirmationModal`).
 - **FR-3.2**: Asisten dapat **menutup sesi** yang berstatus `Dibuka` melalui dialog popup konfirmasi (`ConfirmationModal`).
 - **FR-3.3**: Perubahan status sesi langsung tercermin di seluruh layar (jadwal asisten, jadwal praktikan, dan detail sesi) secara reaktif.
-- **FR-3.4**: Sesi yang telah ditutup tidak dapat dibuka kembali, dan tombol presensi praktikan otomatis terkunci.
+- **FR-3.4**: Asisten dapat **membuka kembali sesi** yang berstatus `Ditutup` melalui dialog popup konfirmasi (`ConfirmationModal`) untuk mengakomodasi presensi susulan.
+- **FR-3.5**: Asisten dapat **menambahkan sesi praktikum baru** (`+ Tambah Sesi`) melalui formulir modal popup terpusat (Mata Praktikum, Materi, Kelas, Tanggal, Jam, Ruang).
+- **FR-3.6**: Asisten dapat **menyunting informasi sesi** (`Edit Informasi Sesi`) untuk mengubah materi modul, ruang lab, jam, dan tanggal pelaksanaan.
+- **FR-3.7**: Asisten dapat **menghapus sesi praktikum** (`Hapus Sesi`) beserta rekaman presensi terkait dengan konfirmasi aman.
 
 ### FR-4 — Pencatatan Presensi (Praktikan)
 - **FR-4.1**: Praktikan hanya dapat melakukan presensi pada sesi yang berstatus `Dibuka`.

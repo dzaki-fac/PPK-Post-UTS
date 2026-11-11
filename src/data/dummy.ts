@@ -1,16 +1,16 @@
 import { Asisten, Praktikan, Presensi, Sesi } from '@/types/praktikum';
 
 export const DUMMY_PRAKTIKAN: Praktikan[] = [
-  { id: 'prak-1', nama: 'Ahmad Dahlan', nim: '22/501234/TK/54321', kelas: 'A' },
-  { id: 'prak-2', nama: 'Budi Santoso', nim: '22/502345/TK/54322', kelas: 'A' },
-  { id: 'prak-3', nama: 'Citra Dewi', nim: '22/503456/TK/54323', kelas: 'A' },
-  { id: 'prak-4', nama: 'Dimas Prasetyo', nim: '22/504567/TK/54324', kelas: 'B' },
-  { id: 'prak-5', nama: 'Eka Rahmawati', nim: '22/505678/TK/54325', kelas: 'B' },
-  { id: 'prak-6', nama: 'Fajar Nugraha', nim: '22/506789/TK/54326', kelas: 'A' },
-  { id: 'prak-7', nama: 'Gita Permata', nim: '22/507890/TK/54327', kelas: 'B' },
-  { id: 'prak-8', nama: 'Hanif Alamsyah', nim: '22/508901/TK/54328', kelas: 'A' },
-  { id: 'prak-9', nama: 'Indah Lestari', nim: '22/509012/TK/54329', kelas: 'B' },
-  { id: 'prak-10', nama: 'Joko Wicaksono', nim: '22/510123/TK/54330', kelas: 'A' },
+  { id: 'prak-1', nama: 'Ahmad Dahlan', nim: '24060122130001', kelas: 'A' },
+  { id: 'prak-2', nama: 'Budi Santoso', nim: '24060122130002', kelas: 'A' },
+  { id: 'prak-3', nama: 'Citra Dewi', nim: '24060122130003', kelas: 'A' },
+  { id: 'prak-4', nama: 'Dimas Prasetyo', nim: '24060122140004', kelas: 'B' },
+  { id: 'prak-5', nama: 'Eka Rahmawati', nim: '24060122140005', kelas: 'B' },
+  { id: 'prak-6', nama: 'Fajar Nugraha', nim: '24060122130006', kelas: 'A' },
+  { id: 'prak-7', nama: 'Gita Permata', nim: '24060122140007', kelas: 'B' },
+  { id: 'prak-8', nama: 'Hanif Alamsyah', nim: '24060122130008', kelas: 'A' },
+  { id: 'prak-9', nama: 'Indah Lestari', nim: '24060122140009', kelas: 'B' },
+  { id: 'prak-10', nama: 'Joko Wicaksono', nim: '24060122130010', kelas: 'A' },
 ];
 
 export const DUMMY_ASISTEN: Asisten[] = [
@@ -28,7 +28,7 @@ export const DUMMY_SESI: Sesi[] = [
     waktuSelesai: '09.30',
     status: 'ditutup',
     ruang: 'Lab Komputasi 1',
-    materi: 'Modul 1: Arsitektur Aplikasi Bergerak & Pengenalan Expo',
+    materi: 'Modul 1: Arsitektur Platform Khusus & Pengenalan Expo',
   },
   {
     id: 'sesi-2',

@@ -26,6 +26,10 @@ interface PraktikumContextType {
   daftarAsisten: Asisten[];
   bukaSesi: (sesiId: string) => boolean;
   tutupSesi: (sesiId: string) => boolean;
+  bukaKembaliSesi: (sesiId: string) => boolean;
+  tambahSesi: (data: Omit<Sesi, 'id'>) => Sesi;
+  editSesi: (sesiId: string, updates: Partial<Omit<Sesi, 'id'>>) => boolean;
+  hapusSesi: (sesiId: string) => boolean;
   getSesiById: (id: string) => Sesi | undefined;
   tandaiPresensi: (sesiId: string, praktikanId: string) => { success: boolean; message: string };
   isSudahPresensi: (sesiId: string, praktikanId: string) => boolean;
@@ -77,6 +81,62 @@ export function PraktikumProvider({ children }: { children: React.ReactNode }) {
         return s;
       })
     );
+    return success;
+  }, []);
+
+  const bukaKembaliSesi = useCallback((sesiId: string): boolean => {
+    let success = false;
+    setSesiList((prev) =>
+      prev.map((s) => {
+        if (s.id === sesiId && s.status === 'ditutup') {
+          success = true;
+          return { ...s, status: 'dibuka' as const };
+        }
+        return s;
+      })
+    );
+    return success;
+  }, []);
+
+  const tambahSesi = useCallback((data: Omit<Sesi, 'id'>): Sesi => {
+    const newSesi: Sesi = {
+      ...data,
+      id: `sesi-${Date.now()}`,
+    };
+    setSesiList((prev) => [newSesi, ...prev]);
+    return newSesi;
+  }, []);
+
+  const editSesi = useCallback(
+    (sesiId: string, updates: Partial<Omit<Sesi, 'id'>>): boolean => {
+      let success = false;
+      setSesiList((prev) =>
+        prev.map((s) => {
+          if (s.id === sesiId) {
+            success = true;
+            return { ...s, ...updates };
+          }
+          return s;
+        })
+      );
+      return success;
+    },
+    []
+  );
+
+  const hapusSesi = useCallback((sesiId: string): boolean => {
+    let success = false;
+    setSesiList((prev) => {
+      const exists = prev.some((s) => s.id === sesiId);
+      if (exists) {
+        success = true;
+        return prev.filter((s) => s.id !== sesiId);
+      }
+      return prev;
+    });
+    if (success) {
+      setPresensiList((prev) => prev.filter((p) => p.sesiId !== sesiId));
+    }
     return success;
   }, []);
 
@@ -226,6 +286,10 @@ export function PraktikumProvider({ children }: { children: React.ReactNode }) {
       setCurrentAsisten,
       bukaSesi,
       tutupSesi,
+      bukaKembaliSesi,
+      tambahSesi,
+      editSesi,
+      hapusSesi,
       getSesiById,
       tandaiPresensi,
       isSudahPresensi,
@@ -247,6 +311,10 @@ export function PraktikumProvider({ children }: { children: React.ReactNode }) {
       presensiList,
       bukaSesi,
       tutupSesi,
+      bukaKembaliSesi,
+      tambahSesi,
+      editSesi,
+      hapusSesi,
       getSesiById,
       tandaiPresensi,
       isSudahPresensi,

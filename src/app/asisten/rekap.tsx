@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
   FlatList,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -34,7 +35,6 @@ export default function RekapAsistenScreen() {
     return sesiList
       .filter((s) => s.status === 'dibuka' || s.status === 'ditutup')
       .map((sesi) => {
-        // Cari mahasiswa yang sesuai kelas sesi ini
         const kodeKelas = sesi.kelas.replace(/[^A-Za-z]/g, '').slice(-1);
         const kelasMahasiswa = daftarPraktikan.filter(
           (p) =>
@@ -70,7 +70,6 @@ export default function RekapAsistenScreen() {
       });
   }, [sesiList, presensiList, daftarPraktikan]);
 
-  // Statistik agregat untuk banner atas
   const totalSesiDiproses = rekapData.length;
   const totalPresensiMasuk = useMemo(
     () => presensiList.length,
@@ -98,25 +97,41 @@ export default function RekapAsistenScreen() {
             <View style={styles.titleWrap}>
               <Text style={styles.praktikumTitle}>{item.sesi.praktikum}</Text>
               <View style={styles.kelasChip}>
-                <Text style={styles.kelasChipText}>{item.sesi.kelas}</Text>
+                <Text style={styles.kelasText}>{item.sesi.kelas}</Text>
               </View>
             </View>
-            <StatusBadge status={item.sesi.status} />
+            <StatusBadge status={item.sesi.status} size="small" />
           </View>
 
-          <Text style={styles.jadwalMeta}>
-            📅 {item.sesi.tanggal} • {item.sesi.waktuMulai} - {item.sesi.waktuSelesai} WIB
-          </Text>
+          {item.sesi.materi ? (
+            <Text style={styles.materiText} numberOfLines={2}>
+              {item.sesi.materi}
+            </Text>
+          ) : null}
 
-          {/* Progress / Stat Summary */}
-          <View style={styles.progressSection}>
-            <View style={styles.progressInfoRow}>
-              <Text style={styles.progressLabel}>Tingkat Kehadiran:</Text>
-              <Text style={styles.progressValue}>
-                {item.totalHadir} dari {item.totalKelas} Mahasiswa ({item.persentase}%)
+          {/* Quick Stats Row */}
+          <View style={styles.quickStatsRow}>
+            <View style={styles.quickStatItem}>
+              <Text style={styles.quickStatLabel}>Kehadiran:</Text>
+              <Text style={styles.quickStatValue}>
+                {item.totalHadir}/{item.totalKelas} Mahasiswa
               </Text>
             </View>
-            <View style={styles.progressBarTrack}>
+            <View style={styles.quickStatItem}>
+              <Text style={styles.quickStatLabel}>Persentase:</Text>
+              <Text
+                style={[
+                  styles.quickStatValue,
+                  { color: item.persentase >= 75 ? '#15803D' : '#D97706' },
+                ]}>
+                {item.persentase}%
+              </Text>
+            </View>
+          </View>
+
+          {/* Progress Bar */}
+          <View style={styles.progressContainer}>
+            <View style={styles.progressBarBackground}>
               <View
                 style={[
                   styles.progressBarFill,
@@ -128,7 +143,7 @@ export default function RekapAsistenScreen() {
 
           <View style={styles.toggleRow}>
             <Text style={styles.toggleText}>
-              {isExpanded ? 'Sembunyikan Daftar Mahasiswa ▲' : 'Lihat Detail Mahasiswa ▼'}
+              {isExpanded ? 'Sembunyikan Roster Mahasiswa ▲' : 'Lihat Detail Roster Mahasiswa ▼'}
             </Text>
           </View>
         </Pressable>
@@ -138,7 +153,7 @@ export default function RekapAsistenScreen() {
           <View style={styles.rosterContainer}>
             <View style={styles.rosterDivider} />
             <Text style={styles.rosterSectionTitle}>
-              Daftar Mahasiswa ({item.daftarMahasiswa.length})
+              Roster Mahasiswa ({item.daftarMahasiswa.length})
             </Text>
 
             <View style={styles.studentList}>
@@ -181,54 +196,65 @@ export default function RekapAsistenScreen() {
     );
   };
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.contentWrap}>
-        {/* Header Title */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Rekapitulasi Kehadiran</Text>
-          <Text style={styles.headerSubtitle}>
-            Pantau ringkasan dan detail kehadiran mahasiswa per sesi praktikum
-          </Text>
+  const renderHeader = () => (
+    <View style={styles.header}>
+      <View style={styles.eyebrowRow}>
+        <View style={styles.eyebrowBadge}>
+          <Text style={styles.eyebrowText}>REKAPITULASI KELAS</Text>
+        </View>
+        <View style={styles.liveTag}>
+          <View style={styles.liveDot} />
+          <Text style={styles.liveTagText}>Sinkron Real-Time</Text>
+        </View>
+      </View>
 
-          {/* Aggregate Stats Banner */}
-          <View style={styles.statsContainer}>
-            <View style={styles.statBox}>
-              <Text style={styles.statNumber}>{totalSesiDiproses}</Text>
-              <Text style={styles.statLabel}>Sesi Berlangsung</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statBox}>
-              <Text style={styles.statNumber}>{totalPresensiMasuk}</Text>
-              <Text style={styles.statLabel}>Total Presensi</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statBox}>
-              <Text style={[styles.statNumber, { color: '#16A34A' }]}>
-                {rataRataKehadiran}%
-              </Text>
-              <Text style={styles.statLabel}>Rata-rata Hadir</Text>
-            </View>
-          </View>
+      <Text style={styles.headerTitle}>Rekapitulasi Presensi</Text>
+      <Text style={styles.headerSubtitle}>
+        Pantau ringkasan kehadiran mahasiswa per sesi praktikum dan periksa roster kelas
+      </Text>
+
+      {/* Aggregate Stats Banner */}
+      <View style={styles.metricsGrid}>
+        <View style={styles.metricCard}>
+          <Text style={styles.metricVal}>{totalSesiDiproses}</Text>
+          <Text style={styles.metricLbl}>Sesi Berjalan</Text>
+          <Text style={styles.metricDesc}>Dibuka & Ditutup</Text>
         </View>
 
-        <FlatList
-          data={rekapData}
-          keyExtractor={(item) => item.sesi.id}
-          renderItem={renderRekapCard}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <EmptyState
-              icon="📋"
-              title="Belum Ada Rekap Presensi"
-              message="Rekap kehadiran akan muncul setelah Anda membuka sesi praktikum pada tab Jadwal."
-              actionText="Buka Jadwal Praktikum"
-              onAction={() => router.push('/asisten/jadwal')}
-            />
-          }
-        />
+        <View style={[styles.metricCard, styles.metricCardPresensi]}>
+          <Text style={[styles.metricVal, { color: '#0D9488' }]}>{totalPresensiMasuk}</Text>
+          <Text style={styles.metricLbl}>Presensi Masuk</Text>
+          <Text style={styles.metricDesc}>Kehadiran Tercatat</Text>
+        </View>
+
+        <View style={[styles.metricCard, styles.metricCardActive]}>
+          <Text style={[styles.metricVal, { color: '#16A34A' }]}>{rataRataKehadiran}%</Text>
+          <Text style={styles.metricLbl}>Rata-rata Hadir</Text>
+          <Text style={styles.metricDesc}>Persentase Kehadiran</Text>
+        </View>
       </View>
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      <FlatList
+        data={rekapData}
+        keyExtractor={(item) => item.sesi.id}
+        renderItem={renderRekapCard}
+        ListHeaderComponent={renderHeader}
+        contentContainerStyle={styles.listContainer}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <EmptyState
+            icon="📋"
+            title="Belum Ada Rekap Presensi"
+            message="Rekap kehadiran akan muncul setelah Anda membuka sesi praktikum pada tab Jadwal."
+            actionText="Buka Jadwal Praktikum"
+            onAction={() => router.push('/asisten/jadwal')}
+          />
+        }
+      />
     </View>
   );
 }
@@ -238,79 +264,126 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
-  contentWrap: {
-    flex: 1,
+  listContainer: {
     width: '100%',
-    maxWidth: 840,
+    maxWidth: 960,
     alignSelf: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 90,
+    gap: 14,
   },
   header: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    marginBottom: 8,
+    gap: 14,
+  },
+  eyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  eyebrowBadge: {
+    backgroundColor: '#F0FDFA',
+    borderWidth: 1,
+    borderColor: '#99F6E4',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 16,
+  },
+  eyebrowText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#0D9488',
+    letterSpacing: 0.5,
+  },
+  liveTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 16,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#16A34A',
+  },
+  liveTagText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#065F46',
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: Platform.OS === 'web' ? 32 : 26,
+    fontWeight: '900',
     color: '#0F172A',
+    letterSpacing: -0.6,
   },
   headerSubtitle: {
-    fontSize: 13,
+    fontSize: 14,
+    lineHeight: 22,
     color: '#64748B',
-    marginTop: 2,
-    marginBottom: 14,
   },
-  statsContainer: {
+  metricsGrid: {
     flexDirection: 'row',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
+    flexWrap: 'wrap',
+    gap: 12,
+    marginTop: 4,
+  },
+  metricCard: {
+    flex: 1,
+    minWidth: 140,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 14,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    alignItems: 'center',
-    justifyContent: 'space-around',
+    gap: 3,
+    shadowColor: '#000000',
+    shadowOpacity: 0.03,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
+    elevation: 1,
   },
-  statBox: {
-    alignItems: 'center',
-    flex: 1,
+  metricCardPresensi: {
+    borderColor: '#99F6E4',
+    backgroundColor: '#F0FDFA',
   },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: '800',
+  metricCardActive: {
+    borderColor: '#BBF7D0',
+    backgroundColor: '#F0FDF4',
+  },
+  metricVal: {
+    fontSize: 24,
+    fontWeight: '900',
     color: '#0F172A',
+    letterSpacing: -0.5,
   },
-  statLabel: {
+  metricLbl: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  metricDesc: {
     fontSize: 11,
     color: '#64748B',
-    marginTop: 2,
-    fontWeight: '600',
-  },
-  statDivider: {
-    width: 1,
-    height: 28,
-    backgroundColor: '#CBD5E1',
-  },
-  listContainer: {
-    paddingVertical: 12,
-    paddingBottom: 30,
   },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
     padding: 16,
-    marginVertical: 6,
-    marginHorizontal: 16,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
   },
   cardHeaderPressable: {
     gap: 8,
@@ -318,19 +391,17 @@ const styles = StyleSheet.create({
   cardHeaderTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 8,
+    alignItems: 'center',
   },
   titleWrap: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
     gap: 8,
   },
   praktikumTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#0F172A',
   },
   kelasChip: {
@@ -338,37 +409,47 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
   },
-  kelasChipText: {
+  kelasText: {
     fontSize: 11,
     fontWeight: '600',
     color: '#475569',
   },
-  jadwalMeta: {
-    fontSize: 12,
-    color: '#64748B',
+  materiText: {
+    fontSize: 13,
+    color: '#475569',
+    lineHeight: 18,
   },
-  progressSection: {
-    marginTop: 6,
-    gap: 6,
-  },
-  progressInfoRow: {
+  quickStatsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginTop: 4,
   },
-  progressLabel: {
+  quickStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  quickStatLabel: {
     fontSize: 12,
     color: '#64748B',
     fontWeight: '500',
   },
-  progressValue: {
+  quickStatValue: {
     fontSize: 12,
-    color: '#0F172A',
     fontWeight: '700',
+    color: '#0F172A',
   },
-  progressBarTrack: {
+  progressContainer: {
+    marginTop: 4,
+  },
+  progressBarBackground: {
     height: 6,
     backgroundColor: '#E2E8F0',
     borderRadius: 3,
@@ -376,28 +457,25 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#16A34A',
+    backgroundColor: '#0D9488',
     borderRadius: 3,
   },
   toggleRow: {
-    marginTop: 4,
     alignItems: 'center',
     paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F8FAFC',
   },
   toggleText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#EA580C',
+    color: '#0D9488',
   },
   rosterContainer: {
-    marginTop: 10,
+    marginTop: 8,
   },
   rosterDivider: {
     height: 1,
     backgroundColor: '#F1F5F9',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   rosterSectionTitle: {
     fontSize: 13,
@@ -413,10 +491,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 10,
-    borderRadius: 8,
     backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderRadius: 8,
     gap: 10,
   },
   studentAvatar: {
@@ -430,31 +506,24 @@ const styles = StyleSheet.create({
   studentAvatarText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#334155',
+    color: '#475569',
   },
   studentMeta: {
     flex: 1,
   },
   studentName: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#0F172A',
   },
   studentSub: {
     fontSize: 11,
     color: '#64748B',
-    marginTop: 1,
   },
   statusCol: {
     alignItems: 'flex-end',
   },
   hadirBadge: {
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#86EFAC',
     alignItems: 'flex-end',
   },
   hadirBadgeText: {
@@ -464,20 +533,17 @@ const styles = StyleSheet.create({
   },
   hadirTimeText: {
     fontSize: 10,
-    color: '#166534',
-    marginTop: 1,
+    color: '#16A34A',
   },
   belumHadirBadge: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#FEE2E2',
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    paddingVertical: 2,
+    borderRadius: 10,
   },
   belumHadirBadgeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
-    color: '#64748B',
+    color: '#DC2626',
   },
 });

@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
   FlatList,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -49,88 +50,110 @@ export default function JadwalAsistenScreen() {
     );
   };
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.contentWrap}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Pengelolaan Sesi Praktikum</Text>
-          <Text style={styles.headerSubtitle}>
-            Pilih sesi untuk membuka presensi, memantau kehadiran, atau menutup sesi
-          </Text>
+  const renderHeader = () => (
+    <View style={styles.header}>
+      {/* Eyebrow & Live Indicator */}
+      <View style={styles.eyebrowRow}>
+        <View style={styles.eyebrowBadge}>
+          <Text style={styles.eyebrowText}>ASISTEN LABORATORIUM</Text>
+        </View>
+        <View style={styles.liveTag}>
+          <View style={styles.liveDot} />
+          <Text style={styles.liveTagText}>Kontrol Real-Time</Text>
+        </View>
+      </View>
 
-          {/* Metrics Overview Cards (E-Stock inspired) */}
-          <View style={styles.metricsRow}>
-            <View style={styles.metricCard}>
-              <Text style={styles.metricVal}>{totalSesi}</Text>
-              <Text style={styles.metricLbl}>Total Sesi</Text>
-            </View>
-            <View style={[styles.metricCard, styles.metricCardDibuka]}>
-              <Text style={[styles.metricVal, { color: '#16A34A' }]}>{totalDibuka}</Text>
-              <Text style={styles.metricLbl}>Sesi Dibuka</Text>
-            </View>
-            <View style={[styles.metricCard, styles.metricCardPresensi]}>
-              <Text style={[styles.metricVal, { color: '#0D9488' }]}>{totalPresensiMasuk}</Text>
-              <Text style={styles.metricLbl}>Total Presensi</Text>
-            </View>
-            <View style={styles.metricCard}>
-              <Text style={[styles.metricVal, { color: '#64748B' }]}>{totalDitutup}</Text>
-              <Text style={styles.metricLbl}>Sesi Ditutup</Text>
-            </View>
-          </View>
+      <Text style={styles.headerTitle}>Pengelolaan Sesi Praktikum</Text>
+      <Text style={styles.headerSubtitle}>
+        Buka sesi praktikum, pantau presensi kehadiran mahasiswa, atau tutup sesi setelah kegiatan selesai
+      </Text>
 
-          {/* Filter Chips */}
-          <View style={styles.filterRow}>
-            <FilterChip
-              label="Semua"
-              active={filter === 'semua'}
-              count={sesiList.length}
-              onPress={() => setFilter('semua')}
-            />
-            <FilterChip
-              label="Dibuka"
-              active={filter === 'dibuka'}
-              count={sesiList.filter((s) => s.status === 'dibuka').length}
-              variant="dibuka"
-              onPress={() => setFilter('dibuka')}
-            />
-            <FilterChip
-              label="Belum Dibuka"
-              active={filter === 'belum-dibuka'}
-              count={sesiList.filter((s) => s.status === 'belum-dibuka').length}
-              variant="belum-dibuka"
-              onPress={() => setFilter('belum-dibuka')}
-            />
-            <FilterChip
-              label="Ditutup"
-              active={filter === 'ditutup'}
-              count={sesiList.filter((s) => s.status === 'ditutup').length}
-              variant="ditutup"
-              onPress={() => setFilter('ditutup')}
-            />
-          </View>
+      {/* Metrics Overview Cards (Matching Halaman 1 style) */}
+      <View style={styles.metricsGrid}>
+        <View style={styles.metricCard}>
+          <Text style={styles.metricVal}>{totalSesi}</Text>
+          <Text style={styles.metricLbl}>Total Sesi</Text>
+          <Text style={styles.metricDesc}>Modul PPK & BDD</Text>
         </View>
 
-        <FlatList
-          data={filteredSesiList}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <EmptyState
-              icon="📅"
-              title="Tidak Ada Sesi"
-              message={
-                filter === 'semua'
-                  ? 'Belum ada jadwal praktikum yang tersedia saat ini.'
-                  : `Tidak ada sesi dengan status "${filter}".`
-              }
-              actionText={filter !== 'semua' ? 'Tampilkan Semua Sesi' : undefined}
-              onAction={filter !== 'semua' ? () => setFilter('semua') : undefined}
-            />
-          }
-        />
+        <View style={[styles.metricCard, styles.metricCardDibuka]}>
+          <Text style={[styles.metricVal, { color: '#16A34A' }]}>{totalDibuka}</Text>
+          <Text style={styles.metricLbl}>Sesi Dibuka</Text>
+          <Text style={styles.metricDesc}>Presensi Aktif</Text>
+        </View>
+
+        <View style={[styles.metricCard, styles.metricCardPresensi]}>
+          <Text style={[styles.metricVal, { color: '#0D9488' }]}>{totalPresensiMasuk}</Text>
+          <Text style={styles.metricLbl}>Total Presensi</Text>
+          <Text style={styles.metricDesc}>Mahasiswa Hadir</Text>
+        </View>
+
+        <View style={styles.metricCard}>
+          <Text style={[styles.metricVal, { color: '#64748B' }]}>{totalDitutup}</Text>
+          <Text style={styles.metricLbl}>Sesi Ditutup</Text>
+          <Text style={styles.metricDesc}>Selesai Dikelola</Text>
+        </View>
       </View>
+
+      {/* Filter Section */}
+      <View style={styles.filterSection}>
+        <Text style={styles.filterTitle}>Filter Berdasarkan Status Sesi:</Text>
+        <View style={styles.filterRow}>
+          <FilterChip
+            label="Semua"
+            active={filter === 'semua'}
+            count={sesiList.length}
+            onPress={() => setFilter('semua')}
+          />
+          <FilterChip
+            label="Dibuka"
+            active={filter === 'dibuka'}
+            count={sesiList.filter((s) => s.status === 'dibuka').length}
+            variant="dibuka"
+            onPress={() => setFilter('dibuka')}
+          />
+          <FilterChip
+            label="Belum Dibuka"
+            active={filter === 'belum-dibuka'}
+            count={sesiList.filter((s) => s.status === 'belum-dibuka').length}
+            variant="belum-dibuka"
+            onPress={() => setFilter('belum-dibuka')}
+          />
+          <FilterChip
+            label="Ditutup"
+            active={filter === 'ditutup'}
+            count={sesiList.filter((s) => s.status === 'ditutup').length}
+            variant="ditutup"
+            onPress={() => setFilter('ditutup')}
+          />
+        </View>
+      </View>
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      <FlatList
+        data={filteredSesiList}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        ListHeaderComponent={renderHeader}
+        contentContainerStyle={styles.listContainer}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <EmptyState
+            icon="📅"
+            title="Tidak Ada Sesi"
+            message={
+              filter === 'semua'
+                ? 'Belum ada jadwal praktikum yang tersedia saat ini.'
+                : `Tidak ada sesi praktikum dengan status "${filter}".`
+            }
+            actionText={filter !== 'semua' ? 'Tampilkan Semua Sesi' : undefined}
+            onAction={filter !== 'semua' ? () => setFilter('semua') : undefined}
+          />
+        }
+      />
     </View>
   );
 }
@@ -201,47 +224,91 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
-  contentWrap: {
-    flex: 1,
+  listContainer: {
     width: '100%',
-    maxWidth: 840,
+    maxWidth: 960,
     alignSelf: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 90,
+    gap: 14,
   },
   header: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 10,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    marginBottom: 8,
+    gap: 14,
+  },
+  eyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  eyebrowBadge: {
+    backgroundColor: '#F0FDFA',
+    borderWidth: 1,
+    borderColor: '#99F6E4',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 16,
+  },
+  eyebrowText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#0D9488',
+    letterSpacing: 0.5,
+  },
+  liveTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 16,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#16A34A',
+  },
+  liveTagText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#065F46',
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: Platform.OS === 'web' ? 32 : 26,
+    fontWeight: '900',
     color: '#0F172A',
+    letterSpacing: -0.6,
   },
   headerSubtitle: {
-    fontSize: 13,
+    fontSize: 14,
+    lineHeight: 22,
     color: '#64748B',
-    marginTop: 2,
-    marginBottom: 8,
   },
-  metricsRow: {
+  metricsGrid: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
+    flexWrap: 'wrap',
+    gap: 12,
+    marginTop: 4,
   },
   metricCard: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
+    minWidth: 140,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 14,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
+    gap: 3,
+    shadowColor: '#000000',
+    shadowOpacity: 0.03,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
+    elevation: 1,
   },
   metricCardDibuka: {
     borderColor: '#BBF7D0',
@@ -252,15 +319,28 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0FDFA',
   },
   metricVal: {
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 24,
+    fontWeight: '900',
     color: '#0F172A',
+    letterSpacing: -0.5,
   },
   metricLbl: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  metricDesc: {
     fontSize: 11,
-    fontWeight: '600',
     color: '#64748B',
-    textAlign: 'center',
+  },
+  filterSection: {
+    gap: 8,
+    marginTop: 8,
+  },
+  filterTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#334155',
   },
   filterRow: {
     flexDirection: 'row',
@@ -270,18 +350,18 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     borderRadius: 20,
     borderWidth: 1,
   },
   chipInactive: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#FFFFFF',
     borderColor: '#E2E8F0',
   },
   chipActive: {
-    backgroundColor: '#EA580C',
-    borderColor: '#EA580C',
+    backgroundColor: '#0D9488',
+    borderColor: '#0D9488',
   },
   chipPressed: {
     opacity: 0.85,
@@ -294,7 +374,7 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   chipTextInactive: {
     color: '#475569',
@@ -304,10 +384,10 @@ const styles = StyleSheet.create({
   },
   countBadge: {
     marginLeft: 6,
-    backgroundColor: '#E2E8F0',
     paddingHorizontal: 6,
     paddingVertical: 1,
     borderRadius: 10,
+    backgroundColor: '#E2E8F0',
   },
   countBadgeActive: {
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
@@ -319,9 +399,5 @@ const styles = StyleSheet.create({
   },
   countTextActive: {
     color: '#FFFFFF',
-  },
-  listContainer: {
-    paddingVertical: 10,
-    paddingBottom: 30,
   },
 });

@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import React, { useMemo } from 'react';
 import {
   FlatList,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -23,6 +24,10 @@ export default function PraktikanRiwayatScreen() {
 
   const totalSesiTersedia = sesiList.length;
   const totalHadir = riwayatList.length;
+  const persentase =
+    totalSesiTersedia > 0
+      ? Math.round((totalHadir / totalSesiTersedia) * 100)
+      : 0;
 
   const renderItem = ({ item }: { item: RiwayatItem }) => {
     return (
@@ -81,55 +86,65 @@ export default function PraktikanRiwayatScreen() {
     );
   };
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.contentWrap}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Riwayat Kehadiran</Text>
-          <Text style={styles.headerSubtitle}>
-            Daftar sesi praktikum yang telah Anda hadiri dan catat presensinya
-          </Text>
+  const renderHeader = () => (
+    <View style={styles.header}>
+      <View style={styles.eyebrowRow}>
+        <View style={styles.eyebrowBadge}>
+          <Text style={styles.eyebrowText}>REKAP PRIBADI</Text>
+        </View>
+        <View style={styles.liveTag}>
+          <View style={styles.liveDot} />
+          <Text style={styles.liveTagText}>Data Tersinkron</Text>
+        </View>
+      </View>
 
-          {/* Attendance Statistics Banner */}
-          <View style={styles.statsContainer}>
-            <View style={styles.statBox}>
-              <Text style={styles.statNumber}>{totalHadir}</Text>
-              <Text style={styles.statLabel}>Sesi Dihadiri</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statBox}>
-              <Text style={styles.statNumber}>{totalSesiTersedia}</Text>
-              <Text style={styles.statLabel}>Total Sesi Terjadwal</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statBox}>
-              <Text style={[styles.statNumber, { color: '#16A34A' }]}>
-                {totalSesiTersedia > 0
-                  ? `${Math.round((totalHadir / totalSesiTersedia) * 100)}%`
-                  : '0%'}
-              </Text>
-              <Text style={styles.statLabel}>Tingkat Kehadiran</Text>
-            </View>
-          </View>
+      <Text style={styles.headerTitle}>Riwayat Kehadiran</Text>
+      <Text style={styles.headerSubtitle}>
+        Daftar sesi praktikum yang telah dihadiri oleh {currentPraktikan?.nama ?? 'Praktikan'}
+      </Text>
+
+      {/* Metrics Banner */}
+      <View style={styles.metricsGrid}>
+        <View style={styles.metricCard}>
+          <Text style={[styles.metricVal, { color: '#EA580C' }]}>{totalHadir}</Text>
+          <Text style={styles.metricLbl}>Sesi Dihadiri</Text>
+          <Text style={styles.metricDesc}>Tercatat Hadir</Text>
         </View>
 
-        <FlatList
-          data={riwayatList}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <EmptyState
-              icon="📝"
-              title="Belum Ada Riwayat Presensi"
-              message={`Praktikan ${currentPraktikan?.nama ?? ''} belum memiliki catatan presensi. Buka tab Jadwal untuk melakukan presensi pada sesi yang dibuka.`}
-              actionText="Lihat Jadwal Praktikum"
-              onAction={() => router.push('/praktikan/jadwal')}
-            />
-          }
-        />
+        <View style={styles.metricCard}>
+          <Text style={styles.metricVal}>{totalSesiTersedia}</Text>
+          <Text style={styles.metricLbl}>Total Sesi</Text>
+          <Text style={styles.metricDesc}>Jadwal Praktikum</Text>
+        </View>
+
+        <View style={[styles.metricCard, styles.metricCardActive]}>
+          <Text style={[styles.metricVal, { color: '#16A34A' }]}>{persentase}%</Text>
+          <Text style={styles.metricLbl}>Keaktifan</Text>
+          <Text style={styles.metricDesc}>Persentase Hadir</Text>
+        </View>
       </View>
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      <FlatList
+        data={riwayatList}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        ListHeaderComponent={renderHeader}
+        contentContainerStyle={styles.listContainer}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <EmptyState
+            icon="📝"
+            title="Belum Ada Riwayat Presensi"
+            message={`Praktikan ${currentPraktikan?.nama ?? ''} belum memiliki catatan presensi. Buka tab Jadwal untuk melakukan presensi pada sesi yang sedang dibuka.`}
+            actionText="Lihat Jadwal Praktikum"
+            onAction={() => router.push('/praktikan/jadwal')}
+          />
+        }
+      />
     </View>
   );
 }
@@ -139,89 +154,132 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
-  contentWrap: {
-    flex: 1,
+  listContainer: {
     width: '100%',
-    maxWidth: 840,
+    maxWidth: 960,
     alignSelf: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 90,
+    gap: 14,
   },
   header: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    marginBottom: 8,
+    gap: 14,
+  },
+  eyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  eyebrowBadge: {
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 16,
+  },
+  eyebrowText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#EA580C',
+    letterSpacing: 0.5,
+  },
+  liveTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 16,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#16A34A',
+  },
+  liveTagText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#065F46',
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: Platform.OS === 'web' ? 32 : 26,
+    fontWeight: '900',
     color: '#0F172A',
+    letterSpacing: -0.6,
   },
   headerSubtitle: {
-    fontSize: 13,
+    fontSize: 14,
+    lineHeight: 22,
     color: '#64748B',
-    marginTop: 2,
-    marginBottom: 14,
   },
-  statsContainer: {
+  metricsGrid: {
     flexDirection: 'row',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
+    flexWrap: 'wrap',
+    gap: 12,
+    marginTop: 4,
+  },
+  metricCard: {
+    flex: 1,
+    minWidth: 140,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 14,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    alignItems: 'center',
-    justifyContent: 'space-around',
+    gap: 3,
+    shadowColor: '#000000',
+    shadowOpacity: 0.03,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
+    elevation: 1,
   },
-  statBox: {
-    alignItems: 'center',
-    flex: 1,
+  metricCardActive: {
+    borderColor: '#BBF7D0',
+    backgroundColor: '#F0FDF4',
   },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: '800',
+  metricVal: {
+    fontSize: 24,
+    fontWeight: '900',
     color: '#0F172A',
+    letterSpacing: -0.5,
   },
-  statLabel: {
+  metricLbl: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  metricDesc: {
     fontSize: 11,
     color: '#64748B',
-    marginTop: 2,
-    fontWeight: '600',
-  },
-  statDivider: {
-    width: 1,
-    height: 28,
-    backgroundColor: '#CBD5E1',
-  },
-  listContainer: {
-    paddingVertical: 12,
-    paddingBottom: 30,
   },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
     padding: 16,
-    marginVertical: 6,
-    marginHorizontal: 16,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
   },
   cardPressed: {
-    opacity: 0.92,
+    opacity: 0.9,
     transform: [{ scale: 0.995 }],
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    gap: 8,
+    gap: 12,
   },
   titleWrap: {
     flex: 1,
@@ -232,7 +290,7 @@ const styles = StyleSheet.create({
   },
   praktikumTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#0F172A',
   },
   kelasChip: {
@@ -248,22 +306,22 @@ const styles = StyleSheet.create({
   },
   materiText: {
     fontSize: 13,
-    color: '#64748B',
+    color: '#475569',
     marginTop: 6,
     lineHeight: 18,
   },
   divider: {
     height: 1,
     backgroundColor: '#F1F5F9',
-    marginVertical: 10,
+    marginVertical: 12,
   },
   detailsRow: {
-    gap: 6,
+    marginBottom: 10,
   },
   detailItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
   },
   detailLabel: {
     fontSize: 12,
@@ -272,32 +330,31 @@ const styles = StyleSheet.create({
   },
   detailValue: {
     fontSize: 12,
-    color: '#334155',
+    color: '#0F172A',
     fontWeight: '600',
   },
   timestampContainer: {
-    marginTop: 10,
-    padding: 10,
-    backgroundColor: '#F0FDF4',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    backgroundColor: '#F0FDF4',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#DCFCE7',
   },
   timestampIcon: {
     fontSize: 16,
   },
   timestampLabel: {
     fontSize: 11,
+    color: '#15803D',
     fontWeight: '600',
-    color: '#166534',
   },
   timestampValue: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 12,
     color: '#15803D',
+    fontWeight: '700',
     marginTop: 1,
   },
 });

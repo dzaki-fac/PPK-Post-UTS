@@ -19,14 +19,14 @@ export default function AsistenLayout() {
           ],
           tabBarLabelStyle: {
             fontSize: 12,
-            fontWeight: '600',
+            fontWeight: '700',
           },
         }}>
         <Tabs.Screen
           name="jadwal"
           options={{
             title: 'Jadwal Praktikum',
-            tabBarLabel: 'Jadwal',
+            tabBarLabel: 'Kelola Sesi',
             tabBarIcon: ({ color }) => (
               <Text style={{ fontSize: 18, color }}>📅</Text>
             ),
@@ -36,7 +36,7 @@ export default function AsistenLayout() {
           name="rekap"
           options={{
             title: 'Rekap Presensi',
-            tabBarLabel: 'Rekap',
+            tabBarLabel: 'Rekap Kelas',
             tabBarIcon: ({ color }) => (
               <Text style={{ fontSize: 18, color }}>📊</Text>
             ),
@@ -68,12 +68,23 @@ const styles = StyleSheet.create({
     paddingTop: 6,
   },
   tabBarWeb: {
-    maxWidth: 840,
+    maxWidth: 380,
     width: '100%',
     alignSelf: 'center',
     marginHorizontal: 'auto',
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderColor: '#E2E8F0',
+    position: 'absolute',
+    bottom: 20,
+    borderRadius: 24,
+    height: 58,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+    paddingBottom: 6,
+    paddingTop: 6,
   },
 });

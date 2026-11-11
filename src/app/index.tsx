@@ -19,6 +19,7 @@ export default function IndexScreen() {
   const { setPengguna } = usePraktikum();
   const [langkah, setLangkah] = useState<'pilih-peran' | 'pilih-identitas'>('pilih-peran');
   const [peranDipilih, setPeranDipilih] = useState<Peran>(null);
+  const [filterKelas, setFilterKelas] = useState<'semua' | 'A' | 'B'>('semua');
 
   const handlePilihPeran = (peran: Peran) => {
     if (!peran) return;
@@ -52,24 +53,40 @@ export default function IndexScreen() {
 
   if (langkah === 'pilih-identitas' && peranDipilih) {
     const isPraktikan = peranDipilih === 'praktikan';
+    const praktikanList = filterKelas === 'semua'
+      ? DUMMY_PRAKTIKAN
+      : DUMMY_PRAKTIKAN.filter((p) => p.kelas === filterKelas);
+
     return (
       <View style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
-          {/* Identity Navigation Bar */}
+          {/* Identity Navigation Bar - Identical to Halaman 1 */}
           <View style={styles.topNavbar}>
             <View style={styles.navInner}>
-              <Pressable
-                onPress={handleKembali}
-                style={({ pressed }) => [styles.backButton, pressed && styles.btnPressed]}
-                accessibilityRole="button"
-                accessibilityLabel="Kembali ke Pemilihan Peran">
-                <Text style={styles.backButtonText}>← Kembali ke Pemilihan Peran</Text>
-              </Pressable>
-              <View style={styles.liveBadge}>
-                <View style={styles.liveDot} />
-                <Text style={styles.liveBadgeText}>
-                  {isPraktikan ? 'Mode Mahasiswa' : 'Mode Asisten'}
-                </Text>
+              <View style={styles.brandRow}>
+                <View style={styles.logoBadge}>
+                  <Text style={styles.logoBadgeIcon}>🏛️</Text>
+                </View>
+                <View>
+                  <Text style={styles.brandTitle}>PPK LabPortal</Text>
+                  <Text style={styles.brandSubtitle}>Presensi & Manajemen Sesi</Text>
+                </View>
+              </View>
+
+              <View style={styles.rightNavRow}>
+                <Pressable
+                  onPress={handleKembali}
+                  style={({ pressed }) => [styles.backButton, pressed && styles.btnPressed]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Kembali ke Pemilihan Peran">
+                  <Text style={styles.backButtonText}>← Kembali ke Beranda</Text>
+                </Pressable>
+                <View style={styles.liveBadge}>
+                  <View style={styles.liveDot} />
+                  <Text style={styles.liveBadgeText}>
+                    {isPraktikan ? 'Mode Mahasiswa' : 'Mode Asisten'}
+                  </Text>
+                </View>
               </View>
             </View>
           </View>
@@ -96,38 +113,98 @@ export default function IndexScreen() {
               </Text>
               <Text style={styles.identitySubtitle}>
                 {isPraktikan
-                  ? 'Pilih salah satu nama mahasiswa berikut untuk masuk ke dashboard praktikan dan mencatat presensi:'
+                  ? 'Pilih salah satu profil mahasiswa berikut untuk masuk ke dashboard praktikan dan mencatat presensi:'
                   : 'Pilih profil asisten pengampu berikut untuk membuka sesi dan mengelola rekapitulasi kehadiran:'}
               </Text>
+
+              {/* Class Filter Chips (only for praktikan) */}
+              {isPraktikan ? (
+                <View style={styles.filterChipsRow}>
+                  <Pressable
+                    style={[
+                      styles.filterChip,
+                      filterKelas === 'semua' && styles.filterChipActive,
+                    ]}
+                    onPress={() => setFilterKelas('semua')}>
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        filterKelas === 'semua' && styles.filterChipTextActive,
+                      ]}>
+                      Semua (10)
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={[
+                      styles.filterChip,
+                      filterKelas === 'A' && styles.filterChipActive,
+                    ]}
+                    onPress={() => setFilterKelas('A')}>
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        filterKelas === 'A' && styles.filterChipTextActive,
+                      ]}>
+                      Kelas A (6)
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={[
+                      styles.filterChip,
+                      filterKelas === 'B' && styles.filterChipActive,
+                    ]}
+                    onPress={() => setFilterKelas('B')}>
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        filterKelas === 'B' && styles.filterChipTextActive,
+                      ]}>
+                      Kelas B (4)
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
             </View>
 
-            <View style={styles.identityList}>
+            {/* Grid of Profile Cards */}
+            <View style={styles.identityGrid}>
               {isPraktikan
-                ? DUMMY_PRAKTIKAN.map((praktikan) => {
+                ? praktikanList.map((praktikan) => {
                     const initials = getInitials(praktikan.nama);
                     return (
                       <Pressable
                         key={praktikan.id}
                         style={({ pressed }) => [
-                          styles.accountCard,
+                          styles.studentGridCard,
                           pressed && styles.cardPressed,
                         ]}
                         onPress={() => handlePilihIdentitas(praktikan)}
                         accessibilityRole="button"
                         accessibilityLabel={`Masuk sebagai ${praktikan.nama}`}>
-                        <View style={styles.avatarCirclePraktikan}>
-                          <Text style={styles.avatarTextPraktikan}>{initials}</Text>
-                        </View>
-                        <View style={styles.accountInfo}>
-                          <View style={styles.accountNameRow}>
-                            <Text style={styles.accountName}>{praktikan.nama}</Text>
-                            <View style={styles.kelasBadge}>
-                              <Text style={styles.kelasBadgeText}>Kelas {praktikan.kelas}</Text>
-                            </View>
+                        <View style={styles.cardTopRow}>
+                          <View style={styles.avatarCirclePraktikan}>
+                            <Text style={styles.avatarTextPraktikan}>{initials}</Text>
                           </View>
-                          <Text style={styles.accountSub}>NIM: {praktikan.nim}</Text>
+                          <View style={styles.cardHeaderInfo}>
+                            <Text style={styles.studentCardName}>{praktikan.nama}</Text>
+                            <Text style={styles.studentCardNim}>NIM: {praktikan.nim}</Text>
+                          </View>
+                          <View style={styles.kelasBadge}>
+                            <Text style={styles.kelasBadgeText}>Kelas {praktikan.kelas}</Text>
+                          </View>
                         </View>
-                        <Text style={styles.arrowIcon}>→</Text>
+
+                        <View style={styles.cardBottomRow}>
+                          <View style={styles.activeTag}>
+                            <View style={styles.greenDot} />
+                            <Text style={styles.activeTagText}>Praktikan Aktif</Text>
+                          </View>
+                          <View style={styles.ctaEnterPill}>
+                            <Text style={styles.ctaEnterPillText}>Masuk Portal →</Text>
+                          </View>
+                        </View>
                       </Pressable>
                     );
                   })
@@ -137,21 +214,35 @@ export default function IndexScreen() {
                       <Pressable
                         key={asisten.id}
                         style={({ pressed }) => [
-                          styles.accountCard,
-                          styles.accountCardAsisten,
+                          styles.studentGridCard,
+                          styles.studentGridCardAsisten,
                           pressed && styles.cardPressed,
                         ]}
                         onPress={() => handlePilihIdentitas(asisten)}
                         accessibilityRole="button"
                         accessibilityLabel={`Masuk sebagai ${asisten.nama}`}>
-                        <View style={styles.avatarCircleAsisten}>
-                          <Text style={styles.avatarTextAsisten}>{initials}</Text>
+                        <View style={styles.cardTopRow}>
+                          <View style={styles.avatarCircleAsisten}>
+                            <Text style={styles.avatarTextAsisten}>{initials}</Text>
+                          </View>
+                          <View style={styles.cardHeaderInfo}>
+                            <Text style={styles.studentCardNameAsisten}>{asisten.nama}</Text>
+                            <Text style={styles.studentCardNim}>Pengampu Laboratorium Komputasi</Text>
+                          </View>
+                          <View style={[styles.kelasBadge, { backgroundColor: '#CCFBF1' }]}>
+                            <Text style={[styles.kelasBadgeText, { color: '#0F766E' }]}>Asisten</Text>
+                          </View>
                         </View>
-                        <View style={styles.accountInfo}>
-                          <Text style={styles.accountNameAsisten}>{asisten.nama}</Text>
-                          <Text style={styles.accountSub}>Asisten Pengampu Laboratorium Komputasi</Text>
+
+                        <View style={styles.cardBottomRow}>
+                          <View style={styles.activeTag}>
+                            <View style={[styles.greenDot, { backgroundColor: '#0D9488' }]} />
+                            <Text style={[styles.activeTagText, { color: '#0F766E' }]}>Pengelola Lab</Text>
+                          </View>
+                          <View style={[styles.ctaEnterPill, { backgroundColor: '#0D9488' }]}>
+                            <Text style={styles.ctaEnterPillText}>Kelola Praktikum →</Text>
+                          </View>
                         </View>
-                        <Text style={styles.arrowIconAsisten}>→</Text>
                       </Pressable>
                     );
                   })}
@@ -782,14 +873,21 @@ const styles = StyleSheet.create({
   },
 
   /* Identity Selection View Styles */
+  rightNavRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   backButton: {
-    paddingVertical: 6,
+    paddingVertical: 7,
     paddingHorizontal: 12,
     borderRadius: 8,
     backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   backButtonText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     color: '#334155',
   },
@@ -799,8 +897,10 @@ const styles = StyleSheet.create({
     gap: 6,
     backgroundColor: '#F1F5F9',
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 6,
     borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   liveBadgeText: {
     fontSize: 12,
@@ -808,17 +908,16 @@ const styles = StyleSheet.create({
     color: '#475569',
   },
   identityScrollContent: {
-    maxWidth: 780,
+    maxWidth: 960,
     width: '100%',
     alignSelf: 'center',
     paddingHorizontal: 20,
     paddingVertical: 28,
-    gap: 20,
+    gap: 24,
   },
   identityHeader: {
     alignItems: 'center',
     gap: 8,
-    marginBottom: 8,
   },
   rolePill: {
     paddingHorizontal: 12,
@@ -846,40 +945,72 @@ const styles = StyleSheet.create({
     color: '#0D9488',
   },
   identityTitle: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '800',
     color: '#0F172A',
     textAlign: 'center',
-    letterSpacing: -0.5,
+    letterSpacing: -0.6,
   },
   identitySubtitle: {
     fontSize: 14,
-    lineHeight: 21,
+    lineHeight: 22,
     color: '#64748B',
     textAlign: 'center',
-    maxWidth: 580,
+    maxWidth: 620,
   },
-  identityList: {
-    gap: 10,
-  },
-  accountCard: {
+  filterChipsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 16,
+    gap: 8,
+    marginTop: 8,
+    justifyContent: 'center',
+  },
+  filterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#E2E8F0',
+  },
+  filterChipActive: {
+    backgroundColor: '#EA580C',
+    borderColor: '#EA580C',
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  filterChipTextActive: {
+    color: '#FFFFFF',
+  },
+  identityGrid: {
+    flexDirection: Platform.OS === 'web' ? 'row' : 'column',
+    flexWrap: 'wrap',
+    gap: 14,
+  },
+  studentGridCard: {
+    width: Platform.OS === 'web' ? '48.9%' : '100%',
+    minWidth: 300,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1.5,
+    borderColor: '#FED7AA',
     gap: 14,
     shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 4,
-    elevation: 1,
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    elevation: 2,
   },
-  accountCardAsisten: {
-    borderColor: '#CCFBF1',
-    backgroundColor: '#F0FDFA',
+  studentGridCardAsisten: {
+    borderColor: '#99F6E4',
+  },
+  cardTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   avatarCirclePraktikan: {
     width: 44,
@@ -900,7 +1031,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#CCFBF1',
+    backgroundColor: '#F0FDFA',
     borderWidth: 1.5,
     borderColor: '#0D9488',
     alignItems: 'center',
@@ -911,48 +1042,70 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#0D9488',
   },
-  accountInfo: {
+  cardHeaderInfo: {
     flex: 1,
-    gap: 3,
+    gap: 2,
   },
-  accountNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  accountName: {
+  studentCardName: {
     fontSize: 15,
     fontWeight: '700',
     color: '#0F172A',
   },
-  accountNameAsisten: {
+  studentCardNameAsisten: {
     fontSize: 15,
     fontWeight: '700',
     color: '#115E59',
   },
-  accountSub: {
-    fontSize: 13,
+  studentCardNim: {
+    fontSize: 12,
     color: '#64748B',
   },
   kelasBadge: {
     backgroundColor: '#F1F5F9',
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   kelasBadgeText: {
     fontSize: 11,
     fontWeight: '600',
     color: '#475569',
   },
-  arrowIcon: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#EA580C',
+  cardBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F8FAFC',
   },
-  arrowIconAsisten: {
-    fontSize: 18,
+  activeTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  greenDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#16A34A',
+  },
+  activeTagText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#16A34A',
+  },
+  ctaEnterPill: {
+    backgroundColor: '#EA580C',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  ctaEnterPillText: {
+    color: '#FFFFFF',
+    fontSize: 12,
     fontWeight: '700',
-    color: '#0D9488',
   },
 });

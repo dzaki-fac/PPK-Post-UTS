@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import React, { useState } from 'react';
 import {
   FlatList,
@@ -16,6 +16,7 @@ import { Asisten, Praktikan } from '@/types/praktikum';
 
 export function RoleHeader() {
   const insets = useSafeAreaInsets();
+  const pathname = usePathname();
   const {
     role,
     currentPraktikan,
@@ -29,12 +30,14 @@ export function RoleHeader() {
   const [modalVisible, setModalVisible] = useState(false);
 
   const isPraktikan = role === 'praktikan';
+  const isDetailSesi = pathname.includes('/detail-sesi');
+
   const name = isPraktikan
     ? currentPraktikan?.nama ?? 'Praktikan'
     : currentAsisten?.nama ?? 'Asisten';
   const subInfo = isPraktikan
-    ? `NIM: ${currentPraktikan?.nim ?? '-'} • Kelas ${currentPraktikan?.kelas ?? '-'}`
-    : 'Pengelola Laboratorium';
+    ? `Kelas ${currentPraktikan?.kelas ?? '-'}`
+    : 'Pengampu Lab';
 
   const handleSelectStudent = (student: Praktikan) => {
     setCurrentPraktikan(student);
@@ -52,66 +55,94 @@ export function RoleHeader() {
     router.replace('/');
   };
 
+  const handleNavigationBack = () => {
+    if (isDetailSesi) {
+      router.back();
+    } else {
+      handleKembaliKeBeranda();
+    }
+  };
+
   return (
-    <View style={styles.outerContainer}>
+    <View style={styles.topNavbar}>
       <View
         style={[
-          styles.innerContainer,
+          styles.navInner,
           {
-            paddingTop: Platform.OS === 'web' ? 12 : Math.max(insets.top, 12),
+            paddingTop: Platform.OS === 'web' ? 0 : Math.max(insets.top - 8, 0),
           },
         ]}>
-        {/* Left: Back to Home + Brand & Role Badge */}
-        <View style={styles.leftCol}>
+        {/* Brand Group (Exact same logo & typography as Halaman 1) */}
+        <View style={styles.leftGroup}>
           <Pressable
-            style={({ pressed }) => [
-              styles.backHomeBtn,
-              pressed && styles.btnPressed,
-            ]}
+            style={({ pressed }) => [styles.brandRow, pressed && styles.btnPressed]}
             onPress={handleKembaliKeBeranda}
             accessibilityRole="button"
             accessibilityLabel="Kembali ke Beranda Portal">
-            <Text style={styles.backHomeIcon}>←</Text>
-            <Text style={styles.backHomeText}>Beranda</Text>
+            <View style={styles.logoBadge}>
+              <Text style={styles.logoBadgeIcon}>🏛️</Text>
+            </View>
+            <View>
+              <Text style={styles.brandTitle}>PPK LabPortal</Text>
+              <Text style={styles.brandSubtitle}>Presensi & Manajemen Sesi</Text>
+            </View>
           </Pressable>
 
-          <View style={styles.brandGroup}>
+          {/* Navigation Pill (← Beranda or ← Kembali ke Jadwal) */}
+          <Pressable
+            style={({ pressed }) => [styles.navPill, pressed && styles.btnPressed]}
+            onPress={handleNavigationBack}
+            accessibilityRole="button"
+            accessibilityLabel={isDetailSesi ? 'Kembali ke Jadwal' : 'Kembali ke Beranda'}>
+            <Text style={styles.navPillIcon}>←</Text>
+            <Text style={styles.navPillText}>
+              {isDetailSesi ? 'Kembali ke Jadwal' : 'Beranda'}
+            </Text>
+          </Pressable>
+        </View>
+
+        {/* Right Group: User Profile Badge & Switch Account Button */}
+        <View style={styles.rightGroup}>
+          <View
+            style={[
+              styles.userPill,
+              isPraktikan ? styles.userPillPraktikan : styles.userPillAsisten,
+            ]}>
+            <Text style={styles.userIcon}>{isPraktikan ? '🎓' : '🔬'}</Text>
+            <View style={styles.userInfoWrap}>
+              <Text style={styles.userName} numberOfLines={1}>
+                {name}
+              </Text>
+              <Text style={styles.userSub} numberOfLines={1}>
+                {subInfo}
+              </Text>
+            </View>
             <View
               style={[
-                styles.roleBadge,
-                isPraktikan ? styles.rolePraktikan : styles.roleAsisten,
+                styles.roleMiniBadge,
+                isPraktikan ? styles.roleMiniPraktikan : styles.roleMiniAsisten,
               ]}>
               <Text
                 style={[
-                  styles.roleText,
+                  styles.roleMiniText,
                   isPraktikan ? styles.textPraktikan : styles.textAsisten,
                 ]}>
-                {isPraktikan ? 'MAHASISWA' : 'ASISTEN LAB'}
+                {isPraktikan ? 'MAHASISWA' : 'ASISTEN'}
               </Text>
             </View>
-            <Text style={styles.userName} numberOfLines={1}>
-              {name}
-            </Text>
-            <Text style={styles.userSub} numberOfLines={1}>
-              {subInfo}
-            </Text>
           </View>
-        </View>
 
-        {/* Right: Switch Account Button */}
-        <Pressable
-          style={({ pressed }) => [
-            styles.switchBtn,
-            pressed && styles.btnPressed,
-          ]}
-          onPress={() => setModalVisible(true)}
-          accessibilityRole="button"
-          accessibilityLabel="Ganti akun pengguna">
-          <Text style={styles.switchBtnText}>Ganti Akun</Text>
-        </Pressable>
+          <Pressable
+            style={({ pressed }) => [styles.switchBtn, pressed && styles.btnPressed]}
+            onPress={() => setModalVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Ganti akun pengguna">
+            <Text style={styles.switchBtnText}>Ganti Akun</Text>
+          </Pressable>
+        </View>
       </View>
 
-      {/* Switch Account Modal */}
+      {/* Switch Account Centered Popup Modal */}
       <Modal
         visible={modalVisible}
         transparent
@@ -122,27 +153,47 @@ export function RoleHeader() {
             style={styles.modalDismiss}
             onPress={() => setModalVisible(false)}
           />
-          <View style={styles.modalContent}>
-            <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>
-              {isPraktikan ? 'Pilih Akun Praktikan' : 'Pilih Akun Asisten'}
-            </Text>
-            <Text style={styles.modalSubtitle}>
-              Pilih identitas untuk menguji alur presensi dan rekap kehadiran
-            </Text>
+          <View style={styles.modalPopupCard}>
+            <View style={styles.modalHeader}>
+              <View
+                style={[
+                  styles.modalIconWrap,
+                  isPraktikan ? styles.modalIconPraktikan : styles.modalIconAsisten,
+                ]}>
+                <Text style={styles.modalIconEmoji}>
+                  {isPraktikan ? '🎓' : '🔬'}
+                </Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>
+                  {isPraktikan ? 'Pilih Akun Praktikan' : 'Pilih Akun Asisten'}
+                </Text>
+                <Text style={styles.modalSubtitle}>
+                  Pilih identitas untuk mensimulasikan alur presensi praktikum
+                </Text>
+              </View>
+            </View>
 
             {isPraktikan ? (
               <FlatList
                 data={allPraktikan}
                 keyExtractor={(item) => item.id}
                 style={styles.modalList}
+                showsVerticalScrollIndicator={false}
                 renderItem={({ item }) => {
                   const isSelected = currentPraktikan?.id === item.id;
+                  const initials = item.nama
+                    .split(' ')
+                    .slice(0, 2)
+                    .map((w) => w[0]?.toUpperCase() ?? '')
+                    .join('');
+
                   return (
                     <Pressable
-                      style={[
+                      style={({ pressed }) => [
                         styles.accountRow,
                         isSelected && styles.accountRowSelected,
+                        pressed && styles.btnPressed,
                       ]}
                       onPress={() => handleSelectStudent(item)}>
                       <View
@@ -155,24 +206,31 @@ export function RoleHeader() {
                             styles.avatarText,
                             isSelected && styles.avatarTextSelected,
                           ]}>
-                          {item.nama.charAt(0)}
+                          {initials}
                         </Text>
                       </View>
                       <View style={styles.accountInfo}>
-                        <Text
-                          style={[
-                            styles.accountName,
-                            isSelected && styles.accountNameSelected,
-                          ]}>
-                          {item.nama}
-                        </Text>
-                        <Text style={styles.accountMeta}>
-                          NIM: {item.nim} • Kelas {item.kelas}
-                        </Text>
+                        <View style={styles.nameRow}>
+                          <Text
+                            style={[
+                              styles.accountName,
+                              isSelected && styles.accountNameSelected,
+                            ]}>
+                            {item.nama}
+                          </Text>
+                          <View style={styles.kelasMiniChip}>
+                            <Text style={styles.kelasMiniText}>Kelas {item.kelas}</Text>
+                          </View>
+                        </View>
+                        <Text style={styles.accountMeta}>NIM: {item.nim}</Text>
                       </View>
                       {isSelected ? (
-                        <Text style={styles.checkIcon}>✓</Text>
-                      ) : null}
+                        <View style={styles.selectedCheckBadge}>
+                          <Text style={styles.checkText}>✓</Text>
+                        </View>
+                      ) : (
+                        <Text style={styles.selectArrow}>→</Text>
+                      )}
                     </Pressable>
                   );
                 }}
@@ -182,26 +240,38 @@ export function RoleHeader() {
                 data={allAsisten}
                 keyExtractor={(item) => item.id}
                 style={styles.modalList}
+                showsVerticalScrollIndicator={false}
                 renderItem={({ item }) => {
                   const isSelected = currentAsisten?.id === item.id;
+                  const initials = item.nama
+                    .replace(/^Kak\s+/i, '')
+                    .split(' ')
+                    .slice(0, 2)
+                    .map((w) => w[0]?.toUpperCase() ?? '')
+                    .join('');
+
                   return (
                     <Pressable
-                      style={[
+                      style={({ pressed }) => [
                         styles.accountRow,
+                        styles.accountRowAsisten,
                         isSelected && styles.accountRowSelectedAsisten,
+                        pressed && styles.btnPressed,
                       ]}
                       onPress={() => handleSelectAsisten(item)}>
                       <View
                         style={[
                           styles.avatar,
+                          styles.avatarAsisten,
                           isSelected && styles.avatarSelectedAsisten,
                         ]}>
                         <Text
                           style={[
                             styles.avatarText,
+                            styles.avatarTextAsisten,
                             isSelected && styles.avatarTextSelected,
                           ]}>
-                          {item.nama.charAt(0)}
+                          {initials}
                         </Text>
                       </View>
                       <View style={styles.accountInfo}>
@@ -213,31 +283,42 @@ export function RoleHeader() {
                           {item.nama}
                         </Text>
                         <Text style={styles.accountMeta}>
-                          Asisten Pengampu Laboratorium
+                          Pengampu Laboratorium Komputasi
                         </Text>
                       </View>
                       {isSelected ? (
-                        <Text style={styles.checkIconAsisten}>✓</Text>
-                      ) : null}
+                        <View style={[styles.selectedCheckBadge, { backgroundColor: '#0D9488' }]}>
+                          <Text style={styles.checkText}>✓</Text>
+                        </View>
+                      ) : (
+                        <Text style={[styles.selectArrow, { color: '#0D9488' }]}>→</Text>
+                      )}
                     </Pressable>
                   );
                 }}
               />
             )}
 
-            <View style={styles.modalActionButtons}>
+            {/* Bottom Modal Actions */}
+            <View style={styles.modalFooter}>
               <Pressable
-                style={styles.switchRoleBtn}
+                style={({ pressed }) => [
+                  styles.btnSwitchRole,
+                  pressed && styles.btnPressed,
+                ]}
                 onPress={handleKembaliKeBeranda}>
-                <Text style={styles.switchRoleBtnText}>
-                  🔄 Ganti Peran / Keluar ke Beranda
+                <Text style={styles.btnSwitchRoleText}>
+                  🚪 Keluar ke Pemilihan Peran
                 </Text>
               </Pressable>
 
               <Pressable
-                style={styles.closeBtn}
+                style={({ pressed }) => [
+                  styles.btnCloseModal,
+                  pressed && styles.btnPressed,
+                ]}
                 onPress={() => setModalVisible(false)}>
-                <Text style={styles.closeBtnText}>Tutup</Text>
+                <Text style={styles.btnCloseModalText}>Tutup</Text>
               </Pressable>
             </View>
           </View>
@@ -248,155 +329,232 @@ export function RoleHeader() {
 }
 
 const styles = StyleSheet.create({
-  outerContainer: {
+  topNavbar: {
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
-    width: '100%',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    zIndex: 10,
   },
-  innerContainer: {
-    maxWidth: 840,
+  navInner: {
+    maxWidth: 960,
     width: '100%',
     alignSelf: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
+    flexWrap: 'wrap',
+    gap: 10,
   },
-  leftCol: {
-    flex: 1,
+  leftGroup: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  backHomeBtn: {
+  brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 8,
-    backgroundColor: '#F1F5F9',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    gap: 10,
   },
-  backHomeIcon: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  backHomeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  brandGroup: {
-    flex: 1,
-  },
-  roleBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 5,
-    marginBottom: 3,
-  },
-  rolePraktikan: {
+  logoBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
     backgroundColor: '#FFF7ED',
     borderWidth: 1,
-    borderColor: '#FFEDD5',
+    borderColor: '#FED7AA',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  roleAsisten: {
-    backgroundColor: '#F0FDFA',
-    borderWidth: 1,
-    borderColor: '#CCFBF1',
+  logoBadgeIcon: {
+    fontSize: 18,
   },
-  roleText: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  textPraktikan: {
-    color: '#EA580C',
-  },
-  textAsisten: {
-    color: '#0D9488',
-  },
-  userName: {
+  brandTitle: {
     fontSize: 15,
     fontWeight: '800',
     color: '#0F172A',
+    letterSpacing: -0.3,
+  },
+  brandSubtitle: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  navPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  navPillIcon: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#334155',
+  },
+  navPillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  rightGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  userPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  userPillPraktikan: {
+    backgroundColor: '#FFF7ED',
+    borderColor: '#FED7AA',
+  },
+  userPillAsisten: {
+    backgroundColor: '#F0FDFA',
+    borderColor: '#99F6E4',
+  },
+  userIcon: {
+    fontSize: 16,
+  },
+  userInfoWrap: {
+    gap: 1,
+  },
+  userName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+    maxWidth: 140,
   },
   userSub: {
     fontSize: 11,
     color: '#64748B',
-    marginTop: 1,
+  },
+  roleMiniBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  roleMiniPraktikan: {
+    backgroundColor: '#FED7AA',
+  },
+  roleMiniAsisten: {
+    backgroundColor: '#99F6E4',
+  },
+  roleMiniText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  textPraktikan: {
+    color: '#9A3412',
+  },
+  textAsisten: {
+    color: '#0F766E',
   },
   switchBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 8,
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#CBD5E1',
-  },
-  btnPressed: {
-    opacity: 0.85,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
   },
   switchBtnText: {
     fontSize: 12,
     fontWeight: '700',
     color: '#334155',
   },
+  btnPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.98 }],
+  },
+
+  /* Centered Popup Modal */
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
   modalDismiss: {
-    flex: 1,
+    ...StyleSheet.absoluteFill,
   },
-  modalContent: {
+  modalPopupCard: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 28,
-    maxHeight: '75%',
-    maxWidth: 520,
+    borderRadius: 20,
+    padding: 22,
+    maxWidth: 480,
     width: '100%',
-    alignSelf: 'center',
+    maxHeight: '82%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 25,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    zIndex: 1,
   },
-  modalHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#CBD5E1',
-    alignSelf: 'center',
-    marginBottom: 14,
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  modalIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalIconPraktikan: {
+    backgroundColor: '#FFF7ED',
+    borderColor: '#FED7AA',
+  },
+  modalIconAsisten: {
+    backgroundColor: '#F0FDFA',
+    borderColor: '#99F6E4',
+  },
+  modalIconEmoji: {
+    fontSize: 22,
   },
   modalTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '800',
     color: '#0F172A',
+    letterSpacing: -0.3,
   },
   modalSubtitle: {
     fontSize: 12,
     color: '#64748B',
     marginTop: 2,
-    marginBottom: 14,
   },
   modalList: {
-    marginVertical: 4,
+    marginVertical: 6,
   },
   accountRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
     paddingHorizontal: 12,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     marginBottom: 8,
@@ -407,39 +565,59 @@ const styles = StyleSheet.create({
     borderColor: '#EA580C',
     backgroundColor: '#FFF7ED',
   },
+  accountRowAsisten: {
+    borderColor: '#CCFBF1',
+  },
   accountRowSelectedAsisten: {
     borderColor: '#0D9488',
     backgroundColor: '#F0FDFA',
   },
   avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F1F5F9',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  avatarAsisten: {
+    backgroundColor: '#F0FDFA',
+    borderColor: '#99F6E4',
+  },
   avatarSelected: {
     backgroundColor: '#EA580C',
+    borderColor: '#EA580C',
   },
   avatarSelectedAsisten: {
     backgroundColor: '#0D9488',
+    borderColor: '#0D9488',
   },
   avatarText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
-    color: '#475569',
+    color: '#EA580C',
+  },
+  avatarTextAsisten: {
+    color: '#0D9488',
   },
   avatarTextSelected: {
     color: '#FFFFFF',
   },
   accountInfo: {
     flex: 1,
+    gap: 2,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   accountName: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1E293B',
+    color: '#0F172A',
   },
   accountNameSelected: {
     color: '#9A3412',
@@ -447,47 +625,73 @@ const styles = StyleSheet.create({
   accountNameSelectedAsisten: {
     color: '#115E59',
   },
+  kelasMiniChip: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 8,
+  },
+  kelasMiniText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#475569',
+  },
   accountMeta: {
     fontSize: 12,
     color: '#64748B',
-    marginTop: 1,
   },
-  checkIcon: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#EA580C',
-  },
-  checkIconAsisten: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0D9488',
-  },
-  modalActionButtons: {
-    marginTop: 12,
-    gap: 8,
-  },
-  switchRoleBtn: {
-    paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: '#FFF7ED',
-    borderWidth: 1,
-    borderColor: '#FFEDD5',
+  selectedCheckBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#EA580C',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  switchRoleBtnText: {
-    fontSize: 13,
+  checkText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  selectArrow: {
+    fontSize: 16,
     fontWeight: '700',
     color: '#EA580C',
   },
-  closeBtn: {
-    paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: '#F1F5F9',
-    alignItems: 'center',
+  modalFooter: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
   },
-  closeBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#475569',
+  btnSwitchRole: {
+    flex: 1.4,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnSwitchRoleText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  btnCloseModal: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: '#0F172A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnCloseModalText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

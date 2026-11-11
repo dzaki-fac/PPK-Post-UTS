@@ -91,28 +91,18 @@ export default function PraktikanDetailSesiScreen() {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      {/* Top Header Bar */}
-      <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 12) }]}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.backButton,
-            pressed && styles.buttonPressed,
-          ]}
-          onPress={() => router.back()}
-          accessibilityRole="button"
-          accessibilityLabel="Kembali ke daftar jadwal">
-          <Text style={styles.backButtonText}>← Kembali</Text>
-        </Pressable>
-        <Text style={styles.topBarTitle} numberOfLines={1}>
-          Detail Sesi Praktikum
-        </Text>
-        <View style={{ width: 60 }} />
-      </View>
-
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.contentWrap}>
-        {/* Main Session Card */}
-        <View style={styles.card}>
+          {/* Page Heading */}
+          <View style={styles.pageHeader}>
+            <Text style={styles.pageTitle}>Detail Sesi Praktikum</Text>
+            <Text style={styles.pageSubtitle}>
+              Informasi modul dan formulir presensi kehadiran praktikan
+            </Text>
+          </View>
+
+          {/* Main Session Card */}
+          <View style={styles.card}>
           <View style={styles.cardHeader}>
             <View style={styles.cardTitleWrap}>
               <Text style={styles.praktikumTitle}>{sesi.praktikum}</Text>
@@ -428,6 +418,20 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 40,
     gap: 16,
+  },
+  pageHeader: {
+    gap: 4,
+    marginBottom: 4,
+  },
+  pageTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.4,
+  },
+  pageSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
   },
   card: {
     backgroundColor: '#FFFFFF',

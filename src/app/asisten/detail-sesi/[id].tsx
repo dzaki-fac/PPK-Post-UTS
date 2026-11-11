@@ -122,23 +122,16 @@ export default function DetailSesiAsistenScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Top Header Bar */}
-      <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 12) }]}>
-        <Pressable
-          style={({ pressed }) => [styles.backButton, pressed && styles.buttonPressed]}
-          onPress={() => router.back()}
-          accessibilityRole="button"
-          accessibilityLabel="Kembali ke daftar jadwal asisten">
-          <Text style={styles.backButtonText}>← Kembali</Text>
-        </Pressable>
-        <Text style={styles.topBarTitle} numberOfLines={1}>
-          Kelola Sesi Praktikum
-        </Text>
-        <View style={{ width: 64 }} />
-      </View>
-
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.contentWrap}>
+          {/* Page Heading */}
+          <View style={styles.pageHeader}>
+            <Text style={styles.pageTitle}>Kelola Sesi Praktikum</Text>
+            <Text style={styles.pageSubtitle}>
+              Kontrol pembukaan sesi dan pantau daftar presensi mahasiswa secara real-time
+            </Text>
+          </View>
+
           {/* Main Session Info Card */}
           <View style={styles.card}>
             <View style={styles.cardHeader}>
@@ -391,6 +384,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
+  },
+  pageHeader: {
+    gap: 4,
+    marginBottom: 4,
+  },
+  pageTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.4,
+  },
+  pageSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
   },
   contentWrap: {
     width: '100%',

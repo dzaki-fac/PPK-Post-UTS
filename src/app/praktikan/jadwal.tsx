@@ -46,6 +46,7 @@ export default function PraktikanJadwalScreen() {
     return (
       <SesiCard
         sesi={item}
+        role="praktikan"
         isHadir={isHadir}
         waktuHadir={presensiItem?.waktuKehadiran}
         onPress={() => handleCardPress(item)}
@@ -54,64 +55,67 @@ export default function PraktikanJadwalScreen() {
   };
 
   return (
-    <View style={styles.safeArea}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Jadwal Praktikum</Text>
-        <Text style={styles.headerSubtitle}>
-          Pilih sesi untuk melihat rincian atau mengisi kehadiran
-        </Text>
+    <View style={styles.container}>
+      <View style={styles.contentWrap}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Jadwal Praktikum</Text>
+          <Text style={styles.headerSubtitle}>
+            Pilih sesi untuk melihat rincian atau mengisi kehadiran
+          </Text>
 
-        {/* Filter Chips */}
-        <View style={styles.filterRow}>
-          <FilterChip
-            label="Semua"
-            active={filter === 'semua'}
-            count={sesiList.length}
-            onPress={() => setFilter('semua')}
-          />
-          <FilterChip
-            label="Dibuka"
-            active={filter === 'dibuka'}
-            count={sesiList.filter((s) => s.status === 'dibuka').length}
-            variant="dibuka"
-            onPress={() => setFilter('dibuka')}
-          />
-          <FilterChip
-            label="Belum Dibuka"
-            active={filter === 'belum-dibuka'}
-            count={sesiList.filter((s) => s.status === 'belum-dibuka').length}
-            variant="belum-dibuka"
-            onPress={() => setFilter('belum-dibuka')}
-          />
-          <FilterChip
-            label="Ditutup"
-            active={filter === 'ditutup'}
-            count={sesiList.filter((s) => s.status === 'ditutup').length}
-            variant="ditutup"
-            onPress={() => setFilter('ditutup')}
-          />
+          {/* Filter Chips */}
+          <View style={styles.filterRow}>
+            <FilterChip
+              label="Semua"
+              active={filter === 'semua'}
+              count={sesiList.length}
+              onPress={() => setFilter('semua')}
+            />
+            <FilterChip
+              label="Dibuka"
+              active={filter === 'dibuka'}
+              count={sesiList.filter((s) => s.status === 'dibuka').length}
+              variant="dibuka"
+              onPress={() => setFilter('dibuka')}
+            />
+            <FilterChip
+              label="Belum Dibuka"
+              active={filter === 'belum-dibuka'}
+              count={sesiList.filter((s) => s.status === 'belum-dibuka').length}
+              variant="belum-dibuka"
+              onPress={() => setFilter('belum-dibuka')}
+            />
+            <FilterChip
+              label="Ditutup"
+              active={filter === 'ditutup'}
+              count={sesiList.filter((s) => s.status === 'ditutup').length}
+              variant="ditutup"
+              onPress={() => setFilter('ditutup')}
+            />
+          </View>
         </View>
-      </View>
 
-      <FlatList
-        data={filteredSesiList}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.listContainer}
-        ListEmptyComponent={
-          <EmptyState
-            icon="📅"
-            title="Tidak Ada Sesi"
-            message={
-              filter === 'semua'
-                ? 'Belum ada jadwal praktikum yang tersedia saat ini.'
-                : `Tidak ada sesi dengan status "${filter}".`
-            }
-            actionText={filter !== 'semua' ? 'Tampilkan Semua Sesi' : undefined}
-            onAction={filter !== 'semua' ? () => setFilter('semua') : undefined}
-          />
-        }
-      />
+        <FlatList
+          data={filteredSesiList}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <EmptyState
+              icon="📅"
+              title="Tidak Ada Sesi"
+              message={
+                filter === 'semua'
+                  ? 'Belum ada jadwal praktikum yang tersedia saat ini.'
+                  : `Tidak ada sesi dengan status "${filter}".`
+              }
+              actionText={filter !== 'semua' ? 'Tampilkan Semua Sesi' : undefined}
+              onAction={filter !== 'semua' ? () => setFilter('semua') : undefined}
+            />
+          }
+        />
+      </View>
     </View>
   );
 }
@@ -178,9 +182,15 @@ function FilterChip({
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
+  },
+  contentWrap: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 840,
+    alignSelf: 'center',
   },
   header: {
     paddingHorizontal: 16,
@@ -219,7 +229,7 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   chipActive: {
-    backgroundColor: '#EA580C', // LocalGuide Red-Orange
+    backgroundColor: '#EA580C',
     borderColor: '#EA580C',
   },
   chipPressed: {

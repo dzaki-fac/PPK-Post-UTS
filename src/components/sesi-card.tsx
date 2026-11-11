@@ -8,10 +8,21 @@ interface SesiCardProps {
   sesi: Sesi;
   isHadir?: boolean;
   waktuHadir?: string;
+  totalHadir?: number;
+  role?: 'praktikan' | 'asisten';
   onPress: () => void;
 }
 
-export function SesiCard({ sesi, isHadir, waktuHadir, onPress }: SesiCardProps) {
+export function SesiCard({
+  sesi,
+  isHadir,
+  waktuHadir,
+  totalHadir,
+  role = 'praktikan',
+  onPress,
+}: SesiCardProps) {
+  const isAsisten = role === 'asisten';
+
   return (
     <Pressable
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
@@ -59,8 +70,21 @@ export function SesiCard({ sesi, isHadir, waktuHadir, onPress }: SesiCardProps) 
         </View>
       ) : null}
 
-      {/* Attendance status banner if student already attended */}
-      {isHadir ? (
+      {/* Asisten metadata banner */}
+      {isAsisten ? (
+        <View style={styles.asistenFooter}>
+          <View style={styles.attendanceCountBadge}>
+            <Text style={styles.attendanceCountIcon}>👥</Text>
+            <Text style={styles.attendanceCountText}>
+              {totalHadir !== undefined ? `${totalHadir} Mahasiswa Hadir` : 'Kelola Kehadiran'}
+            </Text>
+          </View>
+          <Text style={styles.actionHint}>Kelola sesi →</Text>
+        </View>
+      ) : null}
+
+      {/* Praktikan attendance banner if student already attended */}
+      {!isAsisten && isHadir ? (
         <View style={styles.attendanceBanner}>
           <Text style={styles.attendanceIcon}>✓</Text>
           <View style={styles.attendanceTextWrap}>
@@ -83,11 +107,11 @@ const styles = StyleSheet.create({
     marginVertical: 6,
     marginHorizontal: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E2E8F0',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
     elevation: 2,
   },
   cardPressed: {
@@ -166,6 +190,39 @@ const styles = StyleSheet.create({
   locationText: {
     fontSize: 12,
     color: '#64748B',
+  },
+  asistenFooter: {
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F8FAFC',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  attendanceCountBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  attendanceCountIcon: {
+    fontSize: 12,
+  },
+  attendanceCountText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  actionHint: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#EA580C',
   },
   attendanceBanner: {
     marginTop: 12,

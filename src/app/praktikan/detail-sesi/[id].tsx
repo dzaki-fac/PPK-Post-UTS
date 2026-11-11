@@ -110,6 +110,7 @@ export default function PraktikanDetailSesiScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.contentWrap}>
         {/* Main Session Card */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
@@ -321,6 +322,7 @@ export default function PraktikanDetailSesiScreen() {
             </View>
           )}
         </View>
+        </View>
       </ScrollView>
 
       {/* Confirmation Modal / Bottom Sheet (FR-6.2, B4) */}
@@ -384,6 +386,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
+  },
+  contentWrap: {
+    width: '100%',
+    maxWidth: 840,
+    alignSelf: 'center',
+    gap: 16,
   },
   topBar: {
     flexDirection: 'row',

@@ -82,59 +82,68 @@ export default function PraktikanRiwayatScreen() {
   };
 
   return (
-    <View style={styles.safeArea}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Riwayat Kehadiran</Text>
-        <Text style={styles.headerSubtitle}>
-          Daftar sesi praktikum yang telah Anda hadiri dan catat presensinya
-        </Text>
+    <View style={styles.container}>
+      <View style={styles.contentWrap}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Riwayat Kehadiran</Text>
+          <Text style={styles.headerSubtitle}>
+            Daftar sesi praktikum yang telah Anda hadiri dan catat presensinya
+          </Text>
 
-        {/* Attendance Statistics Banner */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statBox}>
-            <Text style={styles.statNumber}>{totalHadir}</Text>
-            <Text style={styles.statLabel}>Sesi Dihadiri</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statBox}>
-            <Text style={styles.statNumber}>{totalSesiTersedia}</Text>
-            <Text style={styles.statLabel}>Total Sesi Terjadwal</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statBox}>
-            <Text style={[styles.statNumber, { color: '#16A34A' }]}>
-              {totalSesiTersedia > 0
-                ? `${Math.round((totalHadir / totalSesiTersedia) * 100)}%`
-                : '0%'}
-            </Text>
-            <Text style={styles.statLabel}>Tingkat Kehadiran</Text>
+          {/* Attendance Statistics Banner */}
+          <View style={styles.statsContainer}>
+            <View style={styles.statBox}>
+              <Text style={styles.statNumber}>{totalHadir}</Text>
+              <Text style={styles.statLabel}>Sesi Dihadiri</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statBox}>
+              <Text style={styles.statNumber}>{totalSesiTersedia}</Text>
+              <Text style={styles.statLabel}>Total Sesi Terjadwal</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statBox}>
+              <Text style={[styles.statNumber, { color: '#16A34A' }]}>
+                {totalSesiTersedia > 0
+                  ? `${Math.round((totalHadir / totalSesiTersedia) * 100)}%`
+                  : '0%'}
+              </Text>
+              <Text style={styles.statLabel}>Tingkat Kehadiran</Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      <FlatList
-        data={riwayatList}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.listContainer}
-        ListEmptyComponent={
-          <EmptyState
-            icon="📝"
-            title="Belum Ada Riwayat Presensi"
-            message={`Praktikan ${currentPraktikan?.nama ?? ''} belum memiliki catatan presensi. Buka tab Jadwal untuk melakukan presensi pada sesi yang dibuka.`}
-            actionText="Lihat Jadwal Praktikum"
-            onAction={() => router.push('/praktikan/jadwal')}
-          />
-        }
-      />
+        <FlatList
+          data={riwayatList}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <EmptyState
+              icon="📝"
+              title="Belum Ada Riwayat Presensi"
+              message={`Praktikan ${currentPraktikan?.nama ?? ''} belum memiliki catatan presensi. Buka tab Jadwal untuk melakukan presensi pada sesi yang dibuka.`}
+              actionText="Lihat Jadwal Praktikum"
+              onAction={() => router.push('/praktikan/jadwal')}
+            />
+          }
+        />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
+  },
+  contentWrap: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 840,
+    alignSelf: 'center',
   },
   header: {
     paddingHorizontal: 16,
@@ -197,11 +206,11 @@ const styles = StyleSheet.create({
     marginVertical: 6,
     marginHorizontal: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E2E8F0',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
-    shadowRadius: 5,
+    shadowRadius: 4,
     elevation: 2,
   },
   cardPressed: {

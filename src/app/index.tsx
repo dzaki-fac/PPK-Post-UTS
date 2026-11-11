@@ -74,11 +74,11 @@ export default function IndexScreen() {
               : DAFTAR_ASISTEN.map((asisten) => (
                   <TouchableOpacity
                     key={asisten.id}
-                    style={styles.card}
+                    style={[styles.card, styles.cardAsisten]}
                     onPress={() => handlePilihIdentitas(asisten)}
                   >
-                    <ThemedText type="defaultSemiBold" style={styles.cardTitle}>{asisten.nama}</ThemedText>
-                    <ThemedText type="small" style={styles.cardDetail}>Asisten praktikum</ThemedText>
+                    <ThemedText type="defaultSemiBold" style={[styles.cardTitle, styles.cardTitleAsisten]}>{asisten.nama}</ThemedText>
+                    <ThemedText type="small" style={styles.cardDetail}>Asisten pengampu laboratorium</ThemedText>
                   </TouchableOpacity>
                 ))}
           </ScrollView>
@@ -93,13 +93,13 @@ export default function IndexScreen() {
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.hero}>
             <ThemedText type="smallBold" style={styles.eyebrow}>
-              PORTAL PRAKTIKUM
+              PORTAL AKADEMIK
             </ThemedText>
             <ThemedText type="title" style={styles.title}>
               Presensi Praktikum
             </ThemedText>
             <ThemedText type="default" style={styles.subtitle}>
-              Kelola kehadiran praktikum dengan alur yang sederhana.
+              Sistem presensi laboratorium terpadu untuk praktikan dan asisten.
             </ThemedText>
           </View>
 
@@ -108,18 +108,18 @@ export default function IndexScreen() {
               style={styles.roleButton}
               onPress={() => handlePilihPeran('praktikan')}
             >
-              <ThemedText type="smallBold" style={styles.roleLabel}>PRAKTIKAN</ThemedText>
-              <ThemedText type="subtitle" style={styles.roleTitle}>Masuk sebagai praktikan</ThemedText>
-              <ThemedText type="small" style={styles.roleDescription}>Lihat jadwal dan lakukan presensi.</ThemedText>
+              <ThemedText type="smallBold" style={styles.roleLabel}>MAHASISWA / PRAKTIKAN</ThemedText>
+              <ThemedText type="subtitle" style={styles.roleTitle}>Masuk sebagai Praktikan</ThemedText>
+              <ThemedText type="small" style={styles.roleDescription}>Lihat jadwal praktikum, isi presensi, dan pantau riwayat kehadiran.</ThemedText>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.roleButton}
+              style={[styles.roleButton, styles.roleButtonAsisten]}
               onPress={() => handlePilihPeran('asisten')}
             >
-              <ThemedText type="smallBold" style={styles.roleLabel}>ASISTEN</ThemedText>
-              <ThemedText type="subtitle" style={styles.roleTitle}>Masuk sebagai asisten</ThemedText>
-              <ThemedText type="small" style={styles.roleDescription}>Buka sesi dan pantau presensi.</ThemedText>
+              <ThemedText type="smallBold" style={[styles.roleLabel, styles.roleLabelAsisten]}>ASISTEN LABORATORIUM</ThemedText>
+              <ThemedText type="subtitle" style={[styles.roleTitle, styles.roleTitleAsisten]}>Masuk sebagai Asisten</ThemedText>
+              <ThemedText type="small" style={styles.roleDescription}>Buka dan tutup sesi praktikum serta pantau rekapitulasi kehadiran kelas.</ThemedText>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -173,14 +173,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF7ED',
     gap: Spacing.one,
   },
+  roleButtonAsisten: {
+    borderColor: '#CCFBF1',
+    backgroundColor: '#F0FDFA',
+  },
   roleLabel: {
     color: '#EA580C',
     letterSpacing: 1,
+  },
+  roleLabelAsisten: {
+    color: '#0D9488',
   },
   roleTitle: {
     fontSize: 22,
     lineHeight: 28,
     color: '#9A3412',
+  },
+  roleTitleAsisten: {
+    color: '#115E59',
   },
   roleDescription: {
     color: '#475569',
@@ -212,6 +222,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF7ED',
     gap: Spacing.one,
   },
+  cardAsisten: {
+    borderColor: '#CCFBF1',
+    backgroundColor: '#F0FDFA',
+  },
   identityTitle: {
     alignSelf: 'center',
     fontSize: 36,
@@ -224,6 +238,9 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     color: '#9A3412',
+  },
+  cardTitleAsisten: {
+    color: '#115E59',
   },
   cardDetail: {
     color: '#475569',

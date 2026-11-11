@@ -8,6 +8,7 @@ export type Praktikan = {
 export type Asisten = {
   id: string;
   nama: string;
+  peranLab?: string;
 };
 
 export type SesiStatus = 'belum-dibuka' | 'dibuka' | 'ditutup';

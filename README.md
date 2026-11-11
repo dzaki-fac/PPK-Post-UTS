@@ -40,13 +40,12 @@ Pada Sprint 1 ini, aplikasi mendemonstrasikan siklus lengkap kegiatan praktikum:
   - **Hapus Sesi**: Asisten dapat menghapus sesi dengan dialog konfirmasi aman.
 - **Progress Bar Tingkat Kehadiran**: Bar visual ketercapaian presensi kelas secara real-time.
 - **Dialog Modal Konfirmasi**: Setiap aksi pembukaan, penutupan, buka kembali, atau penghapusan sesi diamankan dengan `ConfirmationModal` untuk mencegah kesalahan penekanan.
-- **CRUD Master Data Praktikan (Mahasiswa)**:
-  - Tab navigasi khusus **`Data Praktikan`** (`/asisten/mahasiswa`).
-  - **Tambah Mahasiswa**: Form modal penambahan mahasiswa baru dengan nama, format NIM resmi 14 digit, dan pilihan kelas.
-  - **Edit Mahasiswa**: Modal pembaruan nama, NIM, atau kelas praktikan.
-  - **Hapus Mahasiswa**: Dialog konfirmasi penghapusan mahasiswa beserta riwayat presensinya.
-  - **Pencarian & Filter Cepat**: Search bar instan berdasarkan nama/NIM dan filter chip kelas.
-  - Sinkronisasi instan ke seluruh sistem (portal landing, pemilih akun, dan roster sesi).
+- **CRUD Master Data Pengguna (Praktikan & Asisten)**:
+  - Tab navigasi khusus **`Pengguna`** (`/asisten/mahasiswa`) dengan switcher praktikan vs asisten.
+  - **Kelola Praktikan**: Tambah mahasiswa baru (nama, NIM resmi 14 digit, kelas), edit identitas mahasiswa, dan hapus mahasiswa.
+  - **Kelola Asisten Lab**: Tambah akun asisten baru (`+ Tambah Asisten`), edit nama & penugasan lab, serta hapus asisten dengan proteksi minimal 1 asisten aktif.
+  - **Pencarian & Filter Cepat**: Search bar instan dan filter chip kelas.
+  - Sinkronisasi instan ke seluruh sistem (portal landing, pemilih akun modal ganti akun, dan roster sesi).
 - **Roster Lengkap Kelas (Hadir vs Belum Hadir)**: Menampilkan seluruh mahasiswa terdaftar pada kelas sesi tersebut, membedakan siapa yang sudah presensi (disertai jam kehadiran) dan siapa yang belum hadir, dilengkapi filter tab.
 - **Rekapitulasi Kehadiran Sesi**: Halaman rekapitulasi kelas per sesi dengan indikator persentase kehadiran, jumlah mahasiswa hadir, dan daftar rincian nama mahasiswa.
 

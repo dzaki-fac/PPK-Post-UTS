@@ -51,8 +51,8 @@ export default function AsistenLayout() {
         <Tabs.Screen
           name="mahasiswa"
           options={{
-            title: 'Data Praktikan',
-            tabBarLabel: 'Praktikan',
+            title: 'Kelola Pengguna',
+            tabBarLabel: 'Pengguna',
           }}
         />
         <Tabs.Screen

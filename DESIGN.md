@@ -171,13 +171,17 @@ export const themeLayout = {
    - Progress bar persentase kehadiran kelas.
    - Tombol toggle untuk membuka/menutup daftar roster mahasiswa.
 
-### 6.5 Manajemen Data Praktikan (`/asisten/mahasiswa`)
-1. Header Asisten dengan live status tag `Master Data Praktikan`.
-2. Baris Judul + Tombol **`+ Tambah Praktikan`** (membuka modal form mahasiswa baru).
-3. 4 Kartu Metrik Overview: Total Praktikan, Praktikan Kelas A, Praktikan Kelas B, Total Presensi Masuk.
-4. Search Bar real-time (pencarian instan berdasarkan Nama atau NIM) dan Filter Chips Kelas (`Semua`, `Kelas A`, `Kelas B`).
-5. Kartu Praktikan: Avatar inisial lingkaran, Nama Mahasiswa, Chip Kelas A/B, NIM resmi, badge jumlah sesi hadir, tombol **`Edit`** (membuka modal edit nama/NIM/kelas), dan tombol **`Hapus`** (membuka dialog konfirmasi aman yang sekaligus membersihkan data presensi mahasiswa terkait).
-6. Sinkronisasi Instan: Praktikan yang ditambahkan atau diedit langsung muncul pada pemilihan akun portal utama (`/`), selector `Ganti Akun`, dan roster kelas sesi praktikum.
+### 6.5 Manajemen Data Pengguna: Praktikan & Asisten (`/asisten/mahasiswa`)
+1. Header Asisten dengan live status tag `Master Data Pengguna`.
+2. Segmented Switcher Navigasi: Beralih instan antara **Praktikan** dan **Asisten Lab**.
+3. **Pengelolaan Praktikan:**
+   - Tombol **`+ Tambah Praktikan`**, 4 kartu metrik overview (Total Praktikan, Kelas A, Kelas B, Total Presensi Masuk).
+   - Search bar real-time & filter chips kelas (`Semua`, `Kelas A`, `Kelas B`).
+   - Kartu mahasiswa: Avatar inisial, nama, chip kelas, NIM resmi, badge kehadiran, tombol `Edit` & `Hapus`.
+4. **Pengelolaan Asisten Laboratorium:**
+   - Tombol **`+ Tambah Asisten`**, 4 kartu metrik overview (Total Asisten, Sesi Diampu, Mahasiswa Terbimbing, Status Akun).
+   - Search bar asisten, kartu profil asisten dengan penugasan lab, tombol `Edit` (perbarui nama/tugas) & tombol `Hapus` (dengan proteksi minimal 1 asisten aktif).
+5. **Sinkronisasi Instan:** Seluruh data praktikan dan asisten baru langsung tersinkronisasi ke portal landing (`/`), dialog `Ganti Akun`, dan roster kehadiran kelas.
 
 ### 6.6 Jadwal Praktikan (`/praktikan/jadwal`)
 1. Header Mahasiswa dengan live status tag `Sesi Real-Time`.

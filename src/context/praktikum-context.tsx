@@ -27,6 +27,9 @@ interface PraktikumContextType {
   tambahPraktikan: (data: Omit<Praktikan, 'id'>) => Praktikan;
   editPraktikan: (id: string, updates: Partial<Omit<Praktikan, 'id'>>) => boolean;
   hapusPraktikan: (id: string) => boolean;
+  tambahAsisten: (data: Omit<Asisten, 'id'>) => Asisten;
+  editAsisten: (id: string, updates: Partial<Omit<Asisten, 'id'>>) => boolean;
+  hapusAsisten: (id: string) => boolean;
   bukaSesi: (sesiId: string) => boolean;
   tutupSesi: (sesiId: string) => boolean;
   bukaKembaliSesi: (sesiId: string) => boolean;
@@ -63,6 +66,65 @@ export function PraktikumProvider({ children }: { children: React.ReactNode }) {
   const [sesiList, setSesiList] = useState<Sesi[]>(DUMMY_SESI);
   const [presensiList, setPresensiList] = useState<Presensi[]>(DUMMY_PRESENSI_AWAL);
   const [praktikanList, setPraktikanList] = useState<Praktikan[]>(DUMMY_PRAKTIKAN);
+  const [asistenList, setAsistenList] = useState<Asisten[]>(DUMMY_ASISTEN);
+
+  const tambahAsisten = useCallback((data: Omit<Asisten, 'id'>): Asisten => {
+    const newAsisten: Asisten = {
+      id: `ast-${Date.now()}`,
+      nama: data.nama.trim(),
+      peranLab: data.peranLab?.trim() || 'Pengampu Laboratorium Komputasi',
+    };
+    setAsistenList((prev) => [...prev, newAsisten]);
+    return newAsisten;
+  }, []);
+
+  const editAsisten = useCallback(
+    (id: string, updates: Partial<Omit<Asisten, 'id'>>): boolean => {
+      let success = false;
+      setAsistenList((prev) =>
+        prev.map((a) => {
+          if (a.id === id) {
+            success = true;
+            return {
+              ...a,
+              ...(updates.nama !== undefined ? { nama: updates.nama.trim() } : {}),
+              ...(updates.peranLab !== undefined ? { peranLab: updates.peranLab.trim() } : {}),
+            };
+          }
+          return a;
+        })
+      );
+      setCurrentAsisten((prev) =>
+        prev && prev.id === id ? { ...prev, ...updates } : prev
+      );
+      return success;
+    },
+    []
+  );
+
+  const hapusAsisten = useCallback((id: string): boolean => {
+    let success = false;
+    setAsistenList((prev) => {
+      if (prev.length <= 1) {
+        return prev;
+      }
+      if (prev.some((a) => a.id === id)) {
+        success = true;
+        return prev.filter((a) => a.id !== id);
+      }
+      return prev;
+    });
+    if (success) {
+      setCurrentAsisten((prev) => {
+        if (prev && prev.id === id) {
+          const remaining = asistenList.filter((a) => a.id !== id);
+          return remaining[0] ?? null;
+        }
+        return prev;
+      });
+    }
+    return success;
+  }, [asistenList]);
 
   const tambahPraktikan = useCallback((data: Omit<Praktikan, 'id'>): Praktikan => {
     const newPraktikan: Praktikan = {
@@ -238,11 +300,12 @@ export function PraktikumProvider({ children }: { children: React.ReactNode }) {
       // Validasi kesesuaian kelas praktikan vs kelas sesi
       const praktikan = praktikanList.find((p) => p.id === praktikanId);
       if (praktikan && sesi.kelas) {
-        const kodeKelas = sesi.kelas.replace(/[^A-Za-z]/g, '').slice(-1);
-        if (kodeKelas && praktikan.kelas.toUpperCase() !== kodeKelas.toUpperCase()) {
+        const studentClass = praktikan.kelas.replace(/[^A-Za-z]/g, '').slice(-1).toUpperCase();
+        const sessionClass = sesi.kelas.replace(/[^A-Za-z]/g, '').slice(-1).toUpperCase();
+        if (studentClass && sessionClass && studentClass !== sessionClass) {
           return {
             success: false,
-            message: `Presensi ditolak. Sesi ini khusus untuk ${sesi.kelas}, sedangkan Anda terdaftar di Kelas ${praktikan.kelas}.`,
+            message: `Presensi ditolak. Sesi ini khusus untuk Kelas ${sessionClass}, sedangkan Anda terdaftar di Kelas ${studentClass}.`,
           };
         }
       }
@@ -343,6 +406,7 @@ export function PraktikumProvider({ children }: { children: React.ReactNode }) {
     setSesiList(DUMMY_SESI);
     setPresensiList(DUMMY_PRESENSI_AWAL);
     setPraktikanList(DUMMY_PRAKTIKAN);
+    setAsistenList(DUMMY_ASISTEN);
   }, []);
 
   const pengguna = useMemo<IdentitasPengguna>(() => {
@@ -363,15 +427,18 @@ export function PraktikumProvider({ children }: { children: React.ReactNode }) {
       sesiList,
       presensiList,
       allPraktikan: praktikanList,
-      allAsisten: DUMMY_ASISTEN,
+      allAsisten: asistenList,
       daftarPraktikan: praktikanList,
-      daftarAsisten: DUMMY_ASISTEN,
+      daftarAsisten: asistenList,
       setRole,
       setCurrentPraktikan,
       setCurrentAsisten,
       tambahPraktikan,
       editPraktikan,
       hapusPraktikan,
+      tambahAsisten,
+      editAsisten,
+      hapusAsisten,
       bukaSesi,
       tutupSesi,
       bukaKembaliSesi,
@@ -398,9 +465,13 @@ export function PraktikumProvider({ children }: { children: React.ReactNode }) {
       sesiList,
       presensiList,
       praktikanList,
+      asistenList,
       tambahPraktikan,
       editPraktikan,
       hapusPraktikan,
+      tambahAsisten,
+      editAsisten,
+      hapusAsisten,
       bukaSesi,
       tutupSesi,
       bukaKembaliSesi,

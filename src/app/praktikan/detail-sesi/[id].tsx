@@ -77,8 +77,16 @@ export default function PraktikanDetailSesiScreen() {
       )
     : undefined;
 
+  const normalizeClass = (cls?: string) => {
+    if (!cls) return '';
+    return cls.replace(/[^A-Za-z]/g, '').slice(-1).toUpperCase();
+  };
+
+  const studentClass = normalizeClass(currentPraktikan?.kelas);
+  const sessionClass = normalizeClass(sesi.kelas);
+
   const isClassMismatch = Boolean(
-    currentPraktikan && currentPraktikan.kelas !== sesi.kelas
+    studentClass && sessionClass && studentClass !== sessionClass
   );
 
   const isSubmitDisabled =
@@ -300,7 +308,7 @@ export default function PraktikanDetailSesiScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.classMismatchTitle}>Perhatian: Kelas Tidak Sesuai</Text>
                     <Text style={styles.classMismatchDesc}>
-                      Anda terdaftar di {currentPraktikan?.kelas}, sedangkan sesi praktikum ini khusus untuk {sesi.kelas}. Sistem membatasi presensi hanya untuk praktikan di kelas terkait.
+                      Anda terdaftar di Kelas {studentClass}, sedangkan sesi praktikum ini khusus untuk Kelas {sessionClass}. Sistem membatasi presensi hanya untuk praktikan di kelas terkait.
                     </Text>
                   </View>
                 </View>

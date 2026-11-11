@@ -14,6 +14,11 @@ import { SesiCard } from '@/components/sesi-card';
 import { usePraktikum } from '@/context/praktikum-context';
 import { Sesi, SesiStatus } from '@/types/praktikum';
 
+const normalizeClass = (cls?: string) => {
+  if (!cls) return '';
+  return cls.replace(/[^A-Za-z]/g, '').slice(-1).toUpperCase();
+};
+
 type FilterType = 'semua' | 'kelas-saya' | SesiStatus;
 
 export default function PraktikanJadwalScreen() {
@@ -21,14 +26,16 @@ export default function PraktikanJadwalScreen() {
     usePraktikum();
   const [filter, setFilter] = useState<FilterType>('semua');
 
+  const studentClass = normalizeClass(currentPraktikan?.kelas);
+
   const filteredSesiList = useMemo(() => {
     if (filter === 'semua') return sesiList;
     if (filter === 'kelas-saya') {
-      if (!currentPraktikan?.kelas) return sesiList;
-      return sesiList.filter((s) => s.kelas === currentPraktikan.kelas);
+      if (!studentClass) return sesiList;
+      return sesiList.filter((s) => normalizeClass(s.kelas) === studentClass);
     }
     return sesiList.filter((s) => s.status === filter);
-  }, [sesiList, filter, currentPraktikan]);
+  }, [sesiList, filter, studentClass]);
 
   const totalSesi = sesiList.length;
   const totalDibuka = sesiList.filter((s) => s.status === 'dibuka').length;
@@ -123,9 +130,9 @@ export default function PraktikanJadwalScreen() {
           />
           {currentPraktikan ? (
             <FilterChip
-              label={`Kelas Saya (${currentPraktikan.kelas})`}
+              label={`Kelas Saya (${studentClass})`}
               active={filter === 'kelas-saya'}
-              count={sesiList.filter((s) => s.kelas === currentPraktikan.kelas).length}
+              count={sesiList.filter((s) => normalizeClass(s.kelas) === studentClass).length}
               onPress={() => setFilter('kelas-saya')}
             />
           ) : null}

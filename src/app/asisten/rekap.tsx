@@ -18,22 +18,34 @@ function getStatusLabel(status: StatusSesi): string {
   }
 }
 
-function formatWaktu(isoString: string): string {
-  const date = new Date(isoString);
-  return date.toLocaleTimeString('id-ID', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+function formatWaktu(waktuString: string): string {
+  if (!waktuString) return '-';
+  if (waktuString.includes(',')) {
+    const parts = waktuString.split(',');
+    return parts[1]?.trim() || waktuString;
+  }
+  const date = new Date(waktuString);
+  if (!isNaN(date.getTime())) {
+    return date.toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+  return waktuString;
 }
 
 function formatTanggal(dateString: string): string {
+  if (!dateString) return '-';
   const date = new Date(dateString);
-  return date.toLocaleDateString('id-ID', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
+  if (!isNaN(date.getTime())) {
+    return date.toLocaleDateString('id-ID', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  }
+  return dateString;
 }
 
 type RekapItem = {

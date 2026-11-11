@@ -1,5 +1,5 @@
 import { router, Tabs } from 'expo-router';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
@@ -22,6 +22,14 @@ export default function AsistenLayout() {
           tabBarStyle: {
             backgroundColor: '#FFFFFF',
             borderTopColor: '#E2E8F0',
+            borderTopWidth: 1,
+            height: 60,
+            paddingBottom: 8,
+            paddingTop: 6,
+          },
+          tabBarLabelStyle: {
+            fontSize: 12,
+            fontWeight: '600',
           },
           headerShown: true,
           headerTitleAlign: 'center',
@@ -55,13 +63,21 @@ export default function AsistenLayout() {
         <Tabs.Screen
           name="jadwal"
           options={{
-            title: 'Jadwal',
+            title: 'Jadwal Praktikum',
+            tabBarLabel: 'Jadwal',
+            tabBarIcon: ({ color }) => (
+              <Text style={{ fontSize: 18, color }}>📅</Text>
+            ),
           }}
         />
         <Tabs.Screen
           name="rekap"
           options={{
-            title: 'Rekap',
+            title: 'Rekap Presensi',
+            tabBarLabel: 'Rekap',
+            tabBarIcon: ({ color }) => (
+              <Text style={{ fontSize: 18, color }}>📊</Text>
+            ),
           }}
         />
         <Tabs.Screen

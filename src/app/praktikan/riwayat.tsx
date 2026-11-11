@@ -3,7 +3,6 @@ import React, { useMemo } from 'react';
 import {
   FlatList,
   Pressable,
-  SafeAreaView,
   StyleSheet,
   Text,
   View,
@@ -83,7 +82,7 @@ export default function PraktikanRiwayatScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Riwayat Kehadiran</Text>
         <Text style={styles.headerSubtitle}>
@@ -128,7 +127,7 @@ export default function PraktikanRiwayatScreen() {
           />
         }
       />
-    </SafeAreaView>
+    </View>
   );
 }
 

@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ConfirmationModal } from '@/components/confirmation-modal';
 import { EmptyState } from '@/components/empty-state';
@@ -17,6 +18,7 @@ import { StatusBadge } from '@/components/status-badge';
 import { usePraktikum } from '@/context/praktikum-context';
 
 export default function PraktikanDetailSesiScreen() {
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const {
     sesiList,
@@ -37,7 +39,7 @@ export default function PraktikanDetailSesiScreen() {
   if (!sesi) {
     return (
       <View style={styles.container}>
-        <View style={styles.topBar}>
+        <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 12) }]}>
           <Pressable
             style={styles.backButton}
             onPress={() => router.back()}
@@ -90,7 +92,7 @@ export default function PraktikanDetailSesiScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       {/* Top Header Bar */}
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 12) }]}>
         <Pressable
           style={({ pressed }) => [
             styles.backButton,

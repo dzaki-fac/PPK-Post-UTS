@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
   FlatList,
@@ -7,12 +8,14 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { usePraktikum } from '@/context/praktikum-context';
 import { Praktikan } from '@/types/praktikum';
 
 export function RoleHeader() {
-  const { role, currentPraktikan, currentAsisten, allPraktikan, setCurrentPraktikan } =
+  const insets = useSafeAreaInsets();
+  const { role, currentPraktikan, currentAsisten, allPraktikan, setCurrentPraktikan, logout } =
     usePraktikum();
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -29,9 +32,15 @@ export function RoleHeader() {
     setModalVisible(false);
   };
 
+  const handleKembaliKeBeranda = () => {
+    setModalVisible(false);
+    logout();
+    router.replace('/');
+  };
+
   return (
     <>
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingTop: Math.max(insets.top, 12) }]}>
         <View style={styles.leftCol}>
           <View style={styles.badgeRow}>
             <View
@@ -129,11 +138,19 @@ export function RoleHeader() {
               }}
             />
 
-            <Pressable
-              style={styles.closeBtn}
-              onPress={() => setModalVisible(false)}>
-              <Text style={styles.closeBtnText}>Tutup</Text>
-            </Pressable>
+            <View style={styles.modalActionButtons}>
+              <Pressable
+                style={styles.switchRoleBtn}
+                onPress={handleKembaliKeBeranda}>
+                <Text style={styles.switchRoleBtnText}>Ganti Peran / Ke Beranda</Text>
+              </Pressable>
+
+              <Pressable
+                style={styles.closeBtn}
+                onPress={() => setModalVisible(false)}>
+                <Text style={styles.closeBtnText}>Tutup</Text>
+              </Pressable>
+            </View>
           </View>
         </View>
       </Modal>
@@ -307,8 +324,24 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#EA580C',
   },
-  closeBtn: {
+  modalActionButtons: {
     marginTop: 12,
+    gap: 8,
+  },
+  switchRoleBtn: {
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FFEDD5',
+    alignItems: 'center',
+  },
+  switchRoleBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#EA580C',
+  },
+  closeBtn: {
     paddingVertical: 12,
     borderRadius: 8,
     backgroundColor: '#F1F5F9',

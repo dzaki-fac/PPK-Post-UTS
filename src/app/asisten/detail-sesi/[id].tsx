@@ -96,17 +96,26 @@ export default function DetailSesiAsistenScreen() {
     return daftarPraktikan.find((p) => p.id === id);
   };
 
-  const formatWaktu = (isoString: string): string => {
-    const date = new Date(isoString);
-    return date.toLocaleTimeString('id-ID', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+  const formatWaktu = (waktuString: string): string => {
+    if (!waktuString) return '-';
+    if (waktuString.includes(',')) {
+      const parts = waktuString.split(',');
+      return parts[1]?.trim() || waktuString;
+    }
+    const date = new Date(waktuString);
+    if (!isNaN(date.getTime())) {
+      return date.toLocaleTimeString('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    }
+    return waktuString;
   };
 
   return (
     <ThemedView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
         <TouchableOpacity
           accessibilityRole="button"
           onPress={() => router.replace('/')}
@@ -196,6 +205,7 @@ export default function DetailSesiAsistenScreen() {
           )}
         </View>
       </ScrollView>
+      </SafeAreaView>
 
       <Modal
         transparent

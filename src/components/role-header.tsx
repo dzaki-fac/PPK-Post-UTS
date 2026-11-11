@@ -1,4 +1,4 @@
-import { router, usePathname } from 'expo-router';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
   FlatList,
@@ -16,7 +16,6 @@ import { Asisten, Praktikan } from '@/types/praktikum';
 
 export function RoleHeader() {
   const insets = useSafeAreaInsets();
-  const pathname = usePathname();
   const {
     role,
     currentPraktikan,
@@ -30,7 +29,6 @@ export function RoleHeader() {
   const [modalVisible, setModalVisible] = useState(false);
 
   const isPraktikan = role === 'praktikan';
-  const isDetailSesi = pathname.includes('/detail-sesi');
 
   const name = isPraktikan
     ? currentPraktikan?.nama ?? 'Praktikan'
@@ -55,52 +53,30 @@ export function RoleHeader() {
     router.replace('/');
   };
 
-  const handleNavigationBack = () => {
-    if (isDetailSesi) {
-      router.back();
-    } else {
-      handleKembaliKeBeranda();
-    }
-  };
-
   return (
     <View style={styles.topNavbar}>
       <View
         style={[
           styles.navInner,
           {
-            paddingTop: Platform.OS === 'web' ? 10 : Math.max(insets.top - 6, 8),
-            paddingBottom: 10,
+            paddingTop: Platform.OS === 'web' ? 12 : Math.max(insets.top - 4, 10),
+            paddingBottom: 12,
           },
         ]}>
-        {/* Brand Group (Clean lettermark badge, zero emojis) */}
-        <View style={styles.leftGroup}>
-          <Pressable
-            style={({ pressed }) => [styles.brandRow, pressed && styles.btnPressed]}
-            onPress={handleKembaliKeBeranda}
-            accessibilityRole="button"
-            accessibilityLabel="Kembali ke Beranda Portal">
-            <View style={styles.logoBadge}>
-              <Text style={styles.logoBadgeText}>PPK</Text>
-            </View>
-            <View>
-              <Text style={styles.brandTitle}>PPK LabPortal</Text>
-              <Text style={styles.brandSubtitle}>Presensi & Manajemen Sesi</Text>
-            </View>
-          </Pressable>
-
-          {/* Navigation Pill (← Beranda or ← Kembali ke Jadwal) */}
-          <Pressable
-            style={({ pressed }) => [styles.navPill, pressed && styles.btnPressed]}
-            onPress={handleNavigationBack}
-            accessibilityRole="button"
-            accessibilityLabel={isDetailSesi ? 'Kembali ke Jadwal' : 'Kembali ke Beranda'}>
-            <Text style={styles.navPillIcon}>←</Text>
-            <Text style={styles.navPillText}>
-              {isDetailSesi ? 'Kembali ke Jadwal' : 'Beranda'}
-            </Text>
-          </Pressable>
-        </View>
+        {/* Brand Group (Clickable to return to portal landing) */}
+        <Pressable
+          style={({ pressed }) => [styles.brandRow, pressed && styles.btnPressed]}
+          onPress={handleKembaliKeBeranda}
+          accessibilityRole="button"
+          accessibilityLabel="PPK LabPortal Beranda">
+          <View style={styles.logoBadge}>
+            <Text style={styles.logoBadgeText}>PPK</Text>
+          </View>
+          <View>
+            <Text style={styles.brandTitle}>PPK LabPortal</Text>
+            <Text style={styles.brandSubtitle}>Presensi & Manajemen Sesi</Text>
+          </View>
+        </Pressable>
 
         {/* Right Group: User Profile Badge & Switch Account Button */}
         <View style={styles.rightGroup}>
@@ -154,6 +130,7 @@ export function RoleHeader() {
             onPress={() => setModalVisible(false)}
           />
           <View style={styles.modalPopupCard}>
+            {/* Modal Header with Close '✕' Button */}
             <View style={styles.modalHeader}>
               <View
                 style={[
@@ -168,16 +145,25 @@ export function RoleHeader() {
                   {isPraktikan ? 'MHS' : 'AST'}
                 </Text>
               </View>
-              <View style={{ flex: 1 }}>
+              <View style={styles.modalTitleBlock}>
                 <Text style={styles.modalTitle}>
                   {isPraktikan ? 'Pilih Akun Praktikan' : 'Pilih Akun Asisten'}
                 </Text>
                 <Text style={styles.modalSubtitle}>
-                  Pilih identitas untuk mensimulasikan alur presensi praktikum
+                  Klik salah satu akun untuk beralih profil
                 </Text>
               </View>
+              <Pressable
+                style={({ pressed }) => [styles.closeBtn, pressed && styles.btnPressed]}
+                onPress={() => setModalVisible(false)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Tutup dialog">
+                <Text style={styles.closeBtnText}>✕</Text>
+              </Pressable>
             </View>
 
+            {/* List of Accounts */}
             {isPraktikan ? (
               <FlatList
                 data={allPraktikan}
@@ -229,8 +215,8 @@ export function RoleHeader() {
                         <Text style={styles.accountMeta}>NIM: {item.nim}</Text>
                       </View>
                       {isSelected ? (
-                        <View style={styles.selectedCheckBadge}>
-                          <Text style={styles.checkText}>PILIHAN</Text>
+                        <View style={styles.activeBadgePraktikan}>
+                          <Text style={styles.activeBadgeText}>Aktif</Text>
                         </View>
                       ) : (
                         <Text style={styles.selectArrow}>Pilih →</Text>
@@ -291,8 +277,8 @@ export function RoleHeader() {
                         </Text>
                       </View>
                       {isSelected ? (
-                        <View style={[styles.selectedCheckBadge, { backgroundColor: '#0D9488' }]}>
-                          <Text style={styles.checkText}>PILIHAN</Text>
+                        <View style={styles.activeBadgeAsisten}>
+                          <Text style={styles.activeBadgeText}>Aktif</Text>
                         </View>
                       ) : (
                         <Text style={[styles.selectArrow, { color: '#0D9488' }]}>Pilih →</Text>
@@ -303,26 +289,23 @@ export function RoleHeader() {
               />
             )}
 
-            {/* Bottom Modal Actions */}
+            {/* Bottom Modal Action: Single Clean Switch Role Card */}
             <View style={styles.modalFooter}>
               <Pressable
                 style={({ pressed }) => [
-                  styles.btnSwitchRole,
+                  styles.btnSwitchRoleCard,
                   pressed && styles.btnPressed,
                 ]}
                 onPress={handleKembaliKeBeranda}>
-                <Text style={styles.btnSwitchRoleText}>
-                  Keluar ke Pemilihan Peran
-                </Text>
-              </Pressable>
-
-              <Pressable
-                style={({ pressed }) => [
-                  styles.btnCloseModal,
-                  pressed && styles.btnPressed,
-                ]}
-                onPress={() => setModalVisible(false)}>
-                <Text style={styles.btnCloseModalText}>Tutup</Text>
+                <View style={styles.switchRoleTextWrap}>
+                  <Text style={styles.switchRoleTitle}>
+                    Ganti Peran ke Portal Utama
+                  </Text>
+                  <Text style={styles.switchRoleSubtitle}>
+                    Keluar dan beralih antara Mahasiswa & Asisten Lab
+                  </Text>
+                </View>
+                <Text style={styles.switchRoleArrow}>→</Text>
               </Pressable>
             </View>
           </View>
@@ -348,11 +331,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     flexWrap: 'wrap',
-    gap: 10,
-  },
-  leftGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: 12,
   },
   brandRow: {
@@ -386,27 +364,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#64748B',
     fontWeight: '500',
-  },
-  navPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  navPillIcon: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#334155',
-  },
-  navPillText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#334155',
   },
   rightGroup: {
     flexDirection: 'row',
@@ -497,10 +454,10 @@ const styles = StyleSheet.create({
   modalPopupCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    padding: 22,
+    padding: 20,
     maxWidth: 480,
     width: '100%',
-    maxHeight: '82%',
+    maxHeight: '84%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.2,
@@ -514,15 +471,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginBottom: 16,
+    marginBottom: 14,
     paddingBottom: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
   },
   modalIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -536,12 +493,15 @@ const styles = StyleSheet.create({
     borderColor: '#99F6E4',
   },
   modalIconText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '900',
     letterSpacing: 0.5,
   },
+  modalTitleBlock: {
+    flex: 1,
+  },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
     color: '#0F172A',
     letterSpacing: -0.3,
@@ -551,8 +511,21 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 2,
   },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#64748B',
+  },
   modalList: {
-    marginVertical: 6,
+    marginVertical: 4,
   },
   accountRow: {
     flexDirection: 'row',
@@ -587,13 +560,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarAsisten: {
-    backgroundColor: '#F0FDFA',
-    borderColor: '#99F6E4',
-  },
   avatarSelected: {
     backgroundColor: '#EA580C',
     borderColor: '#EA580C',
+  },
+  avatarAsisten: {
+    backgroundColor: '#F0FDFA',
+    borderColor: '#99F6E4',
   },
   avatarSelectedAsisten: {
     backgroundColor: '#0D9488',
@@ -645,59 +618,62 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748B',
   },
-  selectedCheckBadge: {
+  activeBadgePraktikan: {
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
     backgroundColor: '#EA580C',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-  checkText: {
+  activeBadgeAsisten: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    backgroundColor: '#0D9488',
+  },
+  activeBadgeText: {
     color: '#FFFFFF',
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
   selectArrow: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     color: '#EA580C',
   },
   modalFooter: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 14,
-    paddingTop: 12,
+    marginTop: 10,
+    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
   },
-  btnSwitchRole: {
-    flex: 1.4,
-    paddingVertical: 10,
-    borderRadius: 10,
+  btnSwitchRoleCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: 10,
   },
-  btnSwitchRoleText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#334155',
-  },
-  btnCloseModal: {
+  switchRoleTextWrap: {
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: '#0F172A',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-  btnCloseModalText: {
-    fontSize: 12,
+  switchRoleTitle: {
+    fontSize: 13,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#0F172A',
+  },
+  switchRoleSubtitle: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  switchRoleArrow: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#475569',
   },
 });

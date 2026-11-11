@@ -25,6 +25,13 @@ export default function PraktikanJadwalScreen() {
     return sesiList.filter((s) => s.status === filter);
   }, [sesiList, filter]);
 
+  const totalSesi = sesiList.length;
+  const totalDibuka = sesiList.filter((s) => s.status === 'dibuka').length;
+  const totalSudahHadir = currentPraktikan
+    ? presensiList.filter((p) => p.praktikanId === currentPraktikan.id).length
+    : 0;
+  const totalBelumBuka = sesiList.filter((s) => s.status === 'belum-dibuka').length;
+
   const handleCardPress = (sesi: Sesi) => {
     router.push({
       pathname: '/praktikan/detail-sesi/[id]',
@@ -62,6 +69,26 @@ export default function PraktikanJadwalScreen() {
           <Text style={styles.headerSubtitle}>
             Pilih sesi untuk melihat rincian atau mengisi kehadiran
           </Text>
+
+          {/* Metrics Overview Cards (E-Stock inspired) */}
+          <View style={styles.metricsRow}>
+            <View style={styles.metricCard}>
+              <Text style={styles.metricVal}>{totalSesi}</Text>
+              <Text style={styles.metricLbl}>Total Sesi</Text>
+            </View>
+            <View style={[styles.metricCard, styles.metricCardDibuka]}>
+              <Text style={[styles.metricVal, { color: '#16A34A' }]}>{totalDibuka}</Text>
+              <Text style={styles.metricLbl}>Sesi Dibuka</Text>
+            </View>
+            <View style={[styles.metricCard, styles.metricCardHadir]}>
+              <Text style={[styles.metricVal, { color: '#EA580C' }]}>{totalSudahHadir}</Text>
+              <Text style={styles.metricLbl}>Sudah Hadir</Text>
+            </View>
+            <View style={styles.metricCard}>
+              <Text style={[styles.metricVal, { color: '#64748B' }]}>{totalBelumBuka}</Text>
+              <Text style={styles.metricLbl}>Belum Buka</Text>
+            </View>
+          </View>
 
           {/* Filter Chips */}
           <View style={styles.filterRow}>
@@ -209,7 +236,43 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#64748B',
     marginTop: 2,
+    marginBottom: 8,
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    gap: 8,
     marginBottom: 12,
+  },
+  metricCard: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  metricCardDibuka: {
+    borderColor: '#BBF7D0',
+    backgroundColor: '#F0FDF4',
+  },
+  metricCardHadir: {
+    borderColor: '#FED7AA',
+    backgroundColor: '#FFF7ED',
+  },
+  metricVal: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  metricLbl: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+    textAlign: 'center',
   },
   filterRow: {
     flexDirection: 'row',

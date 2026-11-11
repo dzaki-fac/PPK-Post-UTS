@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 
 import { RoleHeader } from '@/components/role-header';
 
@@ -11,16 +11,12 @@ export default function PraktikanLayout() {
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: '#EA580C', // LocalGuide Red-Orange
+          tabBarActiveTintColor: '#EA580C',
           tabBarInactiveTintColor: '#64748B',
-          tabBarStyle: {
-            backgroundColor: '#FFFFFF',
-            borderTopColor: '#E2E8F0',
-            borderTopWidth: 1,
-            height: 60,
-            paddingBottom: 8,
-            paddingTop: 6,
-          },
+          tabBarStyle: [
+            styles.tabBar,
+            Platform.OS === 'web' && styles.tabBarWeb,
+          ],
           tabBarLabelStyle: {
             fontSize: 12,
             fontWeight: '600',
@@ -62,5 +58,22 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
+  },
+  tabBar: {
+    backgroundColor: '#FFFFFF',
+    borderTopColor: '#E2E8F0',
+    borderTopWidth: 1,
+    height: 60,
+    paddingBottom: 8,
+    paddingTop: 6,
+  },
+  tabBarWeb: {
+    maxWidth: 840,
+    width: '100%',
+    alignSelf: 'center',
+    marginHorizontal: 'auto',
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: '#E2E8F0',
   },
 });

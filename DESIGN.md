@@ -1,73 +1,70 @@
-# Portal Presensi Praktikum Design System
+# PPK LabPortal Design System
 
-## 1. Overview & Identity
-
-**Portal Presensi Praktikum** adalah aplikasi pencatatan dan pengelolaan kehadiran laboratorium akademik untuk mahasiswa (praktikan) dan asisten praktikum. 
-
-- **Arah Gaya Visual**: Academic Modern (Clean, terstruktur, kontras tajam, profesional, mobile-first & desktop-responsive).
-- **Karakter**: Andal, rapi, mudah dibaca cepat saat kegiatan lab berjalan, dan bebas dari ornamen berlebihan (*no generic AI-slop*).
-- **Dial**:
-  - **ENERGY 2** (Fokus, fungsional, menggunakan satu aksen warna utama yang bertenaga).
-  - **RHYTHM 2** (Konsistensi layout kartu dan section dengan variasi hierarki yang logis).
-  - **MOTION 1** (Transisi haluan, feedback klik responsif, tanpa animasi melayang yang mengganggu).
+> **Referensi Desain**: Terinspirasi oleh antarmuka dashboard modern *E-Stock Management* (`e-stock.hancreativemedia.com`).  
+> **Tujuan**: Menghadirkan portal akademik laboratorium yang fungsional, bersih, berorientasi data, tidak membosankan (*anti-slop*), dan tampil selaras di **Android (Expo Go)**, **iOS**, maupun **Web Browser**.
 
 ---
 
-## 2. Palet Warna (Color System)
+## 1. Filosofi & Arah Visual
 
-Sistem warna dibatasi secara disiplin pada 1 warna aksen utama, 1 netral slate, dan 3 warna status fungsional:
-
-### Warna Utama (Primary Accent)
-- **Primary Red-Orange** (`#EA580C`): Warna utama untuk aksi primer, identitas brand portal, ikon terpilih.
-- **Primary Hover / Pressed** (`#C2410C`): State tombol aktif/ditekan.
-- **Primary Tint** (`#FFF7ED`): Latar belakang badge halus, chip terpilih, dan highlight peran praktikan.
-- **Primary Border** (`#FFEDD5`): Border elemen dengan aksen oranye lembut.
-
-### Warna Netral (Slate Scale)
-- **Background Utama** (`#F8FAFC`): Kanvas layar yang nyaman di mata.
-- **Surface / Card** (`#FFFFFF`): Latar belakang kartu, modal sheet, dan header.
-- **Text Heading** (`#0F172A`): Teks judul dengan kontras maksimal (WCAG AAA).
-- **Text Body** (`#334155`): Teks isi, informasi utama.
-- **Text Muted** (`#64748B`): Teks keterangan, timestamp, label metadata.
-- **Border Default** (`#E2E8F0`): Garis pembatas kartu, divider, input stroke.
-
-### Warna Status Fungsional (Status Accents)
-- **Dibuka / Hadir (Success)**:
-  - Dot & Ikon: `#16A34A`
-  - Teks: `#15803D`
-  - Latar Badge: `#DCFCE7`
-  - Border: `#86EFAC`
-- **Belum Dibuka / Menunggu (Warning)**:
-  - Dot & Ikon: `#EAB308` / `#D97706`
-  - Teks: `#B45309`
-  - Latar Badge: `#FEF3C7`
-  - Border: `#FDE68A`
-- **Ditutup / Belum Hadir (Danger / Neutral-Muted)**:
-  - Ditutup: Teks `#B91C1C`, Latar `#FEE2E2`, Border `#FCA5A5`, Dot `#DC2626`
-  - Belum Hadir: Teks `#64748B`, Latar `#F1F5F9`, Border `#CBD5E1`, Dot `#94A3B8`
+1. **Dashboard-Forward & Data-Centric**:
+   - Setiap halaman utama dilengkapi kartu metrik (*stats overview cards*) di bagian atas untuk memberikan visibilitas cepat terhadap data esensial (total sesi, sesi dibuka, tingkat kehadiran, mahasiswa hadir).
+   - Tampilan tidak pernah terasa kosong atau sekadar "dua kotak di tengah layar putih".
+2. **Navigasi Terintegrasi & Aksesibel**:
+   - Header selalu menyediakan tombol navigasi yang jelas (`← Beranda` atau `← Kembali ke Jadwal`) sehingga pengguna tidak pernah terjebak di layar tertentu tanpa jalan keluar.
+   - Informasi pengguna aktif (nama, peran, NIM/kelas) dan tombol `Ganti Akun` selalu dapat diakses dari header.
+3. **Penyelarasan Responsif (Web vs Mobile)**:
+   - **Pada Web**: Konten dibatasi dalam kontainer elegan (`maxWidth: 840, width: '100%', alignSelf: 'center'`). Bar navigasi tab tidak diregangkan dari ujung ke ujung monitor, melainkan dipusatkan (*floating centered pill navigation*) yang proporsional dan sedap dipandang.
+   - **Pada Mobile**: Full-width dengan padding 16px, touch targets $\ge 44$px, dan perlindungan safe-area terhadap kamera punch-hole / notch.
 
 ---
 
-## 3. Tipografi & Skala Spacing
+## 2. Palet Warna (Color Tokens)
 
-- **Heading 1 / Page Title**: 20–22px, Bold 800, warna `#0F172A`.
-- **Card Title / Sesi Name**: 16–17px, SemiBold 700, warna `#0F172A`.
-- **Subtitle / Deskripsi**: 13–14px, Regular 400–500, warna `#64748B`.
-- **Metadata & Chips**: 11–12px, Medium 600.
-- **Spacing Scale**: kelipatan 4px/8px (8, 12, 16, 20, 24, 32).
+Mengikuti palet terkurasi dari referensi E-Stock:
+
+### A. Aksen Utama (Primary Brand)
+- **Terracotta Orange** (`#EA580C`): Warna identitas utama, tombol aksi primer, indikator aktif, aksen portal praktikan.
+- **Warm Orange Hover / Pressed** (`#C2410C`): State tombol ketika ditekan.
+- **Soft Peach / Tint** (`#FFF7ED`): Latar belakang badge halus, chip terpilih, dan highlight kartu praktikan.
+- **Border Peach** (`#FFEDD5`): Garis pembatas aksen hangat.
+
+### B. Aksen Sekunder (Asisten & Akademik)
+- **Academic Teal** (`#0D9488`): Identitas peran asisten laboratorium, badge info, link sekunder.
+- **Teal Hover / Pressed** (`#0F766E`): State tombol asisten aktif.
+- **Teal Tint** (`#F0FDFA`): Latar kartu dan badge asisten.
+- **Teal Border** (`#CCFBF1`): Garis pembatas kartu asisten.
+
+### C. Skala Netral (Slate Neutral)
+- **Canvas Background** (`#F8FAFC`): Latar belakang utama aplikasi yang ramah di mata.
+- **Card / Surface Background** (`#FFFFFF`): Latar belakang kartu, modal, dan navbar.
+- **Heading Text** (`#0F172A`): Teks judul tebal dengan kontras tinggi (WCAG AAA).
+- **Body Text** (`#334155`): Teks isi, informasi sesi, nama mahasiswa.
+- **Muted Text** (`#64748B`): Keterangan waktu, label metadata, placeholder input.
+- **Default Border** (`#E2E8F0`): Garis batas kartu, divider, dan stroke form input.
+
+### D. Warna Status Fungsional (Status Indicators)
+- **Dibuka / Hadir (Success)**: Dot `#16A34A`, Teks `#15803D`, Latar `#DCFCE7`, Border `#86EFAC`.
+- **Belum Dibuka (Warning)**: Dot `#EAB308`, Teks `#B45309`, Latar `#FEF3C7`, Border `#FDE68A`.
+- **Ditutup / Belum Hadir (Danger / Inactive)**: Dot `#DC2626`, Teks `#B91C1C`, Latar `#FEE2E2`, Border `#FCA5A5`.
 
 ---
 
-## 4. Pola Komponen & Tata Letak
+## 3. Komponen Utama & Pola Antarmuka
 
-### A. Konsistensi Cross-Platform (Mobile, Tablet, Web)
-- **Web / Desktop Max Width**: Seluruh konten dibatasi pada `maxWidth: 840` dan terpusat (`alignSelf: 'center'`, `width: '100%'`). Hal ini mencegah kartu melebar secara berlebihan pada layar monitor lebar.
-- **Mobile Safe Area**: Header dan top bar selalu menghitung `useSafeAreaInsets` agar tidak terpotong punch-hole kamera, notch, maupun status bar sistem.
-- **Tap Targets**: Tombol dan elemen interaktif memiliki tinggi minimal 44px dengan feedback visual saat ditekan (`opacity: 0.85` atau `scale: 0.995`).
-
-### B. Komponen Bersama
-1. **`SesiCard`**: Digunakan bersama oleh Asisten dan Praktikan dengan tata letak yang identik: judul praktikum, chip kelas, badge status, baris tanggal/jam, dan lokasi lab.
-2. **`StatusBadge`**: Menampilkan dot bulat + teks status dengan kombinasi warna background dan border yang kontras.
-3. **`ConfirmationModal`**: Bottom sheet / dialog konfirmasi untuk seluruh aksi berisiko (buka sesi, tutup sesi, kirim presensi).
-4. **`EmptyState`**: Tampilan terstruktur untuk kondisi data kosong dengan ikon konteks, judul tegas, pesan penjelasan, dan tombol aksi pemulih.
-5. **`RoleHeader`**: Header identitas peran aktif di bagian atas dengan tombol beralih akun praktikan atau beralih peran ke beranda.
+1. **`RoleHeader` (Universal Top Bar)**:
+   - Sisi Kiri: Tombol `← Beranda` yang langsung mengembalikan pengguna ke halaman portal utama, logo brand `PPK LabPortal`, dan pill peran aktif.
+   - Sisi Kanan: Avatar inisial, nama pengguna, dan tombol `Ganti Akun`.
+   - Digunakan seragam di seluruh alur Praktikan dan Asisten.
+2. **`StatCard` / Metrics Overview Row**:
+   - Baris 3–4 kartu ringkasan di bagian atas layar Jadwal, Rekap, dan Riwayat.
+   - Menampilkan angka besar tebal, label deskriptif, dan ikon penjelas.
+3. **`SesiCard` (Kartu Sesi Praktikum)**:
+   - Judul praktikum, chip kelas, badge status sesi dengan dot warna.
+   - Garis waktu pelaksanaan (`📅 Tanggal • ⏰ Jam WIB`) dan ruang laboratorium (`📍 Lab`).
+   - Sisi Asisten: Badge jumlah mahasiswa yang telah hadir (`👥 X Mahasiswa Hadir`).
+   - Sisi Praktikan: Banner hijau verifikasi kehadiran jika sudah presensi (`✓ Sudah Presensi [Waktu]`).
+4. **`ConfirmationModal`**:
+   - Bottom sheet / dialog konfirmasi elegan untuk aksi buka sesi, tutup sesi, kirim presensi, dan dialog feedback.
+5. **`EmptyState`**:
+   - Ikon konteks bulat, judul tegas, pesan informatif, dan tombol aksi pemulih.

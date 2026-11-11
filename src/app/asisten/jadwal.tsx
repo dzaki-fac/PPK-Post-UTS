@@ -24,6 +24,11 @@ export default function JadwalAsistenScreen() {
     return sesiList.filter((s) => s.status === filter);
   }, [sesiList, filter]);
 
+  const totalSesi = sesiList.length;
+  const totalDibuka = sesiList.filter((s) => s.status === 'dibuka').length;
+  const totalPresensiMasuk = presensiList.length;
+  const totalDitutup = sesiList.filter((s) => s.status === 'ditutup').length;
+
   const handleCardPress = (sesi: Sesi) => {
     router.push({
       pathname: '/asisten/detail-sesi/[id]',
@@ -52,6 +57,26 @@ export default function JadwalAsistenScreen() {
           <Text style={styles.headerSubtitle}>
             Pilih sesi untuk membuka presensi, memantau kehadiran, atau menutup sesi
           </Text>
+
+          {/* Metrics Overview Cards (E-Stock inspired) */}
+          <View style={styles.metricsRow}>
+            <View style={styles.metricCard}>
+              <Text style={styles.metricVal}>{totalSesi}</Text>
+              <Text style={styles.metricLbl}>Total Sesi</Text>
+            </View>
+            <View style={[styles.metricCard, styles.metricCardDibuka]}>
+              <Text style={[styles.metricVal, { color: '#16A34A' }]}>{totalDibuka}</Text>
+              <Text style={styles.metricLbl}>Sesi Dibuka</Text>
+            </View>
+            <View style={[styles.metricCard, styles.metricCardPresensi]}>
+              <Text style={[styles.metricVal, { color: '#0D9488' }]}>{totalPresensiMasuk}</Text>
+              <Text style={styles.metricLbl}>Total Presensi</Text>
+            </View>
+            <View style={styles.metricCard}>
+              <Text style={[styles.metricVal, { color: '#64748B' }]}>{totalDitutup}</Text>
+              <Text style={styles.metricLbl}>Sesi Ditutup</Text>
+            </View>
+          </View>
 
           {/* Filter Chips */}
           <View style={styles.filterRow}>
@@ -199,7 +224,43 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#64748B',
     marginTop: 2,
+    marginBottom: 8,
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    gap: 8,
     marginBottom: 12,
+  },
+  metricCard: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  metricCardDibuka: {
+    borderColor: '#BBF7D0',
+    backgroundColor: '#F0FDF4',
+  },
+  metricCardPresensi: {
+    borderColor: '#99F6E4',
+    backgroundColor: '#F0FDFA',
+  },
+  metricVal: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  metricLbl: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+    textAlign: 'center',
   },
   filterRow: {
     flexDirection: 'row',

@@ -1,65 +1,27 @@
-import { router, Tabs } from 'expo-router';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Tabs } from 'expo-router';
+import React from 'react';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
-import { usePraktikum } from '@/context/praktikum-context';
+import { RoleHeader } from '@/components/role-header';
 
 export default function AsistenLayout() {
-  const { pengguna, logout } = usePraktikum();
-
-  const handleGantiPengguna = () => {
-    logout();
-    router.replace('/');
-  };
-
   return (
-    <>
+    <View style={styles.container}>
+      <RoleHeader />
       <Tabs
         screenOptions={{
-          tabBarActiveTintColor: '#EA580C',
+          headerShown: false,
+          tabBarActiveTintColor: '#0D9488',
           tabBarInactiveTintColor: '#64748B',
-          tabBarStyle: {
-            backgroundColor: '#FFFFFF',
-            borderTopColor: '#E2E8F0',
-            borderTopWidth: 1,
-            height: 60,
-            paddingBottom: 8,
-            paddingTop: 6,
-          },
+          tabBarStyle: [
+            styles.tabBar,
+            Platform.OS === 'web' && styles.tabBarWeb,
+          ],
           tabBarLabelStyle: {
             fontSize: 12,
             fontWeight: '600',
           },
-          headerShown: true,
-          headerTitleAlign: 'center',
-          headerStyle: {
-            backgroundColor: '#FFFFFF',
-          },
-          headerTintColor: '#111827',
-          headerTitleStyle: {
-            fontWeight: '700',
-          },
-          headerRight: () => (
-            pengguna?.peran === 'asisten' ? (
-              <View style={styles.headerActions}>
-                <ThemedText type="small" style={styles.userName}>
-                  {pengguna.data.nama}
-                </ThemedText>
-                <TouchableOpacity
-                  accessibilityRole="button"
-                  onPress={handleGantiPengguna}
-                  style={styles.logoutButton}
-                >
-                  <ThemedText type="smallBold" style={styles.logoutText}>
-                    Ganti pengguna
-                  </ThemedText>
-                </TouchableOpacity>
-              </View>
-            ) : null
-          ),
-        }}
-      >
+        }}>
         <Tabs.Screen
           name="jadwal"
           options={{
@@ -85,31 +47,33 @@ export default function AsistenLayout() {
           options={{
             href: null,
             title: 'Detail Sesi',
-            headerShown: false,
           }}
         />
       </Tabs>
-    </>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    marginRight: Spacing.three,
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
   },
-  userName: {
-    color: '#475569',
+  tabBar: {
+    backgroundColor: '#FFFFFF',
+    borderTopColor: '#E2E8F0',
+    borderTopWidth: 1,
+    height: 60,
+    paddingBottom: 8,
+    paddingTop: 6,
   },
-  logoutButton: {
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.one,
-    borderRadius: Spacing.one,
-    backgroundColor: '#FFF7ED',
-  },
-  logoutText: {
-    color: '#EA580C',
+  tabBarWeb: {
+    maxWidth: 840,
+    width: '100%',
+    alignSelf: 'center',
+    marginHorizontal: 'auto',
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: '#E2E8F0',
   },
 });

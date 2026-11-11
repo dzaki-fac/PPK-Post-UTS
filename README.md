@@ -1,56 +1,164 @@
-# Welcome to your Expo app 👋
+# PPK LabPortal — Sistem Presensi & Manajemen Sesi Praktikum
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+> **Sprint 1: Antarmuka dan Alur Praktikum**  
+> Praktikum Pemrograman Perangkat Bergerak (PPK) · Semester Ganjil 2026/2027  
+> Dibangun dengan **React Native**, **Expo SDK 57**, dan **Expo Router**. Mendukung penuh **Android (Expo Go)**, **iOS**, dan **Web Browser**.
 
-## Get started
+---
 
-1. Install dependencies
+## 📌 1. Deskripsi Proyek
 
-   ```bash
-   npm install
-   ```
+**PPK LabPortal** adalah aplikasi pencatatan kehadiran laboratorium praktikum terpadu yang dirancang dari dua sudut pandang pengguna: **Mahasiswa / Praktikan** dan **Asisten Laboratorium**.
 
-2. Start the app
+Pada Sprint 1 ini, aplikasi mendemonstrasikan siklus lengkap kegiatan praktikum:
+1. **Asisten Membuka Sesi**: Asisten memilih jadwal sesi berstatus `Belum Dibuka` dan mengonfirmasi pembukaan sesi melalui dialog modal.
+2. **Praktikan Melakukan Presensi**: Praktikan melihat sesi yang `Dibuka`, mengisi catatan kehadiran, menyetujui pernyataan integritas, dan mencatat kehadiran. Waktu kehadiran tercatat secara otomatis. Praktikan dilindungi dari presensi ganda (anti-duplikasi).
+3. **Asisten Memantau Rekap & Roster Kelas**: Asisten melihat daftar lengkap mahasiswa kelas tersebut (status `Hadir` beserta jam presensi, atau `Belum Hadir`) dan statistik persentase kehadiran kelas.
+4. **Praktikan Memeriksa Riwayat Kehadiran**: Praktikan memantau daftar sesi yang telah dihadiri beserta banner statistik keaktifan pribadi.
+5. **Asisten Menutup Sesi**: Asisten mengakhiri praktikum dengan menutup sesi melalui dialog modal konfirmasi; form presensi praktikan otomatis terkunci.
 
-   ```bash
-   npx expo start
-   ```
+---
 
-In the output, you'll find options to open the app in a
+## 🚀 2. Fitur Utama (Sprint 1)
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+### A. Sudut Pandang Praktikan
+- **Jadwal & Detail Sesi Praktikum**: Daftar sesi lengkap dengan modul, nama praktikum, kelas, ruang laboratorium, waktu, dan status sesi (`Dibuka`, `Belum Dibuka`, `Ditutup`).
+- **Filter Status Cepat**: Filter sesi berdasarkan status dengan filter chips interaktif (`Semua`, `Dibuka`, `Belum Dibuka`, `Ditutup`).
+- **Metrik Jadwal Overview**: Ringkasan jumlah sesi total, sesi dibuka, sesi sudah dihadiri, dan sesi belum dibuka.
+- **Pencatatan Presensi Mandiri**: Form pengisian kehadiran saat sesi berstatus `Dibuka` dengan kolom catatan opsional dan checkbox integritas kehadiran.
+- **Validasi Anti-Duplikasi Presensi**: Praktikan tidak dapat melakukan presensi dua kali pada sesi yang sama. Status tombol langsung terkunci menjadi `Sudah Presensi`.
+- **Riwayat Kehadiran Pribadi**: Daftar riwayat kehadiran lengkap dengan timestamp presensi dan statistik kehadiran pribadi.
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+### B. Sudut Pandang Asisten Laboratorium
+- **Manajemen Sesi Real-Time**: Buka sesi (`Belum Dibuka` → `Dibuka`) dan tutup sesi (`Dibuka` → `Ditutup`) dengan perubahan status instan pada seluruh antarmuka.
+- **Dialog Modal Konfirmasi**: Setiap aksi pembukaan atau penutupan sesi diamankan dengan `ConfirmationModal` untuk mencegah kesalahan penekanan.
+- **Roster Lengkap Kelas (Hadir vs Belum Hadir)**: Menampilkan seluruh mahasiswa terdaftar pada kelas sesi tersebut, membedakan siapa yang sudah presensi (disertai jam kehadiran) dan siapa yang belum hadir, dilengkapi filter tab.
+- **Rekapitulasi Kehadiran Sesi**: Halaman rekapitulasi kelas per sesi dengan indikator persentase kehadiran, jumlah mahasiswa hadir, dan daftar rincian nama mahasiswa.
 
-## Get a fresh project
+### C. Komponen Universal & Aksesibilitas
+- **`RoleHeader` Seragam**:
+  - Tombol **`← Beranda`** di pojok kiri atas untuk kembali ke portal pemilihan peran kapan saja.
+  - Badge peran aktif (`MAHASISWA` atau `ASISTEN LAB`), nama pengguna, dan NIM/kelas.
+  - Tombol **`Ganti Akun`** yang memunculkan modal pemilihan pengguna tanpa perlu reload aplikasi.
+- **Desain Responsif Web & Mobile**:
+  - Pada layar lebar (Web Browser), konten dibatasi proporsional (`maxWidth: 840`) dan navigasi tab bar dipusatkan secara proporsional (*floating centered nav*).
+  - Pada layar ponsel (Android/iOS), layout full-width dengan safe-area insets dan touch targets minimal 44px.
 
-When you're ready, run:
+---
 
-```bash
-npm run reset-project
+## 🎨 3. Desain Sistem (E-Stock Inspired)
+
+Antarmuka aplikasi dibangun mengacu pada referensi dashboard modern *E-Stock Management* (`e-stock.hancreativemedia.com`), menghindari tampilan kaku, kosong, atau *slop*:
+
+| Token | Nilai Hex | Penggunaan |
+|---|---|---|
+| **Terracotta Primary** | `#EA580C` | Aksen utama portal mahasiswa, tombol aksi primer, active tab |
+| **Warm Peach / Tint** | `#FFF7ED` | Latar belakang badge & highlight kartu praktikan |
+| **Academic Teal** | `#0D9488` | Aksen portal asisten laboratorium, badge pengampu, link asisten |
+| **Teal Tint** | `#F0FDFA` | Latar kartu asisten & border aksen sejuk |
+| **Slate Background** | `#F8FAFC` | Latar kanvas aplikasi |
+| **Text Primary** | `#0F172A` | Teks judul kontras tinggi (WCAG AAA) |
+| **Text Secondary** | `#334155` | Teks informasi utama |
+| **Text Muted** | `#64748B` | Label waktu, subtitle, placeholder |
+| **Border Neutral** | `#E2E8F0` | Pembatas kartu, form input, dan garis divider |
+
+---
+
+## 📁 4. Struktur Proyek
+
+```
+PPK-Post-UTS/
+├── DESIGN.md                     # Spesifikasi lengkap sistem desain LabPortal
+├── SRS.md                        # Software Requirements Specification (Sprint 1)
+├── README.md                     # Dokumentasi proyek & panduan instalasi
+├── app.json                      # Konfigurasi Expo SDK 57
+├── package.json                  # Dependensi proyek (clean Expo Go)
+├── tsconfig.json                 # Konfigurasi TypeScript
+├── src/
+│   ├── app/                      # Expo Router (File-based routing)
+│   │   ├── _layout.tsx           # Root layout dengan safe-area & context provider
+│   │   ├── index.tsx             # Halaman portal landing & pemilihan identitas
+│   │   ├── asisten/
+│   │   │   ├── _layout.tsx       # Tab navigator asisten dengan RoleHeader
+│   │   │   ├── jadwal.tsx        # Pengelolaan sesi & metrik asisten
+│   │   │   ├── rekap.tsx         # Rekapitulasi kehadiran kelas per sesi
+│   │   │   └── detail-sesi/
+│   │   │       └── [id].tsx      # Detail kontrol sesi & roster mahasiswa
+│   │   └── praktikan/
+│   │       ├── _layout.tsx       # Tab navigator praktikan dengan RoleHeader
+│   │       ├── jadwal.tsx        # Jadwal praktikum & status sesi
+│   │       ├── riwayat.tsx       # Riwayat kehadiran & statistik pribadi
+│   │       └── detail-sesi/
+│   │           └── [id].tsx      # Form presensi mandiri praktikan
+│   ├── components/               # Komponen UI modular
+│   │   ├── confirmation-modal.tsx# Modal konfirmasi aksi & feedback
+│   │   ├── empty-state.tsx       # State kosong terstruktur
+│   │   ├── role-header.tsx       # Universal header dengan tombol Beranda & Ganti Akun
+│   │   ├── sesi-card.tsx         # Kartu sesi seragam untuk asisten & praktikan
+│   │   └── status-badge.tsx      # Badge status sesi & kehadiran
+│   ├── context/
+│   │   └── praktikum-context.tsx # State management aplikasi (sesi, presensi, pengguna)
+│   ├── data/
+│   │   ├── dummy.ts              # Data dummy mahasiswa, asisten, sesi, dan presensi
+│   │   └── types.ts              # Tipe data lokal
+│   └── types/
+│       └── praktikum.ts          # Definisi antarmuka TypeScript
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+---
 
-### Other setup steps
+## 💻 5. Cara Menjalankan Aplikasi
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+### Prasyarat
+- **Node.js** versi 18 atau lebih baru.
+- **npm** atau **bun**.
+- Aplikasi **Expo Go** pada ponsel Android/iOS (opsional jika menguji di Web).
 
-## Learn more
+### 1. Instalasi Dependensi
+```bash
+npm install
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+### 2. Menjalankan Aplikasi
+```bash
+npx expo start
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Setelah server Expo aktif:
+- **Web Browser**: Tekan tombol `w` di terminal atau buka `http://localhost:8081` di browser.
+- **Android (Expo Go)**: Buka aplikasi Expo Go di HP Android, lalu pindai QR code yang tampil di terminal.
+- **iOS (Expo Go)**: Buka aplikasi Kamera di iPhone, pindai QR code, dan buka di Expo Go.
 
-## Join the community
+---
 
-Join our community of developers creating universal apps.
+## 🧪 6. Pengujian & Verifikasi Kualitas
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Aplikasi ini bebas dari kesalahan kompilasi dan mengikuti standar kualitas kode yang ketat:
+
+```bash
+# Pemeriksaan tipe data TypeScript
+npx tsc --noEmit
+
+# Linting kode
+npx expo lint
+
+# Diagnostik kompatibilitas dependensi Expo
+npx expo-doctor
+```
+
+---
+
+## 👥 7. Informasi Pengguna Dummy untuk Pengujian
+
+Aplikasi menyediakan data dummy siap pakai untuk simulasi alur:
+
+### Akun Asisten:
+- **Kak Dzaki M.** (Pengampu Laboratorium Komputasi)
+- **Kak Akmal R.** (Pengampu Laboratorium Komputasi)
+
+### Akun Praktikan:
+- **Ahmad Dahlan** (NIM: `22/501234/TK/54321` — Kelas A)
+- **Budi Santoso** (NIM: `22/502345/TK/54322` — Kelas A)
+- **Citra Dewi** (NIM: `22/503456/TK/54323` — Kelas A)
+- **Dimas Prasetyo** (NIM: `22/504567/TK/54324` — Kelas B)
+- *Dan 6 mahasiswa lainnya di Kelas A & Kelas B.*

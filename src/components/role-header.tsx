@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import {
   FlatList,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -11,12 +12,20 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { usePraktikum } from '@/context/praktikum-context';
-import { Praktikan } from '@/types/praktikum';
+import { Asisten, Praktikan } from '@/types/praktikum';
 
 export function RoleHeader() {
   const insets = useSafeAreaInsets();
-  const { role, currentPraktikan, currentAsisten, allPraktikan, setCurrentPraktikan, logout } =
-    usePraktikum();
+  const {
+    role,
+    currentPraktikan,
+    currentAsisten,
+    allPraktikan,
+    allAsisten,
+    setCurrentPraktikan,
+    setCurrentAsisten,
+    logout,
+  } = usePraktikum();
   const [modalVisible, setModalVisible] = useState(false);
 
   const isPraktikan = role === 'praktikan';
@@ -25,10 +34,15 @@ export function RoleHeader() {
     : currentAsisten?.nama ?? 'Asisten';
   const subInfo = isPraktikan
     ? `NIM: ${currentPraktikan?.nim ?? '-'} • Kelas ${currentPraktikan?.kelas ?? '-'}`
-    : 'Pengelola Sesi Praktikum';
+    : 'Pengelola Laboratorium';
 
   const handleSelectStudent = (student: Praktikan) => {
     setCurrentPraktikan(student);
+    setModalVisible(false);
+  };
+
+  const handleSelectAsisten = (asisten: Asisten) => {
+    setCurrentAsisten(asisten);
     setModalVisible(false);
   };
 
@@ -39,10 +53,29 @@ export function RoleHeader() {
   };
 
   return (
-    <>
-      <View style={[styles.container, { paddingTop: Math.max(insets.top, 12) }]}>
+    <View style={styles.outerContainer}>
+      <View
+        style={[
+          styles.innerContainer,
+          {
+            paddingTop: Platform.OS === 'web' ? 12 : Math.max(insets.top, 12),
+          },
+        ]}>
+        {/* Left: Back to Home + Brand & Role Badge */}
         <View style={styles.leftCol}>
-          <View style={styles.badgeRow}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.backHomeBtn,
+              pressed && styles.btnPressed,
+            ]}
+            onPress={handleKembaliKeBeranda}
+            accessibilityRole="button"
+            accessibilityLabel="Kembali ke Beranda Portal">
+            <Text style={styles.backHomeIcon}>←</Text>
+            <Text style={styles.backHomeText}>Beranda</Text>
+          </Pressable>
+
+          <View style={styles.brandGroup}>
             <View
               style={[
                 styles.roleBadge,
@@ -53,28 +86,32 @@ export function RoleHeader() {
                   styles.roleText,
                   isPraktikan ? styles.textPraktikan : styles.textAsisten,
                 ]}>
-                {isPraktikan ? 'Mahasiswa / Praktikan' : 'Asisten Praktikum'}
+                {isPraktikan ? 'MAHASISWA' : 'ASISTEN LAB'}
               </Text>
             </View>
+            <Text style={styles.userName} numberOfLines={1}>
+              {name}
+            </Text>
+            <Text style={styles.userSub} numberOfLines={1}>
+              {subInfo}
+            </Text>
           </View>
-          <Text style={styles.userName} numberOfLines={1}>
-            {name}
-          </Text>
-          <Text style={styles.userSub} numberOfLines={1}>
-            {subInfo}
-          </Text>
         </View>
 
+        {/* Right: Switch Account Button */}
         <Pressable
-          style={({ pressed }) => [styles.switchBtn, pressed && styles.switchBtnPressed]}
+          style={({ pressed }) => [
+            styles.switchBtn,
+            pressed && styles.btnPressed,
+          ]}
           onPress={() => setModalVisible(true)}
           accessibilityRole="button"
-          accessibilityLabel="Ganti akun praktikan">
+          accessibilityLabel="Ganti akun pengguna">
           <Text style={styles.switchBtnText}>Ganti Akun</Text>
         </Pressable>
       </View>
 
-      {/* Switch Student Modal */}
+      {/* Switch Account Modal */}
       <Modal
         visible={modalVisible}
         transparent
@@ -87,62 +124,114 @@ export function RoleHeader() {
           />
           <View style={styles.modalContent}>
             <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>Pilih Akun Praktikan</Text>
+            <Text style={styles.modalTitle}>
+              {isPraktikan ? 'Pilih Akun Praktikan' : 'Pilih Akun Asisten'}
+            </Text>
             <Text style={styles.modalSubtitle}>
-              Pilih akun mahasiswa untuk menguji presensi dan riwayat
+              Pilih identitas untuk menguji alur presensi dan rekap kehadiran
             </Text>
 
-            <FlatList
-              data={allPraktikan}
-              keyExtractor={(item) => item.id}
-              style={styles.modalList}
-              renderItem={({ item }) => {
-                const isSelected = currentPraktikan?.id === item.id;
-                return (
-                  <Pressable
-                    style={[
-                      styles.studentRow,
-                      isSelected && styles.studentRowSelected,
-                    ]}
-                    onPress={() => handleSelectStudent(item)}>
-                    <View
+            {isPraktikan ? (
+              <FlatList
+                data={allPraktikan}
+                keyExtractor={(item) => item.id}
+                style={styles.modalList}
+                renderItem={({ item }) => {
+                  const isSelected = currentPraktikan?.id === item.id;
+                  return (
+                    <Pressable
                       style={[
-                        styles.avatar,
-                        isSelected && styles.avatarSelected,
-                      ]}>
-                      <Text
+                        styles.accountRow,
+                        isSelected && styles.accountRowSelected,
+                      ]}
+                      onPress={() => handleSelectStudent(item)}>
+                      <View
                         style={[
-                          styles.avatarText,
-                          isSelected && styles.avatarTextSelected,
+                          styles.avatar,
+                          isSelected && styles.avatarSelected,
                         ]}>
-                        {item.nama.charAt(0)}
-                      </Text>
-                    </View>
-                    <View style={styles.studentInfo}>
-                      <Text
+                        <Text
+                          style={[
+                            styles.avatarText,
+                            isSelected && styles.avatarTextSelected,
+                          ]}>
+                          {item.nama.charAt(0)}
+                        </Text>
+                      </View>
+                      <View style={styles.accountInfo}>
+                        <Text
+                          style={[
+                            styles.accountName,
+                            isSelected && styles.accountNameSelected,
+                          ]}>
+                          {item.nama}
+                        </Text>
+                        <Text style={styles.accountMeta}>
+                          NIM: {item.nim} • Kelas {item.kelas}
+                        </Text>
+                      </View>
+                      {isSelected ? (
+                        <Text style={styles.checkIcon}>✓</Text>
+                      ) : null}
+                    </Pressable>
+                  );
+                }}
+              />
+            ) : (
+              <FlatList
+                data={allAsisten}
+                keyExtractor={(item) => item.id}
+                style={styles.modalList}
+                renderItem={({ item }) => {
+                  const isSelected = currentAsisten?.id === item.id;
+                  return (
+                    <Pressable
+                      style={[
+                        styles.accountRow,
+                        isSelected && styles.accountRowSelectedAsisten,
+                      ]}
+                      onPress={() => handleSelectAsisten(item)}>
+                      <View
                         style={[
-                          styles.studentName,
-                          isSelected && styles.studentNameSelected,
+                          styles.avatar,
+                          isSelected && styles.avatarSelectedAsisten,
                         ]}>
-                        {item.nama}
-                      </Text>
-                      <Text style={styles.studentMeta}>
-                        NIM: {item.nim} • Kelas {item.kelas}
-                      </Text>
-                    </View>
-                    {isSelected ? (
-                      <Text style={styles.checkIcon}>✓</Text>
-                    ) : null}
-                  </Pressable>
-                );
-              }}
-            />
+                        <Text
+                          style={[
+                            styles.avatarText,
+                            isSelected && styles.avatarTextSelected,
+                          ]}>
+                          {item.nama.charAt(0)}
+                        </Text>
+                      </View>
+                      <View style={styles.accountInfo}>
+                        <Text
+                          style={[
+                            styles.accountName,
+                            isSelected && styles.accountNameSelectedAsisten,
+                          ]}>
+                          {item.nama}
+                        </Text>
+                        <Text style={styles.accountMeta}>
+                          Asisten Pengampu Laboratorium
+                        </Text>
+                      </View>
+                      {isSelected ? (
+                        <Text style={styles.checkIconAsisten}>✓</Text>
+                      ) : null}
+                    </Pressable>
+                  );
+                }}
+              />
+            )}
 
             <View style={styles.modalActionButtons}>
               <Pressable
                 style={styles.switchRoleBtn}
                 onPress={handleKembaliKeBeranda}>
-                <Text style={styles.switchRoleBtnText}>Ganti Peran / Ke Beranda</Text>
+                <Text style={styles.switchRoleBtnText}>
+                  🔄 Ganti Peran / Keluar ke Beranda
+                </Text>
               </Pressable>
 
               <Pressable
@@ -154,17 +243,23 @@ export function RoleHeader() {
           </View>
         </View>
       </Modal>
-    </>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  outerContainer: {
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
+    width: '100%',
+  },
+  innerContainer: {
+    maxWidth: 840,
+    width: '100%',
+    alignSelf: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -172,15 +267,40 @@ const styles = StyleSheet.create({
   },
   leftCol: {
     flex: 1,
-  },
-  badgeRow: {
     flexDirection: 'row',
-    marginBottom: 4,
+    alignItems: 'center',
+    gap: 12,
+  },
+  backHomeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  backHomeIcon: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  backHomeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  brandGroup: {
+    flex: 1,
   },
   roleBadge: {
-    paddingHorizontal: 8,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 7,
     paddingVertical: 2,
-    borderRadius: 6,
+    borderRadius: 5,
+    marginBottom: 3,
   },
   rolePraktikan: {
     backgroundColor: '#FFF7ED',
@@ -193,10 +313,9 @@ const styles = StyleSheet.create({
     borderColor: '#CCFBF1',
   },
   roleText: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-    textTransform: 'uppercase',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   textPraktikan: {
     color: '#EA580C',
@@ -206,7 +325,7 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#0F172A',
   },
   userSub: {
@@ -216,19 +335,19 @@ const styles = StyleSheet.create({
   },
   switchBtn: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 8,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#CBD5E1',
   },
-  switchBtnPressed: {
-    backgroundColor: '#E2E8F0',
+  btnPressed: {
+    opacity: 0.85,
   },
   switchBtnText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#475569',
+    fontWeight: '700',
+    color: '#334155',
   },
   modalBackdrop: {
     flex: 1,
@@ -246,6 +365,9 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 28,
     maxHeight: '75%',
+    maxWidth: 520,
+    width: '100%',
+    alignSelf: 'center',
   },
   modalHandle: {
     width: 36,
@@ -257,7 +379,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#0F172A',
   },
   modalSubtitle: {
@@ -269,7 +391,7 @@ const styles = StyleSheet.create({
   modalList: {
     marginVertical: 4,
   },
-  studentRow: {
+  accountRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
@@ -279,10 +401,15 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
     marginBottom: 8,
     gap: 12,
+    backgroundColor: '#FFFFFF',
   },
-  studentRowSelected: {
+  accountRowSelected: {
     borderColor: '#EA580C',
     backgroundColor: '#FFF7ED',
+  },
+  accountRowSelectedAsisten: {
+    borderColor: '#0D9488',
+    backgroundColor: '#F0FDFA',
   },
   avatar: {
     width: 36,
@@ -295,26 +422,32 @@ const styles = StyleSheet.create({
   avatarSelected: {
     backgroundColor: '#EA580C',
   },
+  avatarSelectedAsisten: {
+    backgroundColor: '#0D9488',
+  },
   avatarText: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#475569',
   },
   avatarTextSelected: {
     color: '#FFFFFF',
   },
-  studentInfo: {
+  accountInfo: {
     flex: 1,
   },
-  studentName: {
+  accountName: {
     fontSize: 14,
     fontWeight: '700',
     color: '#1E293B',
   },
-  studentNameSelected: {
+  accountNameSelected: {
     color: '#9A3412',
   },
-  studentMeta: {
+  accountNameSelectedAsisten: {
+    color: '#115E59',
+  },
+  accountMeta: {
     fontSize: 12,
     color: '#64748B',
     marginTop: 1,
@@ -323,6 +456,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     color: '#EA580C',
+  },
+  checkIconAsisten: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0D9488',
   },
   modalActionButtons: {
     marginTop: 12,
@@ -337,7 +475,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   switchRoleBtnText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     color: '#EA580C',
   },
@@ -348,7 +486,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   closeBtnText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#475569',
   },

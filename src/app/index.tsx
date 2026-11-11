@@ -1,20 +1,19 @@
 import { router, type Href } from 'expo-router';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
-  StyleSheet,
-  TouchableOpacity,
-  View,
+  Platform,
+  Pressable,
   ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
 import { usePraktikum } from '@/context/praktikum-context';
-import { DUMMY_PRAKTIKAN as DAFTAR_PRAKTIKAN, DUMMY_ASISTEN as DAFTAR_ASISTEN } from '@/data/dummy';
+import { DUMMY_PRAKTIKAN, DUMMY_ASISTEN } from '@/data/dummy';
 import { Peran } from '@/data/types';
-import { Praktikan, Asisten } from '@/types/praktikum';
+import { Asisten, Praktikan } from '@/types/praktikum';
 
 export default function IndexScreen() {
   const { setPengguna } = usePraktikum();
@@ -33,7 +32,7 @@ export default function IndexScreen() {
       router.replace('/praktikan/jadwal' as Href);
     } else if (peranDipilih === 'asisten') {
       setPengguna({ peran: 'asisten', data: identitas as Asisten });
-      router.replace('/asisten/jadwal');
+      router.replace('/asisten/jadwal' as Href);
     }
   };
 
@@ -42,207 +41,918 @@ export default function IndexScreen() {
     setPeranDipilih(null);
   };
 
+  const getInitials = (name: string) => {
+    return name
+      .replace(/^Kak\s+/i, '')
+      .split(' ')
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase() ?? '')
+      .join('');
+  };
+
   if (langkah === 'pilih-identitas' && peranDipilih) {
+    const isPraktikan = peranDipilih === 'praktikan';
     return (
-      <ThemedView style={styles.container}>
+      <View style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
-          <TouchableOpacity onPress={handleKembali} style={styles.backButton}>
-            <ThemedText type="defaultSemiBold" style={styles.backButtonText}>
-              Kembali
-            </ThemedText>
-          </TouchableOpacity>
+          {/* Identity Navigation Bar */}
+          <View style={styles.topNavbar}>
+            <View style={styles.navInner}>
+              <Pressable
+                onPress={handleKembali}
+                style={({ pressed }) => [styles.backButton, pressed && styles.btnPressed]}
+                accessibilityRole="button"
+                accessibilityLabel="Kembali ke Pemilihan Peran">
+                <Text style={styles.backButtonText}>← Kembali ke Pemilihan Peran</Text>
+              </Pressable>
+              <View style={styles.liveBadge}>
+                <View style={styles.liveDot} />
+                <Text style={styles.liveBadgeText}>
+                  {isPraktikan ? 'Mode Mahasiswa' : 'Mode Asisten'}
+                </Text>
+              </View>
+            </View>
+          </View>
 
-          <ThemedText type="title" style={styles.identityTitle}>
-            Pilih Identitas
-          </ThemedText>
-          <ThemedText type="default" style={styles.identitySubtitle}>
-            {peranDipilih === 'praktikan' ? 'Pilih nama Anda dari daftar praktikan:' : 'Pilih nama Anda dari daftar asisten:'}
-          </ThemedText>
+          <ScrollView
+            contentContainerStyle={styles.identityScrollContent}
+            showsVerticalScrollIndicator={false}>
+            <View style={styles.identityHeader}>
+              <View
+                style={[
+                  styles.rolePill,
+                  isPraktikan ? styles.rolePillPraktikan : styles.rolePillAsisten,
+                ]}>
+                <Text
+                  style={[
+                    styles.rolePillText,
+                    isPraktikan ? styles.textPraktikan : styles.textAsisten,
+                  ]}>
+                  {isPraktikan ? 'PORTAL MAHASISWA' : 'PORTAL ASISTEN LAB'}
+                </Text>
+              </View>
+              <Text style={styles.identityTitle}>
+                {isPraktikan ? 'Pilih Identitas Praktikan' : 'Pilih Identitas Asisten'}
+              </Text>
+              <Text style={styles.identitySubtitle}>
+                {isPraktikan
+                  ? 'Pilih salah satu nama mahasiswa berikut untuk masuk ke dashboard praktikan dan mencatat presensi:'
+                  : 'Pilih profil asisten pengampu berikut untuk membuka sesi dan mengelola rekapitulasi kehadiran:'}
+              </Text>
+            </View>
 
-          <ScrollView contentContainerStyle={styles.list}>
-            {peranDipilih === 'praktikan'
-              ? DAFTAR_PRAKTIKAN.map((praktikan) => (
-                  <TouchableOpacity
-                    key={praktikan.id}
-                    style={styles.card}
-                    onPress={() => handlePilihIdentitas(praktikan)}
-                  >
-                    <ThemedText type="defaultSemiBold" style={styles.cardTitle}>{praktikan.nama}</ThemedText>
-                    <ThemedText type="small" style={styles.cardDetail}>NIM {praktikan.nim}  ·  Kelas {praktikan.kelas}</ThemedText>
-                  </TouchableOpacity>
-                ))
-              : DAFTAR_ASISTEN.map((asisten) => (
-                  <TouchableOpacity
-                    key={asisten.id}
-                    style={[styles.card, styles.cardAsisten]}
-                    onPress={() => handlePilihIdentitas(asisten)}
-                  >
-                    <ThemedText type="defaultSemiBold" style={[styles.cardTitle, styles.cardTitleAsisten]}>{asisten.nama}</ThemedText>
-                    <ThemedText type="small" style={styles.cardDetail}>Asisten pengampu laboratorium</ThemedText>
-                  </TouchableOpacity>
-                ))}
+            <View style={styles.identityList}>
+              {isPraktikan
+                ? DUMMY_PRAKTIKAN.map((praktikan) => {
+                    const initials = getInitials(praktikan.nama);
+                    return (
+                      <Pressable
+                        key={praktikan.id}
+                        style={({ pressed }) => [
+                          styles.accountCard,
+                          pressed && styles.cardPressed,
+                        ]}
+                        onPress={() => handlePilihIdentitas(praktikan)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Masuk sebagai ${praktikan.nama}`}>
+                        <View style={styles.avatarCirclePraktikan}>
+                          <Text style={styles.avatarTextPraktikan}>{initials}</Text>
+                        </View>
+                        <View style={styles.accountInfo}>
+                          <View style={styles.accountNameRow}>
+                            <Text style={styles.accountName}>{praktikan.nama}</Text>
+                            <View style={styles.kelasBadge}>
+                              <Text style={styles.kelasBadgeText}>Kelas {praktikan.kelas}</Text>
+                            </View>
+                          </View>
+                          <Text style={styles.accountSub}>NIM: {praktikan.nim}</Text>
+                        </View>
+                        <Text style={styles.arrowIcon}>→</Text>
+                      </Pressable>
+                    );
+                  })
+                : DUMMY_ASISTEN.map((asisten) => {
+                    const initials = getInitials(asisten.nama);
+                    return (
+                      <Pressable
+                        key={asisten.id}
+                        style={({ pressed }) => [
+                          styles.accountCard,
+                          styles.accountCardAsisten,
+                          pressed && styles.cardPressed,
+                        ]}
+                        onPress={() => handlePilihIdentitas(asisten)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Masuk sebagai ${asisten.nama}`}>
+                        <View style={styles.avatarCircleAsisten}>
+                          <Text style={styles.avatarTextAsisten}>{initials}</Text>
+                        </View>
+                        <View style={styles.accountInfo}>
+                          <Text style={styles.accountNameAsisten}>{asisten.nama}</Text>
+                          <Text style={styles.accountSub}>Asisten Pengampu Laboratorium Komputasi</Text>
+                        </View>
+                        <Text style={styles.arrowIconAsisten}>→</Text>
+                      </Pressable>
+                    );
+                  })}
+            </View>
           </ScrollView>
         </SafeAreaView>
-      </ThemedView>
+      </View>
     );
   }
 
   return (
-    <ThemedView style={styles.container}>
+    <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <View style={styles.hero}>
-            <ThemedText type="smallBold" style={styles.eyebrow}>
-              PORTAL AKADEMIK
-            </ThemedText>
-            <ThemedText type="title" style={styles.title}>
-              Presensi Praktikum
-            </ThemedText>
-            <ThemedText type="default" style={styles.subtitle}>
-              Sistem presensi laboratorium terpadu untuk praktikan dan asisten.
-            </ThemedText>
+        {/* Top Navbar Header */}
+        <View style={styles.topNavbar}>
+          <View style={styles.navInner}>
+            <View style={styles.brandRow}>
+              <View style={styles.logoBadge}>
+                <Text style={styles.logoBadgeIcon}>🏛️</Text>
+              </View>
+              <View>
+                <Text style={styles.brandTitle}>PPK LabPortal</Text>
+                <Text style={styles.brandSubtitle}>Presensi & Manajemen Sesi</Text>
+              </View>
+            </View>
+
+            <View style={styles.systemStatusPill}>
+              <View style={styles.liveDot} />
+              <Text style={styles.systemStatusText}>Sistem Aktif · Expo SDK 57</Text>
+            </View>
+          </View>
+        </View>
+
+        <ScrollView
+          contentContainerStyle={styles.mainScrollContent}
+          showsVerticalScrollIndicator={false}>
+          {/* Hero Section */}
+          <View style={styles.heroSection}>
+            <View style={styles.liveIndicatorPill}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveIndicatorText}>
+                Live · Alur Praktikum Asisten & Praktikan Terintegrasi
+              </Text>
+            </View>
+
+            <Text style={styles.heroHeadline}>
+              Presensi Praktikum & Kontrol Sesi Laboratorium.
+            </Text>
+
+            <Text style={styles.heroSubtitle}>
+              Platform demonstrasi alur praktikum lengkap: asisten membuka sesi praktikum,
+              mahasiswa mencatat kehadiran mandiri dengan validasi anti-duplikasi, hingga
+              rekapitulasi kelas secara real-time.
+            </Text>
           </View>
 
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={styles.roleButton}
-              onPress={() => handlePilihPeran('praktikan')}
-            >
-              <ThemedText type="smallBold" style={styles.roleLabel}>MAHASISWA / PRAKTIKAN</ThemedText>
-              <ThemedText type="subtitle" style={styles.roleTitle}>Masuk sebagai Praktikan</ThemedText>
-              <ThemedText type="small" style={styles.roleDescription}>Lihat jadwal praktikum, isi presensi, dan pantau riwayat kehadiran.</ThemedText>
-            </TouchableOpacity>
+          {/* Metric Overview (4 Stat Cards inspired by E-Stock reference) */}
+          <View style={styles.metricsGrid}>
+            <View style={styles.metricCard}>
+              <Text style={styles.metricValue}>5</Text>
+              <Text style={styles.metricLabel}>Total Sesi</Text>
+              <Text style={styles.metricDesc}>Modul PPK & BDD</Text>
+            </View>
 
-            <TouchableOpacity
-              style={[styles.roleButton, styles.roleButtonAsisten]}
-              onPress={() => handlePilihPeran('asisten')}
-            >
-              <ThemedText type="smallBold" style={[styles.roleLabel, styles.roleLabelAsisten]}>ASISTEN LABORATORIUM</ThemedText>
-              <ThemedText type="subtitle" style={[styles.roleTitle, styles.roleTitleAsisten]}>Masuk sebagai Asisten</ThemedText>
-              <ThemedText type="small" style={styles.roleDescription}>Buka dan tutup sesi praktikum serta pantau rekapitulasi kehadiran kelas.</ThemedText>
-            </TouchableOpacity>
+            <View style={styles.metricCard}>
+              <Text style={[styles.metricValue, { color: '#0D9488' }]}>10</Text>
+              <Text style={styles.metricLabel}>Praktikan</Text>
+              <Text style={styles.metricDesc}>Kelas A & Kelas B</Text>
+            </View>
+
+            <View style={styles.metricCard}>
+              <Text style={[styles.metricValue, { color: '#EA580C' }]}>2</Text>
+              <Text style={styles.metricLabel}>Asisten Lab</Text>
+              <Text style={styles.metricDesc}>Pengampu Komputasi</Text>
+            </View>
+
+            <View style={styles.metricCard}>
+              <Text style={[styles.metricValue, { color: '#16A34A' }]}>100%</Text>
+              <Text style={styles.metricLabel}>Anti-Duplikasi</Text>
+              <Text style={styles.metricDesc}>Integritas Presensi</Text>
+            </View>
+          </View>
+
+          {/* Role Selection Section */}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Pilih Akses Pengguna</Text>
+            <Text style={styles.sectionSubtitle}>
+              Pilih peran Anda untuk mendemonstrasikan kegiatan praktikum dari dua sudut pandang
+            </Text>
+          </View>
+
+          <View style={styles.rolesContainer}>
+            {/* Mahasiswa Card */}
+            <View style={styles.roleCard}>
+              <View style={styles.roleCardHeader}>
+                <View style={styles.roleIconWrapPraktikan}>
+                  <Text style={styles.roleIcon}>🎓</Text>
+                </View>
+                <View style={styles.roleBadgePraktikan}>
+                  <Text style={styles.roleBadgeTextPraktikan}>PORTAL MAHASISWA</Text>
+                </View>
+              </View>
+
+              <Text style={styles.roleCardTitle}>Masuk sebagai Praktikan</Text>
+              <Text style={styles.roleCardDescription}>
+                Lihat jadwal sesi praktikum yang dibuka, isi formulir presensi mandiri dengan
+                catatan, dan pantau catatan kehadiran Anda.
+              </Text>
+
+              <View style={styles.featureList}>
+                <View style={styles.featureItem}>
+                  <Text style={styles.checkIcon}>✓</Text>
+                  <Text style={styles.featureText}>Jadwal dan rincian modul praktikum</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <Text style={styles.checkIcon}>✓</Text>
+                  <Text style={styles.featureText}>Form presensi mandiri saat sesi dibuka</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <Text style={styles.checkIcon}>✓</Text>
+                  <Text style={styles.featureText}>Validasi anti-duplikasi presensi</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <Text style={styles.checkIcon}>✓</Text>
+                  <Text style={styles.featureText}>Riwayat kehadiran dan persentase aktif</Text>
+                </View>
+              </View>
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.ctaButtonPraktikan,
+                  pressed && styles.btnPressed,
+                ]}
+                onPress={() => handlePilihPeran('praktikan')}
+                accessibilityRole="button"
+                accessibilityLabel="Pilih Akun Praktikan">
+                <Text style={styles.ctaButtonTextPraktikan}>Pilih Akun Praktikan →</Text>
+              </Pressable>
+            </View>
+
+            {/* Asisten Card */}
+            <View style={[styles.roleCard, styles.roleCardAsisten]}>
+              <View style={styles.roleCardHeader}>
+                <View style={styles.roleIconWrapAsisten}>
+                  <Text style={styles.roleIcon}>🔬</Text>
+                </View>
+                <View style={styles.roleBadgeAsisten}>
+                  <Text style={styles.roleBadgeTextAsisten}>ASISTEN LABORATORIUM</Text>
+                </View>
+              </View>
+
+              <Text style={[styles.roleCardTitle, styles.titleAsisten]}>
+                Masuk sebagai Asisten Lab
+              </Text>
+              <Text style={styles.roleCardDescription}>
+                Buka dan tutup sesi praktikum dengan dialog modal, pantau kehadiran kelas
+                secara langsung, dan akses rekapitulasi lengkap.
+              </Text>
+
+              <View style={styles.featureList}>
+                <View style={styles.featureItem}>
+                  <Text style={[styles.checkIcon, { color: '#0D9488' }]}>✓</Text>
+                  <Text style={styles.featureText}>Buka dan tutup sesi praktikum</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <Text style={[styles.checkIcon, { color: '#0D9488' }]}>✓</Text>
+                  <Text style={styles.featureText}>Dialog konfirmasi modal interaktif</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <Text style={[styles.checkIcon, { color: '#0D9488' }]}>✓</Text>
+                  <Text style={styles.featureText}>Roster kelas (Daftar Hadir & Belum Hadir)</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <Text style={[styles.checkIcon, { color: '#0D9488' }]}>✓</Text>
+                  <Text style={styles.featureText}>Rekapitulasi per sesi dengan statistik</Text>
+                </View>
+              </View>
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.ctaButtonAsisten,
+                  pressed && styles.btnPressed,
+                ]}
+                onPress={() => handlePilihPeran('asisten')}
+                accessibilityRole="button"
+                accessibilityLabel="Pilih Akun Asisten">
+                <Text style={styles.ctaButtonTextAsisten}>Pilih Akun Asisten →</Text>
+              </Pressable>
+            </View>
+          </View>
+
+          {/* Workflow Showcase */}
+          <View style={styles.workflowSection}>
+            <Text style={styles.workflowTitle}>Alur Kegiatan Praktikum (Sprint 1)</Text>
+            <View style={styles.workflowGrid}>
+              <View style={styles.workflowCard}>
+                <View style={styles.stepNumberBadge}>
+                  <Text style={styles.stepNumber}>1</Text>
+                </View>
+                <Text style={styles.workflowStepTitle}>Asisten Membuka Sesi</Text>
+                <Text style={styles.workflowStepDesc}>
+                  Asisten meninjau jadwal praktikum dan mengonfirmasi pembukaan sesi sebelum kelas dimulai.
+                </Text>
+              </View>
+
+              <View style={styles.workflowCard}>
+                <View style={[styles.stepNumberBadge, { backgroundColor: '#EA580C' }]}>
+                  <Text style={styles.stepNumber}>2</Text>
+                </View>
+                <Text style={styles.workflowStepTitle}>Praktikan Presensi</Text>
+                <Text style={styles.workflowStepDesc}>
+                  Praktikan mengisi catatan kehadiran mandiri; waktu presensi tercatat otomatis dengan proteksi duplikasi.
+                </Text>
+              </View>
+
+              <View style={styles.workflowCard}>
+                <View style={[styles.stepNumberBadge, { backgroundColor: '#0D9488' }]}>
+                  <Text style={styles.stepNumber}>3</Text>
+                </View>
+                <Text style={styles.workflowStepTitle}>Rekap & Penutupan</Text>
+                <Text style={styles.workflowStepDesc}>
+                  Asisten memantau daftar hadir kelas, melihat rekapitulasi, dan menutup sesi praktikum secara resmi.
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Footer */}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>
+              Praktikum Pemrograman Perangkat Bergerak (PPK) · Semester Ganjil 2026/2027
+            </Text>
+            <Text style={styles.footerSubText}>
+              Built with Expo SDK 57 · React Native · Expo Router · Native Flexbox Design
+            </Text>
           </View>
         </ScrollView>
       </SafeAreaView>
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F8FAFC',
   },
   safeArea: {
     flex: 1,
   },
-  scrollContent: {
+  topNavbar: {
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+  },
+  navInner: {
+    maxWidth: 960,
     width: '100%',
-    maxWidth: 760,
     alignSelf: 'center',
-    padding: Spacing.four,
-    gap: Spacing.four,
-    flexGrow: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  logoBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  title: {
-    textAlign: 'center',
-    fontSize: 42,
-    lineHeight: 48,
+  logoBadgeIcon: {
+    fontSize: 20,
   },
-  subtitle: {
+  brandTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.3,
+  },
+  brandSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  systemStatusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  systemStatusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#16A34A',
+  },
+  mainScrollContent: {
+    maxWidth: 960,
+    width: '100%',
+    alignSelf: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 32,
+    gap: 32,
+  },
+  heroSection: {
+    alignItems: 'center',
     textAlign: 'center',
+    gap: 16,
+    paddingVertical: 12,
+  },
+  liveIndicatorPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  liveIndicatorText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#065F46',
+  },
+  heroHeadline: {
+    fontSize: Platform.OS === 'web' ? 44 : 32,
+    lineHeight: Platform.OS === 'web' ? 52 : 38,
+    fontWeight: '900',
+    color: '#0F172A',
+    textAlign: 'center',
+    letterSpacing: -1,
+    maxWidth: 780,
+  },
+  heroSubtitle: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: '#475569',
+    textAlign: 'center',
+    maxWidth: 700,
+  },
+  metricsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 14,
+  },
+  metricCard: {
+    flex: 1,
+    minWidth: 160,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 4,
+    shadowColor: '#000000',
+    shadowOpacity: 0.03,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  metricValue: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.5,
+  },
+  metricLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  metricDesc: {
+    fontSize: 12,
     color: '#64748B',
   },
-  hero: {
+  sectionHeader: {
     alignItems: 'center',
-    gap: Spacing.two,
-    marginBottom: Spacing.three,
+    gap: 6,
+    marginTop: 8,
   },
-  eyebrow: {
-    color: '#EA580C',
-    letterSpacing: 1.5,
+  sectionTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.5,
   },
-  buttonContainer: {
-    gap: Spacing.three,
+  sectionSubtitle: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+    maxWidth: 600,
   },
-  roleButton: {
-    padding: Spacing.four,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#FFEDD5',
+  rolesContainer: {
+    flexDirection: Platform.OS === 'web' ? 'row' : 'column',
+    gap: 20,
+  },
+  roleCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 24,
+    borderWidth: 1.5,
+    borderColor: '#FED7AA',
+    gap: 14,
+    shadowColor: '#EA580C',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  roleCardAsisten: {
+    borderColor: '#99F6E4',
+    shadowColor: '#0D9488',
+  },
+  roleCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  roleIconWrapPraktikan: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     backgroundColor: '#FFF7ED',
-    gap: Spacing.one,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
   },
-  roleButtonAsisten: {
-    borderColor: '#CCFBF1',
+  roleIconWrapAsisten: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     backgroundColor: '#F0FDFA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#99F6E4',
   },
-  roleLabel: {
-    color: '#EA580C',
-    letterSpacing: 1,
-  },
-  roleLabelAsisten: {
-    color: '#0D9488',
-  },
-  roleTitle: {
+  roleIcon: {
     fontSize: 22,
-    lineHeight: 28,
-    color: '#9A3412',
   },
-  roleTitleAsisten: {
+  roleBadgePraktikan: {
+    backgroundColor: '#FFF7ED',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+  },
+  roleBadgeTextPraktikan: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#EA580C',
+    letterSpacing: 0.5,
+  },
+  roleBadgeAsisten: {
+    backgroundColor: '#F0FDFA',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#99F6E4',
+  },
+  roleBadgeTextAsisten: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0D9488',
+    letterSpacing: 0.5,
+  },
+  roleCardTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#9A3412',
+    letterSpacing: -0.4,
+  },
+  titleAsisten: {
     color: '#115E59',
   },
-  roleDescription: {
+  roleCardDescription: {
+    fontSize: 14,
+    lineHeight: 21,
     color: '#475569',
   },
+  featureList: {
+    gap: 8,
+    paddingVertical: 6,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  checkIcon: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#EA580C',
+  },
+  featureText: {
+    fontSize: 13,
+    color: '#334155',
+    fontWeight: '500',
+  },
+  ctaButtonPraktikan: {
+    backgroundColor: '#EA580C',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6,
+  },
+  ctaButtonTextPraktikan: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  ctaButtonAsisten: {
+    backgroundColor: '#0D9488',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6,
+  },
+  ctaButtonTextAsisten: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  btnPressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.99 }],
+  },
+  cardPressed: {
+    opacity: 0.92,
+    transform: [{ scale: 0.995 }],
+  },
+  workflowSection: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 20,
+  },
+  workflowTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+    textAlign: 'center',
+  },
+  workflowGrid: {
+    flexDirection: Platform.OS === 'web' ? 'row' : 'column',
+    gap: 16,
+  },
+  workflowCard: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 8,
+  },
+  stepNumberBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#334155',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepNumber: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  workflowStepTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  workflowStepDesc: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: '#64748B',
+  },
+  footer: {
+    alignItems: 'center',
+    gap: 4,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  footerText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B',
+    textAlign: 'center',
+  },
+  footerSubText: {
+    fontSize: 12,
+    color: '#94A3B8',
+    textAlign: 'center',
+  },
+
+  /* Identity Selection View Styles */
   backButton: {
-    alignSelf: 'flex-start',
-    margin: Spacing.three,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderRadius: Spacing.two,
-    backgroundColor: '#FFF7ED',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
   },
   backButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
+  },
+  liveBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  identityScrollContent: {
+    maxWidth: 780,
+    width: '100%',
+    alignSelf: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 28,
+    gap: 20,
+  },
+  identityHeader: {
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  rolePill: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  rolePillPraktikan: {
+    backgroundColor: '#FFF7ED',
+    borderColor: '#FED7AA',
+  },
+  rolePillAsisten: {
+    backgroundColor: '#F0FDFA',
+    borderColor: '#99F6E4',
+  },
+  rolePillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  textPraktikan: {
     color: '#EA580C',
   },
-  list: {
-    width: '100%',
-    maxWidth: 760,
-    alignSelf: 'center',
-    gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingBottom: Spacing.four,
+  textAsisten: {
+    color: '#0D9488',
   },
-  card: {
-    padding: Spacing.three,
-    borderRadius: 12,
+  identityTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#0F172A',
+    textAlign: 'center',
+    letterSpacing: -0.5,
+  },
+  identitySubtitle: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: '#64748B',
+    textAlign: 'center',
+    maxWidth: 580,
+  },
+  identityList: {
+    gap: 10,
+  },
+  accountCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 16,
     borderWidth: 1,
-    borderColor: '#FFEDD5',
-    backgroundColor: '#FFF7ED',
-    gap: Spacing.one,
+    borderColor: '#E2E8F0',
+    gap: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 4,
+    elevation: 1,
   },
-  cardAsisten: {
+  accountCardAsisten: {
     borderColor: '#CCFBF1',
     backgroundColor: '#F0FDFA',
   },
-  identityTitle: {
-    alignSelf: 'center',
-    fontSize: 36,
-    lineHeight: 42,
+  avatarCirclePraktikan: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1.5,
+    borderColor: '#EA580C',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  identitySubtitle: {
-    alignSelf: 'center',
-    marginBottom: Spacing.two,
-    color: '#64748B',
+  avatarTextPraktikan: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#EA580C',
   },
-  cardTitle: {
-    color: '#9A3412',
+  avatarCircleAsisten: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#CCFBF1',
+    borderWidth: 1.5,
+    borderColor: '#0D9488',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  cardTitleAsisten: {
+  avatarTextAsisten: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0D9488',
+  },
+  accountInfo: {
+    flex: 1,
+    gap: 3,
+  },
+  accountNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  accountName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  accountNameAsisten: {
+    fontSize: 15,
+    fontWeight: '700',
     color: '#115E59',
   },
-  cardDetail: {
+  accountSub: {
+    fontSize: 13,
+    color: '#64748B',
+  },
+  kelasBadge: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  kelasBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
     color: '#475569',
+  },
+  arrowIcon: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#EA580C',
+  },
+  arrowIconAsisten: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0D9488',
   },
 });

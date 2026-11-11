@@ -29,6 +29,7 @@ export const DUMMY_SESI: Sesi[] = [
     status: 'ditutup',
     ruang: 'Lab Komputasi 1',
     materi: 'Modul 1: Arsitektur Platform Khusus & Pengenalan Expo',
+    kodeSesi: '2401',
   },
   {
     id: 'sesi-2',
@@ -40,6 +41,7 @@ export const DUMMY_SESI: Sesi[] = [
     status: 'dibuka',
     ruang: 'Lab Komputasi 2',
     materi: 'Modul 2: Komponen Interaktif, State & Context Management',
+    kodeSesi: '2402',
   },
   {
     id: 'sesi-3',
@@ -51,6 +53,7 @@ export const DUMMY_SESI: Sesi[] = [
     status: 'belum-dibuka',
     ruang: 'Lab Komputasi 1',
     materi: 'Modul 3: Navigasi Lanjutan dengan Expo Router & Deep Linking',
+    kodeSesi: '2403',
   },
   {
     id: 'sesi-4',
@@ -62,6 +65,7 @@ export const DUMMY_SESI: Sesi[] = [
     status: 'dibuka',
     ruang: 'Lab Rekayasa Perangkat Lunak',
     materi: 'Modul 4: Replikasi & Sharding Basis Data MongoDB',
+    kodeSesi: '2404',
   },
   {
     id: 'sesi-5',
@@ -73,6 +77,7 @@ export const DUMMY_SESI: Sesi[] = [
     status: 'belum-dibuka',
     ruang: 'Lab Jaringan',
     materi: 'Modul 3: Server Actions & Authentication pada Next.js',
+    kodeSesi: '2405',
   },
 ];
 

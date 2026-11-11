@@ -115,10 +115,14 @@ export const themeLayout = {
 - Menampilkan: Nama Praktikum, Chip Kelas (`Kelas A` / `Kelas B`), Badge Status dengan dot berwarna.
 - Blok Materi: Teks materi modul praktikum berlatar lembut dengan border aksen kiri 3px.
 - Grid Metadata: Tanggal pelaksanaan, Jam WIB, dan Ruang Laboratorium.
-- Varian Asisten: Menampilkan counter mahasiswa hadir (`X Mahasiswa Hadir`) dan link `Kelola sesi →`.
+- Varian Asisten: Menampilkan counter mahasiswa hadir (`X Mahasiswa Hadir`), pill badge kode sesi jika status dibuka (`Kode: 2401`), dan link `Kelola sesi →`.
 - Varian Praktikan: Menampilkan banner verifikasi hijau jika sudah presensi (`Sudah Presensi [Jam WIB]`).
 
-### 5.5 Modal Popup Terpusat (`ConfirmationModal` & Form Modals)
+### 5.5 Kartu Kode Presensi & Progress Bar Kehadiran
+- **Kode Sesi Card (Asisten Detail Sesi):** Card khusus berlatar oranye lembut (`#FFF7ED`) dengan label *"KODE SESI PRESENSI AKTIF"* dan angka 4 digit besar (`fontSize: 32`, `fontWeight: 900`, `letterSpacing: 6`). Menampilkan instruksi: *"Bagikan 4 digit kode ini kepada praktikan di laboratorium untuk melakukan presensi mandiri."*
+- **Progress Bar Track:** Indikator visual progres kehadiran berupa bar horizontal berlatar `#E2E8F0` dengan fill warna `#16A34A` yang bergerak sesuai persentase mahasiswa hadir di kelas.
+
+### 5.6 Modal Popup Terpusat (`ConfirmationModal` & Form Modals)
 - Menggunakan modal overlay gelap `rgba(15, 23, 42, 0.65)` dengan animasi fade.
 - Card putih terpusat (`maxWidth: 480`, `width: '100%'`, radius 20).
 - Header dialog dilengkapi judul, subjudul, dan tombol silang `✕`.
@@ -170,7 +174,7 @@ export const themeLayout = {
 ### 6.5 Jadwal Praktikan (`/praktikan/jadwal`)
 1. Header Mahasiswa dengan live status tag `Sesi Real-Time`.
 2. 4 Kartu Metrik Overview Mahasiswa.
-3. Filter Chips Status Sesi.
+3. Filter Chips Status & Kelas: `Semua`, `Kelas Saya (Kelas X)`, `Dibuka`, `Belum Dibuka`, `Ditutup`.
 4. Daftar Sesi Praktikan dengan indikator apakah praktikan telah presensi di sesi tersebut.
 
 ### 6.6 Detail Sesi Praktikan (`/praktikan/detail-sesi/[id]`)
@@ -178,10 +182,13 @@ export const themeLayout = {
 2. Kartu Rincian Sesi & Identitas Mahasiswa.
 3. Kartu Status & Form Presensi:
    - Kasus 1: Sesi belum dibuka -> Kotak informasi kuning menunggu asisten.
-   - Kasus 2: Sesi dibuka & belum hadir -> Form catatan kehadiran + Checkbox integritas + Tombol `Kirim Presensi Kehadiran`.
+   - Kasus 2: Sesi dibuka & belum hadir:
+     - Warning box merah jika mahasiswa beda kelas (`Perhatian: Kelas Tidak Sesuai`).
+     - Input 4 digit Kode Sesi Presensi dari asisten (wajib).
+     - Form catatan kehadiran (opsional) + Checkbox integritas + Tombol `Kirim Presensi Kehadiran`.
    - Kasus 3: Sudah presensi -> Kotak sukses hijau terkunci anti-duplikasi.
    - Kasus 4: Sesi ditutup -> Kotak peringatan merah terkunci.
-4. Modal Konfirmasi Presensi & Modal Sukses (dengan redirect langsung ke tab Riwayat).
+4. Modal Konfirmasi Presensi, Modal Error jika kode/kelas tidak cocok, & Modal Sukses (dengan redirect langsung ke tab Riwayat).
 
 ### 6.7 Riwayat Presensi Praktikan (`/praktikan/riwayat`)
 1. Header Riwayat dengan banner persentase kehadiran pribadi.

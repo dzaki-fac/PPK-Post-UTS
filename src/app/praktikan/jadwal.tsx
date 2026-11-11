@@ -14,7 +14,7 @@ import { SesiCard } from '@/components/sesi-card';
 import { usePraktikum } from '@/context/praktikum-context';
 import { Sesi, SesiStatus } from '@/types/praktikum';
 
-type FilterType = 'semua' | SesiStatus;
+type FilterType = 'semua' | 'kelas-saya' | SesiStatus;
 
 export default function PraktikanJadwalScreen() {
   const { sesiList, currentPraktikan, isSudahPresensi, presensiList } =
@@ -23,8 +23,12 @@ export default function PraktikanJadwalScreen() {
 
   const filteredSesiList = useMemo(() => {
     if (filter === 'semua') return sesiList;
+    if (filter === 'kelas-saya') {
+      if (!currentPraktikan?.kelas) return sesiList;
+      return sesiList.filter((s) => s.kelas === currentPraktikan.kelas);
+    }
     return sesiList.filter((s) => s.status === filter);
-  }, [sesiList, filter]);
+  }, [sesiList, filter, currentPraktikan]);
 
   const totalSesi = sesiList.length;
   const totalDibuka = sesiList.filter((s) => s.status === 'dibuka').length;
@@ -109,7 +113,7 @@ export default function PraktikanJadwalScreen() {
 
       {/* Filter Section */}
       <View style={styles.filterSection}>
-        <Text style={styles.filterTitle}>Filter Berdasarkan Status Sesi:</Text>
+        <Text style={styles.filterTitle}>Filter Berdasarkan Status & Kelas:</Text>
         <View style={styles.filterRow}>
           <FilterChip
             label="Semua"
@@ -117,6 +121,14 @@ export default function PraktikanJadwalScreen() {
             count={sesiList.length}
             onPress={() => setFilter('semua')}
           />
+          {currentPraktikan ? (
+            <FilterChip
+              label={`Kelas Saya (${currentPraktikan.kelas})`}
+              active={filter === 'kelas-saya'}
+              count={sesiList.filter((s) => s.kelas === currentPraktikan.kelas).length}
+              onPress={() => setFilter('kelas-saya')}
+            />
+          ) : null}
           <FilterChip
             label="Dibuka"
             active={filter === 'dibuka'}
@@ -156,7 +168,9 @@ export default function PraktikanJadwalScreen() {
           <EmptyState
             title="Tidak Ada Sesi"
             message={
-              filter === 'semua'
+              filter === 'kelas-saya'
+                ? `Tidak ada sesi praktikum yang terdaftar untuk ${currentPraktikan?.kelas}.`
+                : filter === 'semua'
                 ? 'Belum ada jadwal praktikum yang tersedia saat ini.'
                 : `Tidak ada sesi praktikum dengan status "${filter}".`
             }

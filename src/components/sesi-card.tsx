@@ -73,11 +73,19 @@ export function SesiCard({
       {/* Asisten metadata banner */}
       {isAsisten ? (
         <View style={styles.asistenFooter}>
-          <View style={styles.attendanceCountBadge}>
-            <View style={styles.miniDotAsisten} />
-            <Text style={styles.attendanceCountText}>
-              {totalHadir !== undefined ? `${totalHadir} Mahasiswa Hadir` : 'Kelola Kehadiran'}
-            </Text>
+          <View style={styles.asistenFooterLeft}>
+            <View style={styles.attendanceCountBadge}>
+              <View style={styles.miniDotAsisten} />
+              <Text style={styles.attendanceCountText}>
+                {totalHadir !== undefined ? `${totalHadir} Mahasiswa Hadir` : 'Kelola Kehadiran'}
+              </Text>
+            </View>
+            {sesi.status === 'dibuka' && sesi.kodeSesi ? (
+              <View style={styles.codePill}>
+                <Text style={styles.codePillLabel}>Kode:</Text>
+                <Text style={styles.codePillValue}>{sesi.kodeSesi}</Text>
+              </View>
+            ) : null}
           </View>
           <Text style={styles.actionHint}>Kelola sesi →</Text>
         </View>
@@ -201,6 +209,34 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: '#F8FAFC',
+  },
+  asistenFooterLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  codePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  codePillLabel: {
+    fontSize: 11,
+    color: '#C2410C',
+    fontWeight: '600',
+  },
+  codePillValue: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#EA580C',
+    letterSpacing: 1,
   },
   attendanceCountBadge: {
     flexDirection: 'row',

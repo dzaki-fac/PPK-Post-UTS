@@ -247,7 +247,40 @@ export default function DetailSesiAsistenScreen() {
                 </Text>
               </View>
             </View>
+
+            {/* Attendance Progress Bar Track */}
+            <View style={styles.progressContainer}>
+              <View style={styles.progressBarBackground}>
+                <View
+                  style={[
+                    styles.progressBarFill,
+                    { width: `${Math.min(persentaseHadir, 100)}%` },
+                  ]}
+                />
+              </View>
+            </View>
           </View>
+
+          {/* Active 4-Digit Attendance Code Card (Reference: CodeDisplay) */}
+          {sesi.kodeSesi && sesi.status === 'dibuka' ? (
+            <View style={styles.codeCard}>
+              <View style={styles.codeHeaderRow}>
+                <View style={styles.codeBadge}>
+                  <Text style={styles.codeBadgeText}>KODE PRESENSI SESI</Text>
+                </View>
+                <Text style={styles.codeSubtitle}>
+                  Bagikan 4 digit kode ini kepada mahasiswa di laboratorium
+                </Text>
+              </View>
+              <View style={styles.codeBoxRow}>
+                {sesi.kodeSesi.split('').map((char, index) => (
+                  <View key={index} style={styles.codeCell}>
+                    <Text style={styles.codeDigit}>{char}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
 
           {/* Session Control Action Section */}
           <View style={styles.card}>
@@ -776,6 +809,78 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     fontWeight: '600',
     marginTop: 2,
+  },
+  progressContainer: {
+    marginTop: 14,
+  },
+  progressBarBackground: {
+    height: 6,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#15803D',
+    borderRadius: 3,
+  },
+  codeCard: {
+    backgroundColor: '#0F172A',
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    gap: 12,
+    alignItems: 'center',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  codeHeaderRow: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  codeBadge: {
+    backgroundColor: 'rgba(13, 148, 136, 0.2)',
+    borderWidth: 1,
+    borderColor: '#0D9488',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  codeBadgeText: {
+    color: '#2DD4BF',
+    fontSize: 10.5,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  codeSubtitle: {
+    color: '#94A3B8',
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  codeBoxRow: {
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'center',
+  },
+  codeCell: {
+    width: 48,
+    height: 58,
+    backgroundColor: '#1E293B',
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#0D9488',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  codeDigit: {
+    color: '#FFFFFF',
+    fontSize: 26,
+    fontWeight: '900',
+    letterSpacing: -0.5,
   },
   sectionHeader: {
     fontSize: 15,

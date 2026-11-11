@@ -53,6 +53,7 @@ export type Sesi = {
   status: SesiStatus;
   ruang?: string;    // mis. 'Lab Komputasi 1'
   materi?: string;   // mis. 'Modul 2: Komponen Interaktif & State Management'
+  kodeSesi?: string; // 4 digit kode numerik verifikasi presensi (mis. '2401')
 };
 
 // Entitas Pencatatan Kehadiran
@@ -80,8 +81,8 @@ export type RiwayatItem = Presensi & {
 
 ### FR-02 — Jadwal Praktikum & Visualisasi Status
 - **FR-02.1:** Pengguna dapat melihat daftar seluruh jadwal sesi praktikum yang tersedia.
-- **FR-02.2:** Jadwal dilengkapi filter chips interaktif berdasarkan status: `Semua`, `Dibuka`, `Belum Dibuka`, dan `Ditutup`.
-- **FR-02.3:** Setiap kartu sesi menampilkan nama praktikum, kelas, materi modul, ruang lab, jam pelaksanaan, dan badge status visual (`StatusBadge`).
+- **FR-02.2:** Jadwal dilengkapi filter chips interaktif berdasarkan status (`Semua`, `Dibuka`, `Belum Dibuka`, `Ditutup`) dan filter cerdas praktikan **`Kelas Saya (Kelas A/B)`** untuk memfilter sesi sesuai kelas terdaftar.
+- **FR-02.3:** Setiap kartu sesi menampilkan nama praktikum, kelas, materi modul, ruang lab, jam pelaksanaan, pill kode sesi (khusus asisten saat sesi dibuka), dan badge status visual (`StatusBadge`).
 
 ### FR-03 — Kartu Ringkasan Metrik (Stats Overview)
 - **FR-03.1:** Layar jadwal asisten menampilkan 4 kartu metrik: Total Sesi, Sesi Dibuka, Total Presensi Masuk, dan Sesi Ditutup.
@@ -89,13 +90,14 @@ export type RiwayatItem = Presensi & {
 
 ### FR-04 — Tambah Sesi Praktikum Baru (Asisten)
 - **FR-04.1:** Asisten dapat menjadwalkan sesi baru dengan menekan tombol **`+ Tambah Sesi`** pada layar jadwal.
-- **FR-04.2:** Form modal terpusat menerima masukan: Mata Praktikum, Materi Modul (wajib), Pilihan Kelas (`Kelas A` / `Kelas B`), Tanggal, Jam Mulai & Selesai, dan Ruang Lab.
+- **FR-04.2:** Form modal terpusat menerima masukan: Mata Praktikum, Materi Modul (wajib), Pilihan Kelas (`Kelas A` / `Kelas B`), Tanggal, Jam Mulai & Selesai, dan Ruang Lab. Sistem meng-generate kode sesi 4 digit otomatis.
 - **FR-04.3:** Setelah sesi disimpan, sistem secara otomatis mengalihkan (*redirect*) asisten ke halaman detail sesi baru tersebut.
 
-### FR-05 — Kontrol Pembukaan Sesi (Asisten)
+### FR-05 — Kontrol Pembukaan Sesi & Kode Akses (Asisten)
 - **FR-05.1:** Asisten dapat membuka sesi yang berstatus `belum-dibuka`.
 - **FR-05.2:** Aksi pembukaan sesi diamankan dengan dialog modal konfirmasi (`ConfirmationModal`).
 - **FR-05.3:** Perubahan status menjadi `dibuka` langsung tersinkronisasi ke seluruh aplikasi secara real-time.
+- **FR-05.4:** Saat sesi berstatus `dibuka`, antarmuka asisten menampilkan kartu **Kode Sesi Presensi Aktif (4 Digit)** untuk dibagikan secara lisan/visual kepada praktikan di laboratorium.
 
 ### FR-06 — Kontrol Penutupan Sesi (Asisten)
 - **FR-06.1:** Asisten dapat menutup sesi praktikum yang sedang berstatus `dibuka`.
@@ -112,14 +114,16 @@ export type RiwayatItem = Presensi & {
 
 ### FR-09 — Pencatatan Presensi Mandiri (Praktikan)
 - **FR-09.1:** Praktikan hanya dapat melakukan presensi pada sesi yang sedang berstatus `dibuka`.
-- **FR-09.2:** Formulir presensi dilengkapi kolom catatan kehadiran opsional dan checkbox persetujuan integritas kehadiran mandiri.
-- **FR-09.3:** Penekanan tombol kirim presensi menampilkan modal ringkasan identitas dan jadwal untuk konfirmasi akhir.
-- **FR-09.4:** Waktu kehadiran (timestamp WIB) dicatat secara otomatis oleh sistem saat presensi dikirimkan.
-- **FR-09.5:** Modal umpan balik berhasil memberikan opsi tombol aksi utama **`Lihat Riwayat Presensi`** yang langsung mengalihkan mahasiswa ke tab riwayat kehadiran.
+- **FR-09.2:** Praktikan wajib memasukkan **4 Digit Kode Sesi Presensi** yang dibagikan oleh asisten lab yang memimpin sesi.
+- **FR-09.3:** Formulir presensi dilengkapi kolom catatan kehadiran opsional dan checkbox persetujuan integritas kehadiran mandiri.
+- **FR-09.4:** Penekanan tombol kirim presensi menampilkan modal ringkasan identitas, jadwal, dan kode sesi untuk konfirmasi akhir.
+- **FR-09.5:** Waktu kehadiran (timestamp WIB) dicatat secara otomatis oleh sistem saat presensi diverifikasi dan berhasil dikirimkan.
+- **FR-09.6:** Modal umpan balik berhasil memberikan opsi tombol aksi utama **`Lihat Riwayat Presensi`** yang langsung mengalihkan mahasiswa ke tab riwayat kehadiran.
 
-### FR-10 — Validasi Anti-Duplikasi Presensi
-- **FR-10.1:** Praktikan yang sama **dilarang keras melakukan presensi dua kali** pada sesi yang sama.
-- **FR-10.2:** Sistem memeriksa riwayat presensi sesi. Jika sudah tercatat, antarmuka otomatis menampilkan banner hijau *"Anda Sudah Presensi"* beserta waktu kehadiran, dan tombol presensi terkunci permanen.
+### FR-10 — Validasi Anti-Duplikasi & Kesesuaian Kelas
+- **FR-10.1:** Praktikan yang sama **dilarang keras melakukan presensi dua kali** pada sesi yang sama. Antarmuka otomatis menampilkan banner hijau *"Anda Sudah Presensi"* beserta waktu kehadiran, dan tombol presensi terkunci permanen.
+- **FR-10.2:** Sistem **memvalidasi kesesuaian kelas** mahasiswa dengan kelas sesi praktikum (misal mahasiswa Kelas B dilarang presensi di sesi Kelas A). Antarmuka menampilkan banner peringatan merah dan menolak presensi jika kelas tidak cocok.
+- **FR-10.3:** Sistem **memvalidasi kebenaran kode 4 digit**. Jika kode salah atau tidak lengkap 4 digit, presensi ditolak dengan pesan dialog kesalahan yang informatif.
 
 ### FR-11 — Roster Kehadiran Lengkap Kelas (Asisten)
 - **FR-11.1:** Halaman detail sesi dan rekap asisten menampilkan **seluruh mahasiswa terdaftar pada kelas tersebut**.

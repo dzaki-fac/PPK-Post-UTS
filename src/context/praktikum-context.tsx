@@ -31,7 +31,11 @@ interface PraktikumContextType {
   editSesi: (sesiId: string, updates: Partial<Omit<Sesi, 'id'>>) => boolean;
   hapusSesi: (sesiId: string) => boolean;
   getSesiById: (id: string) => Sesi | undefined;
-  tandaiPresensi: (sesiId: string, praktikanId: string) => { success: boolean; message: string };
+  tandaiPresensi: (
+    sesiId: string,
+    praktikanId: string,
+    kodeInput?: string
+  ) => { success: boolean; message: string };
   isSudahPresensi: (sesiId: string, praktikanId: string) => boolean;
   sudahPresensi: (sesiId: string, praktikanId: string) => boolean;
   getRiwayatPraktikan: (praktikanId: string) => RiwayatItem[];
@@ -99,9 +103,11 @@ export function PraktikumProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const tambahSesi = useCallback((data: Omit<Sesi, 'id'>): Sesi => {
+    const randomCode = String(Math.floor(1000 + Math.random() * 9000));
     const newSesi: Sesi = {
       ...data,
       id: `sesi-${Date.now()}`,
+      kodeSesi: data.kodeSesi || randomCode,
     };
     setSesiList((prev) => [newSesi, ...prev]);
     return newSesi;
@@ -157,7 +163,7 @@ export function PraktikumProvider({ children }: { children: React.ReactNode }) {
   );
 
   const tandaiPresensi = useCallback(
-    (sesiId: string, praktikanId: string) => {
+    (sesiId: string, praktikanId: string, kodeInput?: string) => {
       const sesi = sesiList.find((s) => s.id === sesiId);
       if (!sesi) {
         return { success: false, message: 'Sesi praktikum tidak ditemukan.' };
@@ -173,6 +179,18 @@ export function PraktikumProvider({ children }: { children: React.ReactNode }) {
         };
       }
 
+      // Validasi kesesuaian kelas praktikan vs kelas sesi
+      const praktikan = DUMMY_PRAKTIKAN.find((p) => p.id === praktikanId);
+      if (praktikan && sesi.kelas) {
+        const kodeKelas = sesi.kelas.replace(/[^A-Za-z]/g, '').slice(-1);
+        if (kodeKelas && praktikan.kelas.toUpperCase() !== kodeKelas.toUpperCase()) {
+          return {
+            success: false,
+            message: `Presensi ditolak. Sesi ini khusus untuk ${sesi.kelas}, sedangkan Anda terdaftar di Kelas ${praktikan.kelas}.`,
+          };
+        }
+      }
+
       const sudah = presensiList.some(
         (p) => p.sesiId === sesiId && p.praktikanId === praktikanId
       );
@@ -182,6 +200,16 @@ export function PraktikumProvider({ children }: { children: React.ReactNode }) {
           success: false,
           message: 'Anda sudah melakukan presensi pada sesi ini.',
         };
+      }
+
+      // Validasi kode sesi 4 digit
+      if (sesi.kodeSesi) {
+        if (!kodeInput || kodeInput.trim() !== sesi.kodeSesi) {
+          return {
+            success: false,
+            message: 'Kode sesi presensi tidak sesuai. Silakan masukkan 4 digit kode yang diberikan oleh asisten di ruang lab.',
+          };
+        }
       }
 
       const now = new Date();

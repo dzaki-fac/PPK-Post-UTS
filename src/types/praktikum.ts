@@ -22,6 +22,7 @@ export type Sesi = {
   status: SesiStatus;
   ruang?: string;
   materi?: string;
+  kodeSesi?: string; // 4 digit kode presensi sesi (mis. '2401')
 };
 
 export type Presensi = {

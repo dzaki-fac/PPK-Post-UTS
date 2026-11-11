@@ -31,6 +31,8 @@ export default function PraktikanDetailSesiScreen() {
   const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false);
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [kodeInput, setKodeInput] = useState('');
   const [catatan, setCatatan] = useState('');
   const [agreementChecked, setAgreementChecked] = useState(true);
 
@@ -75,6 +77,16 @@ export default function PraktikanDetailSesiScreen() {
       )
     : undefined;
 
+  const isClassMismatch = Boolean(
+    currentPraktikan && currentPraktikan.kelas !== sesi.kelas
+  );
+
+  const isSubmitDisabled =
+    !agreementChecked ||
+    !currentPraktikan ||
+    Boolean(sesi.kodeSesi && kodeInput.trim().length !== 4) ||
+    isClassMismatch;
+
   const handleOpenPresensiModal = () => {
     setIsConfirmModalVisible(true);
   };
@@ -82,15 +94,20 @@ export default function PraktikanDetailSesiScreen() {
   const handleConfirmPresensi = () => {
     if (!currentPraktikan) return;
 
-    const result = tandaiPresensi(sesi.id, currentPraktikan.id);
+    if (sesi.kodeSesi && kodeInput.trim().length !== 4) {
+      setIsConfirmModalVisible(false);
+      setErrorMessage('Harap masukkan 4 digit kode sesi presensi.');
+      return;
+    }
+
+    const result = tandaiPresensi(sesi.id, currentPraktikan.id, kodeInput.trim());
     setIsConfirmModalVisible(false);
 
     if (result.success) {
       setSuccessMessage(result.message);
       setIsSuccessModalVisible(true);
     } else {
-      // Show failure if any
-      alert(result.message);
+      setErrorMessage(result.message);
     }
   };
 
@@ -271,11 +288,50 @@ export default function PraktikanDetailSesiScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.openNoticeTitle}>Sesi Sedang Berlangsung</Text>
                   <Text style={styles.openNoticeDesc}>
-                    Silakan isi form dan lakukan presensi sebelum sesi ditutup
-                    oleh asisten.
+                    Silakan masukkan kode sesi dari asisten dan kirim presensi sebelum sesi ditutup.
                   </Text>
                 </View>
               </View>
+
+              {/* Class Mismatch Notice */}
+              {isClassMismatch ? (
+                <View style={styles.classMismatchNotice}>
+                  <View style={styles.classMismatchDot} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.classMismatchTitle}>Perhatian: Kelas Tidak Sesuai</Text>
+                    <Text style={styles.classMismatchDesc}>
+                      Anda terdaftar di {currentPraktikan?.kelas}, sedangkan sesi praktikum ini khusus untuk {sesi.kelas}. Sistem membatasi presensi hanya untuk praktikan di kelas terkait.
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+
+              {/* Kode Sesi Presensi 4 Digit */}
+              {sesi.kodeSesi ? (
+                <View style={styles.inputGroup}>
+                  <View style={styles.codeLabelRow}>
+                    <Text style={styles.inputLabel}>
+                      Kode Sesi Presensi (4 Digit):
+                    </Text>
+                    <View style={styles.requiredBadge}>
+                      <Text style={styles.requiredBadgeText}>Wajib</Text>
+                    </View>
+                  </View>
+                  <TextInput
+                    style={styles.codeInput}
+                    placeholder="Masukkan 4 digit kode dari asisten (mis. 2401)"
+                    placeholderTextColor="#94A3B8"
+                    value={kodeInput}
+                    onChangeText={(t) => setKodeInput(t.replace(/[^0-9]/g, '').slice(0, 4))}
+                    keyboardType="number-pad"
+                    maxLength={4}
+                    editable={!isClassMismatch}
+                  />
+                  <Text style={styles.codeHintText}>
+                    Minta 4 digit kode sesi kepada asisten yang memimpin praktikum di ruang laboratorium.
+                  </Text>
+                </View>
+              ) : null}
 
               {/* Catatan / Keterangan Masukan (FR-6.1) */}
               <View style={styles.inputGroup}>
@@ -284,29 +340,30 @@ export default function PraktikanDetailSesiScreen() {
                 </Text>
                 <TextInput
                   style={styles.textInput}
-                  placeholder="Mis. Meja Lab 04, membawa modul lengkap"
+                  placeholder="Mis. Meja Lab 04, modul cetak lengkap"
                   placeholderTextColor="#94A3B8"
                   value={catatan}
                   onChangeText={setCatatan}
+                  editable={!isClassMismatch}
                 />
               </View>
 
               {/* Checkbox Konfirmasi Integritas */}
               <Pressable
                 style={styles.checkboxRow}
-                onPress={() => setAgreementChecked(!agreementChecked)}>
+                onPress={() => !isClassMismatch && setAgreementChecked(!agreementChecked)}>
                 <View
                   style={[
                     styles.checkboxBox,
                     agreementChecked && styles.checkboxBoxChecked,
+                    isClassMismatch && styles.checkboxBoxDisabled,
                   ]}>
                   {agreementChecked ? (
                     <View style={styles.checkboxInner} />
                   ) : null}
                 </View>
-                <Text style={styles.checkboxLabel}>
-                  Saya menyatakan hadir di ruang praktikum dan mengikuti
-                  kegiatan secara mandiri.
+                <Text style={[styles.checkboxLabel, isClassMismatch && styles.checkboxLabelDisabled]}>
+                  Saya menyatakan hadir di ruang praktikum dan mengikuti kegiatan secara mandiri.
                 </Text>
               </Pressable>
 
@@ -315,14 +372,18 @@ export default function PraktikanDetailSesiScreen() {
                 style={({ pressed }) => [
                   styles.actionBtn,
                   styles.actionBtnActive,
-                  (!agreementChecked || !currentPraktikan) &&
-                    styles.actionBtnDisabled,
-                  pressed && styles.buttonPressed,
+                  isSubmitDisabled && styles.actionBtnDisabled,
+                  pressed && !isSubmitDisabled && styles.buttonPressed,
                 ]}
                 onPress={handleOpenPresensiModal}
-                disabled={!agreementChecked || !currentPraktikan}>
-                <Text style={styles.actionBtnTextActive}>
-                  Kirim Presensi Kehadiran
+                disabled={isSubmitDisabled}>
+                <Text
+                  style={
+                    isSubmitDisabled
+                      ? styles.actionBtnTextDisabled
+                      : styles.actionBtnTextActive
+                  }>
+                  {isClassMismatch ? 'Beda Kelas - Tidak Dapat Presensi' : 'Kirim Presensi Kehadiran'}
                 </Text>
               </Pressable>
             </View>
@@ -335,7 +396,7 @@ export default function PraktikanDetailSesiScreen() {
       <ConfirmationModal
         visible={isConfirmModalVisible}
         title="Konfirmasi Presensi Praktikum"
-        description="Pastikan data identitas Anda sudah sesuai sebelum mengirim presensi."
+        description="Pastikan data identitas dan kode sesi Anda sudah sesuai sebelum mengirim presensi."
         confirmText="Ya, Catat Kehadiran"
         cancelText="Batal"
         confirmVariant="primary"
@@ -358,12 +419,34 @@ export default function PraktikanDetailSesiScreen() {
               {sesi.kelas} • {sesi.waktuMulai} - {sesi.waktuSelesai} WIB
             </Text>
           </View>
+          {sesi.kodeSesi ? (
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryLabel}>Kode Sesi:</Text>
+              <Text style={styles.summaryValueCode}>{kodeInput.trim()}</Text>
+            </View>
+          ) : null}
           {catatan ? (
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>Catatan:</Text>
               <Text style={styles.summaryValue}>{catatan}</Text>
             </View>
           ) : null}
+        </View>
+      </ConfirmationModal>
+
+      {/* Error Feedback Modal */}
+      <ConfirmationModal
+        visible={errorMessage !== null}
+        title="Presensi Tidak Berhasil"
+        description={errorMessage ?? ''}
+        confirmText="Mengerti"
+        confirmVariant="danger"
+        onConfirm={() => setErrorMessage(null)}
+        onCancel={() => setErrorMessage(null)}>
+        <View style={styles.errorFeedbackContent}>
+          <Text style={styles.errorFeedbackText}>
+            Pastikan 4 digit kode sesi yang dimasukkan sesuai dengan yang dibagikan oleh asisten praktikum dan kelas praktikum cocok dengan identitas Anda.
+          </Text>
         </View>
       </ConfirmationModal>
 
@@ -843,6 +926,90 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'right',
     flexShrink: 1,
+  },
+  classMismatchNotice: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 8,
+    padding: 12,
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'flex-start',
+  },
+  classMismatchDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
+    marginTop: 5,
+  },
+  classMismatchTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#991B1B',
+    marginBottom: 2,
+  },
+  classMismatchDesc: {
+    fontSize: 12,
+    color: '#B91C1C',
+    lineHeight: 17,
+  },
+  codeLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  requiredBadge: {
+    backgroundColor: '#FFEDD5',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  requiredBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#C2410C',
+  },
+  codeInput: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#EA580C',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 2,
+    color: '#0F172A',
+  },
+  codeHintText: {
+    fontSize: 11,
+    color: '#64748B',
+    lineHeight: 15,
+  },
+  checkboxBoxDisabled: {
+    backgroundColor: '#F1F5F9',
+    borderColor: '#CBD5E1',
+  },
+  checkboxLabelDisabled: {
+    color: '#94A3B8',
+  },
+  summaryValueCode: {
+    fontSize: 13,
+    color: '#EA580C',
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  errorFeedbackContent: {
+    paddingVertical: 6,
+  },
+  errorFeedbackText: {
+    fontSize: 13,
+    color: '#475569',
+    lineHeight: 19,
+    textAlign: 'center',
   },
   successFeedbackContent: {
     paddingVertical: 6,

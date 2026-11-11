@@ -23,19 +23,22 @@ Pada Sprint 1 ini, aplikasi mendemonstrasikan siklus lengkap kegiatan praktikum:
 
 ### A. Sudut Pandang Praktikan
 - **Jadwal & Detail Sesi Praktikum**: Daftar sesi lengkap dengan modul, nama praktikum, kelas, ruang laboratorium, waktu, dan status sesi (`Dibuka`, `Belum Dibuka`, `Ditutup`).
-- **Filter Status Cepat**: Filter sesi berdasarkan status dengan filter chips interaktif (`Semua`, `Dibuka`, `Belum Dibuka`, `Ditutup`).
+- **Filter Status & Filter Cerdas Kelas Saya**: Filter sesi berdasarkan status (`Semua`, `Dibuka`, `Belum Dibuka`, `Ditutup`) serta chip khusus **`Kelas Saya (Kelas A/B)`** untuk memfilter sesi yang relevan dengan kelas mahasiswa.
 - **Metrik Jadwal Overview**: Ringkasan jumlah sesi total, sesi dibuka, sesi sudah dihadiri, dan sesi belum dibuka.
-- **Pencatatan Presensi Mandiri**: Form pengisian kehadiran saat sesi berstatus `Dibuka` dengan kolom catatan opsional dan checkbox integritas kehadiran.
-- **Validasi Anti-Duplikasi Presensi**: Praktikan tidak dapat melakukan presensi dua kali pada sesi yang sama. Status tombol langsung terkunci menjadi `Sudah Presensi`.
+- **Pencatatan Presensi Mandiri dengan Kode Sesi (4 Digit)**: Form pengisian kehadiran saat sesi berstatus `Dibuka` yang mewajibkan input 4 digit kode sesi yang dibagikan oleh asisten di ruang lab, kolom catatan opsional, dan checkbox integritas kehadiran.
+- **Validasi Kesesuaian Kelas**: Menolak presensi jika kelas mahasiswa tidak sesuai dengan kelas sesi praktikum (misal mahasiswa Kelas B dilarang presensi di sesi Kelas A) dengan pesan umpan balik informatif.
+- **Validasi Anti-Duplikasi Presensi**: Praktikan tidak dapat melakukan presensi dua kali pada sesi yang sama. Status tombol langsung terkunci menjadi `Presensi Telah Lengkap` / `Sudah Presensi`.
 - **Riwayat Kehadiran Pribadi**: Daftar riwayat kehadiran lengkap dengan timestamp presensi dan statistik kehadiran pribadi.
 
 ### B. Sudut Pandang Asisten Laboratorium
 - **Manajemen Sesi Real-Time**: Buka sesi (`Belum Dibuka` → `Dibuka`) dan tutup sesi (`Dibuka` → `Ditutup`) dengan perubahan status instan pada seluruh antarmuka.
+- **Kode Sesi Presensi Aktif (4 Digit)**: Saat sesi dibuka, asisten mendapatkan kartu khusus kode 4 digit (misal: `2401`) untuk dibagikan secara lisan/visual kepada praktikan di laboratorium. Kode juga tersemat pada kartu sesi.
 - **Buka Kembali Sesi Praktikum**: Sesi yang telah ditutup dapat dibuka kembali oleh asisten untuk memberikan kesempatan presensi susulan.
 - **CRUD Sesi Praktikum**:
-  - **Tambah Sesi Baru**: Asisten dapat menjadwalkan sesi modul baru lengkap dengan form modal.
+  - **Tambah Sesi Baru**: Asisten dapat menjadwalkan sesi modul baru lengkap dengan form modal dan auto-generate kode sesi 4 digit.
   - **Edit Informasi Sesi**: Asisten dapat memperbarui materi modul, ruang lab, jam, dan tanggal pelaksanaan.
   - **Hapus Sesi**: Asisten dapat menghapus sesi dengan dialog konfirmasi aman.
+- **Progress Bar Tingkat Kehadiran**: Bar visual ketercapaian presensi kelas secara real-time.
 - **Dialog Modal Konfirmasi**: Setiap aksi pembukaan, penutupan, buka kembali, atau penghapusan sesi diamankan dengan `ConfirmationModal` untuk mencegah kesalahan penekanan.
 - **Roster Lengkap Kelas (Hadir vs Belum Hadir)**: Menampilkan seluruh mahasiswa terdaftar pada kelas sesi tersebut, membedakan siapa yang sudah presensi (disertai jam kehadiran) dan siapa yang belum hadir, dilengkapi filter tab.
 - **Rekapitulasi Kehadiran Sesi**: Halaman rekapitulasi kelas per sesi dengan indikator persentase kehadiran, jumlah mahasiswa hadir, dan daftar rincian nama mahasiswa.

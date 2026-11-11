@@ -55,7 +55,7 @@ export default function JadwalAsistenScreen() {
       alert('Materi praktikum harus diisi.');
       return;
     }
-    tambahSesi({
+    const newCreated = tambahSesi({
       praktikum: newPraktikum.trim() || 'Praktikum PPK',
       kelas: newKelas,
       tanggal: newTanggal.trim() || '05 Nov 2026',
@@ -67,6 +67,11 @@ export default function JadwalAsistenScreen() {
     });
     setNewMateri('');
     setModalTambahVisible(false);
+    // Redirect langsung ke detail sesi yang baru saja dibuat
+    router.push({
+      pathname: '/asisten/detail-sesi/[id]',
+      params: { id: newCreated.id },
+    });
   };
 
   const renderItem = ({ item }: { item: Sesi }) => {

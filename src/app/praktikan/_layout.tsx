@@ -1,10 +1,18 @@
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
 import React from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 
 import { RoleHeader } from '@/components/role-header';
+import { usePraktikum } from '@/context/praktikum-context';
 
 export default function PraktikanLayout() {
+  const { role, currentPraktikan } = usePraktikum();
+
+  // Route Guard: Redirect to portal landing if not authenticated as practitioner
+  if (role !== 'praktikan' || !currentPraktikan) {
+    return <Redirect href="/" />;
+  }
+
   return (
     <View style={styles.container}>
       <RoleHeader />

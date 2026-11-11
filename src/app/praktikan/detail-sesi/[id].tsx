@@ -36,13 +36,21 @@ export default function PraktikanDetailSesiScreen() {
 
   const sesi = sesiList.find((s) => s.id === id);
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/praktikan/jadwal');
+    }
+  };
+
   if (!sesi) {
     return (
       <View style={styles.container}>
         <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 12) }]}>
           <Pressable
             style={styles.backButton}
-            onPress={() => router.back()}
+            onPress={handleBack}
             accessibilityRole="button">
             <Text style={styles.backButtonText}>← Kembali</Text>
           </Pressable>
@@ -51,7 +59,7 @@ export default function PraktikanDetailSesiScreen() {
           title="Sesi Tidak Ditemukan"
           message="Sesi praktikum yang Anda cari tidak terdaftar atau telah dihapus."
           actionText="Kembali ke Jadwal"
-          onAction={() => router.back()}
+          onAction={handleBack}
         />
       </View>
     );
@@ -95,7 +103,7 @@ export default function PraktikanDetailSesiScreen() {
           {/* Breadcrumb Back Button */}
           <Pressable
             style={({ pressed }) => [styles.backBreadcrumb, pressed && styles.btnPressed]}
-            onPress={() => router.back()}
+            onPress={handleBack}
             accessibilityRole="button"
             accessibilityLabel="Kembali ke Jadwal Praktikum">
             <Text style={styles.backBreadcrumbText}>← Kembali ke Jadwal Praktikum</Text>
@@ -359,20 +367,22 @@ export default function PraktikanDetailSesiScreen() {
         </View>
       </ConfirmationModal>
 
-      {/* Success Feedback Modal (FR-4.3) */}
+      {/* Success Feedback Modal (FR-4.3) with Redirect to Riwayat */}
       <ConfirmationModal
         visible={isSuccessModalVisible}
         title="Presensi Berhasil"
         description={successMessage}
-        confirmText="Selesai"
+        confirmText="Lihat Riwayat Presensi"
         cancelText="Tutup"
         confirmVariant="success"
-        onConfirm={() => setIsSuccessModalVisible(false)}
+        onConfirm={() => {
+          setIsSuccessModalVisible(false);
+          router.replace('/praktikan/riwayat');
+        }}
         onCancel={() => setIsSuccessModalVisible(false)}>
         <View style={styles.successFeedbackContent}>
           <Text style={styles.feedbackSub}>
-            Waktu kehadiran Anda telah tersimpan. Anda dapat memeriksa rekapan
-            kehadiran Anda di tab Riwayat.
+            Waktu kehadiran Anda telah tersimpan secara resmi. Klik &quot;Lihat Riwayat Presensi&quot; untuk memeriksa catatan kehadiran Anda di tab Riwayat.
           </Text>
         </View>
       </ConfirmationModal>

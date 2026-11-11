@@ -90,13 +90,21 @@ export default function DetailSesiAsistenScreen() {
     ? Math.round((totalHadir / totalMahasiswa) * 100)
     : 0;
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/asisten/jadwal');
+    }
+  };
+
   if (!sesi) {
     return (
       <View style={styles.container}>
         <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 12) }]}>
           <Pressable
             style={styles.backButton}
-            onPress={() => router.back()}
+            onPress={handleBack}
             accessibilityRole="button">
             <Text style={styles.backButtonText}>← Kembali</Text>
           </Pressable>
@@ -105,7 +113,7 @@ export default function DetailSesiAsistenScreen() {
           title="Sesi Tidak Ditemukan"
           message="Sesi praktikum yang Anda cari tidak terdaftar dalam jadwal."
           actionText="Kembali ke Jadwal"
-          onAction={() => router.back()}
+          onAction={handleBack}
         />
       </View>
     );
@@ -177,7 +185,7 @@ export default function DetailSesiAsistenScreen() {
           {/* Breadcrumb Back Button */}
           <Pressable
             style={({ pressed }) => [styles.backBreadcrumb, pressed && styles.btnPressed]}
-            onPress={() => router.back()}
+            onPress={handleBack}
             accessibilityRole="button"
             accessibilityLabel="Kembali ke Jadwal Praktikum">
             <Text style={styles.backBreadcrumbText}>← Kembali ke Jadwal Praktikum</Text>

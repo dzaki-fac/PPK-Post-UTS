@@ -49,6 +49,13 @@ export default function AsistenLayout() {
           }}
         />
         <Tabs.Screen
+          name="mahasiswa"
+          options={{
+            title: 'Data Praktikan',
+            tabBarLabel: 'Praktikan',
+          }}
+        />
+        <Tabs.Screen
           name="detail-sesi/[id]"
           options={{
             href: null,
@@ -74,7 +81,7 @@ const styles = StyleSheet.create({
     paddingTop: 6,
   },
   tabBarWeb: {
-    maxWidth: 380,
+    maxWidth: 480,
     width: '100%',
     alignSelf: 'center',
     marginHorizontal: 'auto',

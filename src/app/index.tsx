@@ -11,12 +11,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { usePraktikum } from '@/context/praktikum-context';
-import { DUMMY_PRAKTIKAN, DUMMY_ASISTEN } from '@/data/dummy';
 import { Peran } from '@/data/types';
 import { Asisten, Praktikan } from '@/types/praktikum';
 
 export default function IndexScreen() {
-  const { setPengguna } = usePraktikum();
+  const { setPengguna, allPraktikan, allAsisten } = usePraktikum();
   const [langkah, setLangkah] = useState<'pilih-peran' | 'pilih-identitas'>('pilih-peran');
   const [peranDipilih, setPeranDipilih] = useState<Peran>(null);
   const [filterKelas, setFilterKelas] = useState<'semua' | 'A' | 'B'>('semua');
@@ -54,8 +53,8 @@ export default function IndexScreen() {
   if (langkah === 'pilih-identitas' && peranDipilih) {
     const isPraktikan = peranDipilih === 'praktikan';
     const praktikanList = filterKelas === 'semua'
-      ? DUMMY_PRAKTIKAN
-      : DUMMY_PRAKTIKAN.filter((p) => p.kelas === filterKelas);
+      ? allPraktikan
+      : allPraktikan.filter((p) => p.kelas === filterKelas);
 
     return (
       <View style={styles.container}>
@@ -133,7 +132,7 @@ export default function IndexScreen() {
                         styles.filterChipText,
                         filterKelas === 'semua' && styles.filterChipTextActive,
                       ]}>
-                      Semua (10)
+                      Semua ({allPraktikan.length})
                     </Text>
                   </Pressable>
 
@@ -148,7 +147,7 @@ export default function IndexScreen() {
                         styles.filterChipText,
                         filterKelas === 'A' && styles.filterChipTextActive,
                       ]}>
-                      Kelas A (6)
+                      Kelas A ({allPraktikan.filter((p) => p.kelas === 'A').length})
                     </Text>
                   </Pressable>
 
@@ -163,7 +162,7 @@ export default function IndexScreen() {
                         styles.filterChipText,
                         filterKelas === 'B' && styles.filterChipTextActive,
                       ]}>
-                      Kelas B (4)
+                      Kelas B ({allPraktikan.filter((p) => p.kelas === 'B').length})
                     </Text>
                   </Pressable>
                 </View>
@@ -210,7 +209,7 @@ export default function IndexScreen() {
                       </Pressable>
                     );
                   })
-                : DUMMY_ASISTEN.map((asisten) => {
+                : allAsisten.map((asisten) => {
                     const initials = getInitials(asisten.nama);
                     return (
                       <Pressable
@@ -310,13 +309,13 @@ export default function IndexScreen() {
             </View>
 
             <View style={styles.metricCard}>
-              <Text style={[styles.metricValue, { color: '#0D9488' }]}>10</Text>
+              <Text style={[styles.metricValue, { color: '#0D9488' }]}>{allPraktikan.length}</Text>
               <Text style={styles.metricLabel}>Praktikan</Text>
               <Text style={styles.metricDesc}>Kelas A & Kelas B</Text>
             </View>
 
             <View style={styles.metricCard}>
-              <Text style={[styles.metricValue, { color: '#EA580C' }]}>2</Text>
+              <Text style={[styles.metricValue, { color: '#EA580C' }]}>{allAsisten.length}</Text>
               <Text style={styles.metricLabel}>Asisten Lab</Text>
               <Text style={styles.metricDesc}>Pengampu Komputasi</Text>
             </View>

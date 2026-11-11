@@ -134,6 +134,14 @@ export type RiwayatItem = Presensi & {
 - **FR-12.1:** Praktikan dapat melihat rekap seluruh sesi praktikum yang telah diikutinya pada tab Riwayat.
 - **FR-12.2:** Menampilkan kartu riwayat per-sesi lengkap dengan waktu presensi resmi dan banner persentase keaktifan pribadi.
 
+### FR-13 — Pengelolaan Data Master Praktikan / Mahasiswa (Asisten)
+- **FR-13.1:** Asisten dapat mengakses tab navigasi **`Praktikan`** (`/asisten/mahasiswa`) untuk mengelola seluruh data mahasiswa.
+- **FR-13.2:** Asisten dapat **menambahkan mahasiswa baru** melalui modal `+ Tambah Praktikan` dengan masukan nama lengkap, NIM (14 digit), dan penempatan kelas (`Kelas A` / `Kelas B`).
+- **FR-13.3:** Asisten dapat **mengubah data mahasiswa** (nama, NIM, atau kelas) melalui tombol `Edit` pada kartu mahasiswa.
+- **FR-13.4:** Asisten dapat **menghapus data mahasiswa** melalui tombol `Hapus` dengan konfirmasi modal bahaya. Penghapusan mahasiswa secara otomatis menghapus catatan presensinya.
+- **FR-13.5:** Dilengkapi fitur **pencarian instan** (*search bar*) berdasarkan nama/NIM dan filter berdasarkan kelas (`Semua`, `Kelas A`, `Kelas B`).
+- **FR-13.6:** Seluruh perubahan data mahasiswa langsung tersinkronisasi secara real-time ke halaman pemilihan identitas portal utama (`/`), selector `Ganti Akun`, dan roster kehadiran kelas.
+
 ---
 
 ## 4. Kebutuhan Navigasi & Pola Pengalihan (Routing & Redirection)

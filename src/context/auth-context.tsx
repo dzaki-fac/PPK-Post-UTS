@@ -3,6 +3,7 @@ import {
   User,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  signInWithCredential,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
@@ -11,9 +12,16 @@ import {
 import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
-import { auth, db, isFirebaseConfigured } from '@/lib/firebase';
+import { GOOGLE_WEB_CLIENT_ID, auth, db, isFirebaseConfigured } from '@/lib/firebase';
 import { UserDocument, UserRole } from '@/types/praktikum';
+
+if (Platform.OS !== 'web') {
+  GoogleSignin.configure({
+    webClientId: GOOGLE_WEB_CLIENT_ID,
+  });
+}
 
 export type { UserDocument, UserRole };
 
@@ -313,29 +321,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       );
     }
 
-    if (Platform.OS !== 'web') {
-      throw new Error(
-        'Masuk dengan Akun Google popup tersedia pada Web browser. Pada perangkat mobile tanpa OAuth Client ID native, silakan masuk dengan Email & Kata Sandi.'
-      );
-    }
-
     try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: 'select_account' });
-      const credential = await signInWithPopup(auth, provider);
-      const snap = await getDoc(doc(db, 'users', credential.user.uid));
+      let firebaseUser: User;
+
+      if (Platform.OS === 'web') {
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
+        const credential = await signInWithPopup(auth, provider);
+        firebaseUser = credential.user;
+      } else {
+        await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+        const signInResult = await GoogleSignin.signIn();
+        if (signInResult.type === 'cancelled') {
+          throw new Error('Proses masuk dengan Akun Google dibatalkan.');
+        }
+        const idToken = signInResult.data?.idToken;
+        if (!idToken) {
+          throw new Error('Gagal mendapatkan ID token dari Akun Google.');
+        }
+        const credential = GoogleAuthProvider.credential(idToken);
+        const userCredential = await signInWithCredential(auth, credential);
+        firebaseUser = userCredential.user;
+      }
+
+      const snap = await getDoc(doc(db, 'users', firebaseUser.uid));
 
       if (snap.exists()) {
         const data = { ...(snap.data() as UserDocument), uid: snap.id };
         setUserDoc(data);
         setNeedsProfileCompletion(false);
-        return { user: credential.user, userDoc: data, isNewUser: false };
+        return { user: firebaseUser, userDoc: data, isNewUser: false };
       }
 
       setUserDoc(null);
       setNeedsProfileCompletion(true);
-      return { user: credential.user, userDoc: null, isNewUser: true };
-    } catch (error) {
+      return { user: firebaseUser, userDoc: null, isNewUser: true };
+    } catch (error: any) {
+      if (
+        error?.code === statusCodes.SIGN_IN_CANCELLED ||
+        error?.message?.includes('dibatalkan')
+      ) {
+        throw new Error('Proses masuk dengan Akun Google dibatalkan.');
+      }
+      if (error?.code === statusCodes.IN_PROGRESS) {
+        throw new Error('Proses masuk dengan Akun Google sedang berjalan.');
+      }
+      if (error?.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        throw new Error('Layanan Google Play Services tidak tersedia pada perangkat.');
+      }
+      if (error?.code === '10' || error?.message?.includes('DEVELOPER_ERROR')) {
+        throw new Error(
+          'Konfigurasi SHA-1 belum terdaftar di Firebase Console (SHA-1: 58:3A:22:E2:5F:01:A3:82:E1:87:F2:8F:FB:F4:62:24:91:0F:7D:B2).'
+        );
+      }
       throw new Error(mapFirebaseAuthError(error));
     }
   }, []);
@@ -386,10 +424,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(async () => {
-    await signOut(auth);
-    setUser(null);
-    setUserDoc(null);
-    setNeedsProfileCompletion(false);
+    try {
+      if (Platform.OS !== 'web') {
+        try {
+          await GoogleSignin.signOut();
+        } catch {
+          // Abaikan bila sebelumnya tidak masuk via Google Sign-In
+        }
+      }
+      await signOut(auth);
+      setUser(null);
+      setUserDoc(null);
+      setNeedsProfileCompletion(false);
+    } catch (error) {
+      throw new Error(mapFirebaseAuthError(error));
+    }
   }, []);
 
   const role: UserRole | null = userDoc?.peran ?? null;

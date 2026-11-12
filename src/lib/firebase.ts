@@ -27,6 +27,10 @@ export const firebaseConfig = {
   measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
+export const GOOGLE_WEB_CLIENT_ID =
+  process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
+  '451443064627-5tgabgh2hienk8i6thm3tuh14qhs0dk6.apps.googleusercontent.com';
+
 export function isFirebaseConfigured(): boolean {
   const apiKey = firebaseConfig.apiKey?.trim();
   const projectId = firebaseConfig.projectId?.trim();

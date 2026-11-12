@@ -13,7 +13,6 @@ import {
   updateDoc,
   query,
   where,
-  orderBy,
   onSnapshot,
   getDocs,
   Unsubscribe,
@@ -148,11 +147,11 @@ export async function createLeaveRequest(
   const newDoc: LeaveRequestDocument = {
     id: docId,
     sessionId: input.sessionId,
-    sessionName: input.sessionName,
+    sessionName: input.sessionName || 'Sesi Praktikum',
     studentId: input.studentId,
-    studentName: input.studentName,
-    studentNim: input.studentNim,
-    studentClass: input.studentClass,
+    studentName: input.studentName || 'Mahasiswa',
+    studentNim: input.studentNim || '-',
+    studentClass: input.studentClass || 'A',
     alasan: cleanAlasan,
     lampiranUrl: input.lampiranUrl?.trim() || undefined,
     status: 'menunggu',
@@ -172,12 +171,38 @@ export async function createLeaveRequest(
   inMemoryStore.unshift(newDoc);
   notifyLocalListeners();
 
-  // Simpan ke Firestore jika tersedia
+  // Simpan ke Firestore jika tersedia (tanpa menyertakan field undefined)
   try {
     const docRef = doc(db, 'leave_requests', docId);
-    await setDoc(docRef, newDoc);
+    const firestoreData: Record<string, unknown> = {
+      id: docId,
+      sessionId: input.sessionId,
+      sessionName: input.sessionName || 'Sesi Praktikum',
+      studentId: input.studentId,
+      studentName: input.studentName || 'Mahasiswa',
+      studentNim: input.studentNim || '-',
+      studentClass: input.studentClass || 'A',
+      alasan: cleanAlasan,
+      status: 'menunggu',
+      aiClassification: {
+        category: aiResult.kategori,
+        confidence: aiResult.confidence,
+        sentiment: aiResult.sentimen,
+        rawSummary: aiResult.ringkasan,
+        processedAt: aiResult.processedAt,
+        isFallback: aiResult.isFallback,
+      },
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    if (input.lampiranUrl?.trim()) {
+      firestoreData.lampiranUrl = input.lampiranUrl.trim();
+    }
+
+    await setDoc(docRef, firestoreData);
   } catch (error) {
-    console.warn('Peringatan: Gagal menyimpan izin ke Firestore, menggunakan penyimpanan lokal:', error);
+    console.error('Gagal menyimpan izin ke Firestore, menggunakan penyimpanan lokal:', error);
   }
 
   return newDoc;
@@ -216,9 +241,11 @@ export function subscribeLeaveRequests(
 
   try {
     const colRef = collection(db, 'leave_requests');
+    // Tidak menggabungkan where dan orderBy pada field berbeda di query Firestore
+    // agar tidak mewajibkan pembuatan composite index manual di Firebase Console.
     const q = statusFilter
-      ? query(colRef, where('status', '==', statusFilter), orderBy('createdAt', 'desc'))
-      : query(colRef, orderBy('createdAt', 'desc'));
+      ? query(colRef, where('status', '==', statusFilter))
+      : query(colRef);
 
     unsubscribeFirestore = onSnapshot(
       q,
@@ -228,6 +255,9 @@ export function subscribeLeaveRequests(
         snapshot.forEach((snapDoc) => {
           docs.push({ id: snapDoc.id, ...snapDoc.data() } as LeaveRequestDocument);
         });
+
+        // Urutkan dokumen terbaru di atas secara in-memory (0ms)
+        docs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
         // Sinkronisasi memori lokal dengan dokumen Firestore
         docs.forEach((docItem) => {
@@ -286,10 +316,10 @@ export function subscribeStudentLeaveRequests(
 
   try {
     const colRef = collection(db, 'leave_requests');
+    // Query dengan single where filter tanpa orderBy agar tidak memicu error composite index
     const q = query(
       colRef,
-      where('studentId', '==', studentId),
-      orderBy('createdAt', 'desc')
+      where('studentId', '==', studentId)
     );
 
     unsubscribeFirestore = onSnapshot(
@@ -300,6 +330,7 @@ export function subscribeStudentLeaveRequests(
         snapshot.forEach((snapDoc) => {
           docs.push({ id: snapDoc.id, ...snapDoc.data() } as LeaveRequestDocument);
         });
+        docs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         callback(docs);
       },
       (error) => {

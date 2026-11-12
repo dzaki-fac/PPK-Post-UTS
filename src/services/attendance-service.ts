@@ -1,11 +1,13 @@
 import {
   Unsubscribe,
   collection,
+  deleteDoc,
   doc,
   getDoc,
   onSnapshot,
   query,
   setDoc,
+  updateDoc,
   where,
 } from 'firebase/firestore';
 import { Platform } from 'react-native';
@@ -198,6 +200,51 @@ export function subscribePraktikanUsers(
       if (onError) onError(err);
     }
   );
+}
+
+/**
+ * Menambahkan data praktikan baru ke Firestore koleksi /users.
+ */
+export async function createPraktikanUser(data: {
+  nama: string;
+  nim: string;
+  kelas: 'A' | 'B';
+  email?: string;
+}): Promise<string> {
+  const customId = `prak-${Date.now()}`;
+  const now = new Date().toISOString();
+  const userDoc: UserDocument = {
+    uid: customId,
+    email: data.email || `${data.nim}@alumni.undip.ac.id`,
+    nama: data.nama.trim(),
+    peran: 'praktikan',
+    nim: data.nim.trim(),
+    kelas: data.kelas,
+    createdAt: now,
+    updatedAt: now,
+  };
+  await setDoc(doc(db, USERS_COLLECTION, customId), userDoc);
+  return customId;
+}
+
+/**
+ * Memperbarui data profil praktikan di Firestore /users.
+ */
+export async function updatePraktikanUser(
+  uid: string,
+  data: Partial<Pick<UserDocument, 'nama' | 'nim' | 'kelas'>>
+): Promise<void> {
+  await updateDoc(doc(db, USERS_COLLECTION, uid), {
+    ...data,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+/**
+ * Menghapus data praktikan dari Firestore /users.
+ */
+export async function deletePraktikanUser(uid: string): Promise<void> {
+  await deleteDoc(doc(db, USERS_COLLECTION, uid));
 }
 
 export interface SubmitAttendanceParams {

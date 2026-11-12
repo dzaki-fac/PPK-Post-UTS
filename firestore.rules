@@ -31,8 +31,8 @@ service cloud.firestore {
     match /users/{userId} {
       // Siapapun yang login dapat membaca profil untuk keperluan identitas & roster
       allow read: if isAuthenticated();
-      // Pengguna hanya dapat mendaftar dan menyunting profil miliknya sendiri
-      allow create, update: if isOwner(userId);
+      // Pengguna dapat menyunting profil miliknya sendiri, dan Asisten dapat mengelola master data praktikan
+      allow create, update: if isOwner(userId) || isAsisten();
       // Asisten dapat menghapus akun praktikan/asisten melalui Master Data
       allow delete: if isAsisten() || isOwner(userId);
     }
@@ -73,9 +73,10 @@ service cloud.firestore {
       // Pengguna terautentikasi dapat membaca pengajuan izin
       allow read: if isAuthenticated();
 
-      // Praktikan hanya dapat membuat pengajuan izin untuk dirinya sendiri
+      // Praktikan dapat membuat pengajuan izin untuk dirinya sendiri (studentId == auth.uid)
+      // atau Asisten dapat menginputkan izin praktikan
       allow create: if isAuthenticated() && (
-        (isPraktikan() && request.resource.data.studentId == request.auth.uid) || isAsisten()
+        request.resource.data.studentId == request.auth.uid || isAsisten()
       );
 
       // Pembaruan keputusan status (disetujui/ditolak) hanya boleh dilakukan oleh Asisten

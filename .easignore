@@ -1,0 +1,29 @@
+# EAS Ignore - files excluded when uploading project to EAS Build
+# Ref: https://docs.expo.dev/build-reference/eas-ignore/
+
+# Dependencies
+node_modules/
+
+# Expo cache and web builds
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+*.tsbuildinfo
+
+# Logs
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# OS files
+.DS_Store
+*.pem
+
+# Generated native folders (CNG will generate these during EAS build)
+/android
+/ios
+
+# Git folder
+.git/
+

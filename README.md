@@ -173,8 +173,8 @@ npx eas-cli build -p android --profile preview
 ```
 
 #### 📥 Tautan Unduhan Build APK Terbaru (Rilis Preview):
-- **Tautan Unduhan Langsung APK:** [Download PPK LabPortal (RbqbR1h7... .apk)](https://expo.dev/artifacts/eas/RbqbR1h7Jcwkja6SnXLwfWCAogg6VVFzBvUrdPCRx1k.apk)
-- **Halaman Riwayat Build EAS:** [expo.dev/accounts/gregoriusseptiano/projects/PPK-Post-UTS/builds/641614c0-3599-4fac-b25c-c5db63acffac](https://expo.dev/accounts/gregoriusseptiano/projects/PPK-Post-UTS/builds/641614c0-3599-4fac-b25c-c5db63acffac)
+- **Tautan Unduhan Langsung APK:** [Download PPK LabPortal (XiidMU8f... .apk)](https://expo.dev/artifacts/eas/XiidMU8fOGDfIu1Pe2rXwg4QeEix2RMpxqfyyWGfg6E.apk)
+- **Halaman Riwayat Build EAS:** [expo.dev/accounts/gregoriusseptiano/projects/PPK-Post-UTS/builds/2bc258be-bdb2-44a7-876e-e3864b2b8295](https://expo.dev/accounts/gregoriusseptiano/projects/PPK-Post-UTS/builds/2bc258be-bdb2-44a7-876e-e3864b2b8295)
 
 > [!TIP]
 > **Registrasi SHA-1 Fingerprint untuk Google Sign-In:**  
@@ -217,6 +217,7 @@ Seluruh modul Sprint 2 telah selesai dikembangkan, diintegrasikan, dan diuji pen
 | 9 | **Bottom Bar Safe Area & Vektor** | Tim Gabungan | **Selesai (100%)** | Mengatasi missing icon `☒` & kompatibel dengan gesture navigation Android. |
 | 10 | **Persistensi Sesi & Token AsyncStorage** | Tim Gabungan | **Selesai (100%)** | Token auth & profil user tersimpan permanen di perangkat, bebas re-login saat restart. |
 | 11 | **Header Navbar Single-Row & Preservasi Izin** | Tim Gabungan | **Selesai (100%)** | Layout RoleHeader sejajar rapi satu baris horizontal & sinkronisasi izin lama-baru. |
+| 12 | **Penyempurnaan Layout Android & Eliminasi LED Dots** | Tim Gabungan | **Selesai (100%)** | Menghilangkan seluruh dot warna/LED status, mencegah pemotongan teks nama header, dan card footer anti-clipping. |
 
 ---
 

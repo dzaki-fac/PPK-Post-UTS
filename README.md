@@ -1,80 +1,55 @@
-# PPK LabPortal — Sistem Presensi & Manajemen Sesi Praktikum
+# PPK LabPortal — Sistem Presensi, Manajemen Sesi & Moderasi Izin Praktikum
 
-> **Sprint 1: Antarmuka dan Alur Praktikum**  
-> Praktikum Pengembangan Platform Khusus (PPK) · Departemen Informatika, Fakultas Sains dan Matematika, Universitas Diponegoro (UNDIP)  
-> Dibangun dengan **React Native**, **Expo**, dan **Expo Router**. Mendukung penuh **Android (Expo Go)**, **iOS**, dan **Web Browser**.
-
----
-
-## 1. Deskripsi Proyek
-
-**PPK LabPortal** adalah aplikasi pencatatan kehadiran laboratorium praktikum terpadu yang dirancang dari dua sudut pandang pengguna: **Mahasiswa / Praktikan** dan **Asisten Laboratorium**.
-
-Pada Sprint 1 ini, aplikasi mendemonstrasikan siklus lengkap kegiatan praktikum:
-1. **Asisten Mengelola & Membuka Sesi**: Asisten dapat membuat sesi baru (`+ Tambah Sesi`), memilih jadwal sesi berstatus `Belum Dibuka`, dan mengonfirmasi pembukaan sesi melalui dialog modal.
-2. **Praktikan Melakukan Presensi**: Praktikan melihat sesi yang `Dibuka`, mengisi catatan kehadiran, menyetujui pernyataan integritas, dan mencatat kehadiran. Waktu kehadiran tercatat secara otomatis. Praktikan dilindungi dari presensi ganda (anti-duplikasi).
-3. **Asisten Memantau Rekap & Roster Kelas**: Asisten melihat daftar lengkap mahasiswa kelas tersebut (status `Hadir` beserta jam presensi, atau `Belum Hadir`) dan statistik persentase kehadiran kelas.
-4. **Praktikan Memeriksa Riwayat Kehadiran**: Praktikan memantau daftar sesi yang telah dihadiri beserta banner statistik keaktifan pribadi.
-5. **Asisten Menutup & Membuka Kembali Sesi**: Asisten dapat menutup sesi praktikum saat selesai atau membuka kembali sesi (`Buka Kembali Sesi`) jika diperlukan presensi susulan bagi mahasiswa. Serta dapat menyunting materi/ruang (`Edit Sesi`) atau menghapus sesi (`Hapus Sesi`).
+> **Praktikum Pengembangan Platform Khusus (PPK)**  
+> **Departemen Informatika, Fakultas Sains dan Matematika, Universitas Diponegoro (UNDIP)**  
+> Dibangun dengan **React Native**, **Expo SDK 57**, dan **Expo Router**. Mendukung penuh **Android (Expo Go & Build)**, **iOS**, dan **Web Browser**.
 
 ---
 
-## 2. Fitur Utama (Sprint 1)
+## 1. Peta Dokumentasi Proyek
 
-### A. Sudut Pandang Praktikan
-- **Jadwal & Detail Sesi Praktikum**: Daftar sesi lengkap dengan modul, nama praktikum, kelas, ruang laboratorium, waktu, dan status sesi (`Dibuka`, `Belum Dibuka`, `Ditutup`).
-- **Filter Status & Filter Cerdas Kelas Saya**: Filter sesi berdasarkan status (`Semua`, `Dibuka`, `Belum Dibuka`, `Ditutup`) serta chip khusus **`Kelas Saya (Kelas A/B)`** untuk memfilter sesi yang relevan dengan kelas mahasiswa.
-- **Metrik Jadwal Overview**: Ringkasan jumlah sesi total, sesi dibuka, sesi sudah dihadiri, dan sesi belum dibuka.
-- **Pencatatan Presensi Mandiri dengan Kode Sesi (4 Digit)**: Form pengisian kehadiran saat sesi berstatus `Dibuka` yang mewajibkan input 4 digit kode sesi yang dibagikan oleh asisten di ruang lab, kolom catatan opsional, dan checkbox integritas kehadiran.
-- **Validasi Kesesuaian Kelas**: Menolak presensi jika kelas mahasiswa tidak sesuai dengan kelas sesi praktikum (misal mahasiswa Kelas B dilarang presensi di sesi Kelas A) dengan pesan umpan balik informatif.
-- **Validasi Anti-Duplikasi Presensi**: Praktikan tidak dapat melakukan presensi dua kali pada sesi yang sama. Status tombol langsung terkunci menjadi `Presensi Telah Lengkap` / `Sudah Presensi`.
-- **Riwayat Kehadiran Pribadi**: Daftar riwayat kehadiran lengkap dengan timestamp presensi dan statistik kehadiran pribadi.
+Untuk mempermudah pemahaman arsitektur dan kolaborasi pengembang, dokumentasi proyek dibagi secara modular:
 
-### B. Sudut Pandang Asisten Laboratorium
-- **Manajemen Sesi Real-Time**: Buka sesi (`Belum Dibuka` → `Dibuka`) dan tutup sesi (`Dibuka` → `Ditutup`) dengan perubahan status instan pada seluruh antarmuka.
-- **Kode Sesi Presensi Aktif (4 Digit)**: Saat sesi dibuka, asisten mendapatkan kartu khusus kode 4 digit (misal: `2401`) untuk dibagikan secara lisan/visual kepada praktikan di laboratorium. Kode juga tersemat pada kartu sesi.
-- **Buka Kembali Sesi Praktikum**: Sesi yang telah ditutup dapat dibuka kembali oleh asisten untuk memberikan kesempatan presensi susulan.
-- **CRUD Sesi Praktikum**:
-  - **Tambah Sesi Baru**: Asisten dapat menjadwalkan sesi modul baru lengkap dengan form modal dan auto-generate kode sesi 4 digit.
-  - **Edit Informasi Sesi**: Asisten dapat memperbarui materi modul, ruang lab, jam, dan tanggal pelaksanaan.
-  - **Hapus Sesi**: Asisten dapat menghapus sesi dengan dialog konfirmasi aman.
-- **Progress Bar Tingkat Kehadiran**: Bar visual ketercapaian presensi kelas secara real-time.
-- **Dialog Modal Konfirmasi**: Setiap aksi pembukaan, penutupan, buka kembali, atau penghapusan sesi diamankan dengan `ConfirmationModal` untuk mencegah kesalahan penekanan.
-- **CRUD Master Data Pengguna (Praktikan & Asisten)**:
-  - Tab navigasi khusus **`Pengguna`** (`/asisten/mahasiswa`) dengan switcher praktikan vs asisten.
-  - **Kelola Praktikan**: Tambah mahasiswa baru (nama, NIM resmi 14 digit, kelas), edit identitas mahasiswa, dan hapus mahasiswa.
-  - **Kelola Asisten Lab**: Tambah akun asisten baru (`+ Tambah Asisten`), edit nama & penugasan lab, serta hapus asisten dengan proteksi minimal 1 asisten aktif.
-  - **Pencarian & Filter Cepat**: Search bar instan dan filter chip kelas.
-  - Sinkronisasi instan ke seluruh sistem (portal landing, pemilih akun modal ganti akun, dan roster sesi).
-- **Roster Lengkap Kelas (Hadir vs Belum Hadir)**: Menampilkan seluruh mahasiswa terdaftar pada kelas sesi tersebut, membedakan siapa yang sudah presensi (disertai jam kehadiran) dan siapa yang belum hadir, dilengkapi filter tab.
-- **Rekapitulasi Kehadiran Sesi**: Halaman rekapitulasi kelas per sesi dengan indikator persentase kehadiran, jumlah mahasiswa hadir, dan daftar rincian nama mahasiswa.
-
-### C. Komponen Universal & Aksesibilitas
-- **`RoleHeader` Seragam**:
-  - Identitas institusi & laboratorium: **Pengembangan Platform Khusus (PPK) · Departemen Informatika, Universitas Diponegoro**.
-  - Badge peran aktif (`MAHASISWA` atau `ASISTEN LAB`), nama pengguna, dan NIM/kelas.
-  - Tombol **`Ganti Akun`** yang memunculkan modal popup terpusat untuk beralih akun atau keluar ke portal utama tanpa perlu reload aplikasi.
-- **Desain Responsif Web & Mobile**:
-  - Pada layar lebar (Web Browser), konten dibatasi proporsional (`maxWidth: 960`) dan navigasi tab bar dipusatkan secara proporsional (*floating centered nav*).
-  - Pada layar ponsel (Android/iOS), layout full-width responsif dengan safe-area insets dan touch targets terstandarisasi.
+| Berkas | Fokus Utama | Tautan |
+|---|---|:---:|
+| **`DESIGN.md`** | **Single Source of Truth Desain:** Token warna resmi (Terracotta Orange `#EA580C`, Academic Teal `#0D9488`), standar responsif desktop `maxWidth: 960px`, tipografi, dan aturan mutlak *anti-slop* (tanpa emoji generik). | [Baca DESIGN.md](./DESIGN.md) |
+| **`SRS.md`** | **Spesifikasi Kebutuhan Sprint 1:** Antarmuka, tata letak Flexbox, navigasi Expo Router, simulasi alur asisten & praktikan, serta state runtime in-memory. | [Baca SRS.md](./SRS.md) |
+| **`SRS2.md`** | **Spesifikasi Kebutuhan Sprint 2:** Integrasi Firebase Authentication multi-metode, Cloud Firestore real-time, modul pengajuan izin, klasifikasi API Model AI, dan pembagian tugas 2 programmer. | [Baca SRS2.md](./SRS2.md) |
+| **`firestore.rules`**| **Aturan Keamanan Database:** Role-Based Access Control (RBAC) resmi Cloud Firestore yang melindungi koleksi `/users`, `/sessions`, `/attendances`, dan `/leave_requests`. | [Baca firestore.rules](./firestore.rules) |
 
 ---
 
-## 3. Desain Sistem (E-Stock Inspired)
+## 2. Ikhtisar Proyek
 
-Antarmuka aplikasi dibangun mengacu pada referensi dashboard modern *E-Stock Management* (`e-stock.hancreativemedia.com`), menghindari tampilan kaku, kosong, atau *slop*:
+**PPK LabPortal** adalah aplikasi operasional laboratorium praktikum modern yang mengintegrasikan pencatatan kehadiran presensi mandiri, manajemen jadwal sesi, dan moderasi izin ketidakhadiran berbantuan kecerdasan buatan (*Artificial Intelligence*).
 
-| Token | Nilai Hex | Penggunaan |
-|---|---|---|
-| **Terracotta Primary** | `#EA580C` | Aksen utama portal mahasiswa, tombol aksi primer, active tab |
-| **Warm Peach / Tint** | `#FFF7ED` | Latar belakang badge & highlight kartu praktikan |
-| **Academic Teal** | `#0D9488` | Aksen portal asisten laboratorium, badge pengampu, link asisten |
-| **Teal Tint** | `#F0FDFA` | Latar kartu asisten & border aksen sejuk |
-| **Slate Background** | `#F8FAFC` | Latar kanvas aplikasi |
-| **Text Primary** | `#0F172A` | Teks judul kontras tinggi (WCAG AAA) |
-| **Text Secondary** | `#334155` | Teks informasi utama |
-| **Text Muted** | `#64748B` | Label waktu, subtitle, placeholder |
-| **Border Neutral** | `#E2E8F0` | Pembatas kartu, form input, dan garis divider |
+Aplikasi dirancang secara adaptif dari dua perspektif peran pengguna:
+1. **Praktikan (Mahasiswa Informatika):** Memantau jadwal praktikum, memeriksa detail sesi dan materi modul, presensi mandiri saat sesi dibuka menggunakan kode sesi 4 digit (dengan proteksi kelas dan anti-duplikasi), mengajukan izin jika berhalangan hadir, serta melihat rekap riwayat kehadiran.
+2. **Asisten Laboratorium:** Menjadwalkan sesi modul baru (CRUD Sesi), membuka dan menutup sesi presensi secara real-time, memantau kehadiran mahasiswa melalui roster kelas dan indikator ketercapaian, mengelola master data pengguna (CRUD Praktikan & Asisten), serta meninjau rekomendasi AI dan mengambil keputusan persetujuan izin ketidakhadiran.
+
+---
+
+## 3. Fitur Utama Aplikasi
+
+### A. Fitur Operasional Praktikum (Sprint 1 — Selesai & Teruji)
+* **Jadwal & Detail Sesi Praktikum:** Daftar jadwal lengkap dengan nama praktikum, materi modul, kelas, ruang laboratorium, waktu, dan status sesi (`Dibuka`, `Belum Dibuka`, `Ditutup`).
+* **Filter Status & Filter Cerdas Kelas Saya:** Filter sesi berdasarkan status serta chip pintar `Kelas Saya (Kelas A/B)` untuk memfilter sesi yang sesuai dengan kelas terdaftar mahasiswa.
+* **Metrik Ringkasan (Stats Overview):** Kartu ringkasan interaktif di awal setiap dashboard agar tampilan informatif dan tidak hampa.
+* **Presensi Mandiri dengan Kode 4 Digit:** Formulir presensi yang hanya aktif saat sesi `Dibuka`, mewajibkan input 4 digit kode sesi dari asisten, catatan opsional, dan checkbox integritas kehadiran.
+* **Validasi Kesesuaian Kelas:** Menolak presensi dengan banner peringatan jika kelas mahasiswa berbeda dengan kelas sesi praktikum (misal mahasiswa Kelas B dilarang presensi di sesi Kelas A).
+* **Validasi Anti-Duplikasi Presensi:** Praktikan tidak dapat presensi dua kali pada sesi yang sama. Tombol otomatis terkunci menjadi `Presensi Telah Lengkap` dengan banner status hijau.
+* **Roster Kehadiran Kelas (Hadir vs Belum Hadir):** Menampilkan seluruh mahasiswa terdaftar pada kelas tersebut, membedakan siapa yang sudah presensi (beserta jam kehadiran resmi) dan siapa yang belum hadir.
+* **Master Data Pengguna (CRUD Praktikan & Asisten):** Asisten dapat menambah, mengedit, dan menghapus data mahasiswa maupun akun sesama asisten laboratorium melalui tab switcher navigasi `Pengguna`.
+* **Universal RoleHeader:** Navbar universal responsif dengan tombol popup `Ganti Akun` untuk beralih profil praktikan atau asisten secara instan.
+
+### B. Fondasi Data Dinamis & AI (Sprint 2 — Siap Dikerjakan)
+* **Multi-Metode Autentikasi:** Mendukung pendaftaran/login via **Email & Password** serta **Sign-In with Google Account**.
+* **Cloud Firestore Real-Time:** Penyimpanan data persisten dan sinkronisasi instan via `onSnapshot` untuk koleksi `/users`, `/sessions`, `/attendances`, dan `/leave_requests`.
+* **Keamanan Database Ter-deploy:** File `firestore.rules` menerapkan pembatasan hak akses berbasis peran (RBAC) dan telah aktif di server Google Cloud Firestore.
+* **Pengajuan Izin Ketidakhadiran:** Praktikan dapat mengajukan permohonan izin dengan alasan tertulis dan tautan dokumen bukti.
+* **Integrasi API Model AI Pengajar:** Alasan izin dikirim ke API Model AI untuk diklasifikasikan ke dalam 4 kategori (`Sakit`, `Akademik`, `Keluarga`, `Lainnya`) dengan skor keyakinan (*confidence score*) sebagai pendukung keputusan non-binding bagi asisten.
+* **Resilience & Fallback AI:** Sistem otomatis beralih ke *NLP Heuristic Engine* lokal jika server AI dosen offline atau mengalami timeout (maksimal 5 detik), menjamin aplikasi tidak pernah macet saat pengujian.
+* **Panel Moderasi Asisten:** Dashboard khusus asisten untuk meninjau pengajuan izin, memeriksa rekomendasi AI, dan menetapkan keputusan (*Setujui* atau *Tolak*).
 
 ---
 
@@ -82,40 +57,48 @@ Antarmuka aplikasi dibangun mengacu pada referensi dashboard modern *E-Stock Man
 
 ```
 PPK-Post-UTS/
-├── DESIGN.md                     # Spesifikasi lengkap sistem desain LabPortal
-├── SRS.md                        # Software Requirements Specification (Sprint 1)
-├── README.md                     # Dokumentasi proyek & panduan instalasi
-├── app.json                      # Konfigurasi Expo
-├── package.json                  # Dependensi proyek (clean Expo Go)
-├── tsconfig.json                 # Konfigurasi TypeScript
+├── DESIGN.md                     # Sumber kebenaran sistem desain resmi (E-Stock Inspired)
+├── SRS.md                        # Spesifikasi kebutuhan Sprint 1
+├── SRS2.md                       # Spesifikasi kebutuhan Sprint 2 (Firebase & AI)
+├── README.md                     # Dokumentasi utama proyek
+├── .env.example                  # Template variabel lingkungan untuk tim
+├── .firebaserc                   # Konfigurasi project ID Firebase CLI
+├── firebase.json                 # Konfigurasi rilis layanan Firebase
+├── firestore.rules               # Aturan keamanan database Cloud Firestore (RBAC)
+├── firestore.indexes.json        # Pengaturan indeks komposit Firestore
+├── package.json                  # Dependensi proyek (Expo SDK 57 & Firebase SDK)
+├── tsconfig.json                 # Konfigurasi TypeScript strict
 ├── src/
 │   ├── app/                      # Expo Router (File-based routing)
-│   │   ├── _layout.tsx           # Root layout dengan safe-area & context provider
+│   │   ├── _layout.tsx           # Root layout dengan safe-area, web title & provider
 │   │   ├── index.tsx             # Halaman portal landing & pemilihan identitas
 │   │   ├── asisten/
 │   │   │   ├── _layout.tsx       # Tab navigator asisten dengan RoleHeader
-│   │   │   ├── jadwal.tsx        # Pengelolaan sesi, tambah sesi & metrik asisten
+│   │   │   ├── jadwal.tsx        # Pengelolaan sesi praktikum & metrik asisten
+│   │   │   ├── mahasiswa.tsx     # Master Data Pengguna (CRUD Praktikan & Asisten)
 │   │   │   ├── rekap.tsx         # Rekapitulasi kehadiran kelas per sesi
 │   │   │   └── detail-sesi/
-│   │   │       └── [id].tsx      # Detail kontrol sesi, edit, buka kembali & roster mahasiswa
+│   │   │       └── [id].tsx      # Kontrol sesi (buka/tutup/buka kembali), kode 4 digit & roster
 │   │   └── praktikan/
 │   │       ├── _layout.tsx       # Tab navigator praktikan dengan RoleHeader
 │   │       ├── jadwal.tsx        # Jadwal praktikum & status sesi
-│   │       ├── riwayat.tsx       # Riwayat kehadiran & statistik pribadi
+│   │       ├── riwayat.tsx       # Riwayat kehadiran & persentase keaktifan pribadi
 │   │       └── detail-sesi/
-│   │           └── [id].tsx      # Form presensi mandiri praktikan
-│   ├── components/               # Komponen UI modular
-│   │   ├── confirmation-modal.tsx# Modal konfirmasi aksi & feedback
-│   │   ├── empty-state.tsx       # State kosong terstruktur
-│   │   ├── role-header.tsx       # Universal header dengan navigasi & popup ganti akun
-│   │   ├── sesi-card.tsx         # Kartu sesi seragam untuk asisten & praktikan
+│   │           └── [id].tsx      # Formulir presensi mandiri dengan verifikasi kode & kelas
+│   ├── components/               # Komponen UI modular (E-Stock Inspired, Anti-Slop)
+│   │   ├── confirmation-modal.tsx# Dialog modal konfirmasi aksi & feedback
+│   │   ├── empty-state.tsx       # Tampilan terstruktur saat data kosong
+│   │   ├── role-header.tsx       # Universal header dengan switch user modal
+│   │   ├── sesi-card.tsx         # Kartu jadwal sesi seragam
 │   │   └── status-badge.tsx      # Badge status sesi & kehadiran
 │   ├── context/
-│   │   └── praktikum-context.tsx # State management aplikasi (sesi, CRUD, presensi, pengguna)
+│   │   └── praktikum-context.tsx # State runtime terpusat (sesi, CRUD, presensi, pengguna)
 │   ├── data/
-│   │   └── dummy.ts              # Data dummy mahasiswa, asisten, sesi, dan presensi (NIM UNDIP)
+│   │   └── dummy.ts              # Data dummy realistis Informatika FSM UNDIP (NIM 240601...)
+│   ├── lib/
+│   │   └── firebase.ts           # Inisialisasi Firebase App, Auth, dan Firestore Client
 │   └── types/
-│       └── praktikum.ts          # Definisi antarmuka TypeScript
+│       └── praktikum.ts          # Kontrak antarmuka TypeScript
 ```
 
 ---
@@ -124,90 +107,84 @@ PPK-Post-UTS/
 
 ### Prasyarat
 - **Node.js** versi 18 atau lebih baru.
-- **npm** atau **bun**.
-- Aplikasi **Expo Go** pada ponsel Android/iOS (opsional jika menguji di Web).
+- **npm** (atau bun).
+- Perangkat pengujian: **Web Browser** modern, atau ponsel fisik dengan aplikasi **Expo Go** (Android / iOS).
 
-### 1. Instalasi Dependensi
+### 1. Kloning & Pengaturan Dependensi
 ```bash
+# Pastikan berada di direktori proyek
 npm install
 ```
 
-### 2. Menjalankan Aplikasi
+### 2. Pengaturan Variabel Lingkungan (.env)
+Salin berkas template `.env.example` menjadi `.env` lokal:
+```bash
+cp .env.example .env
+```
+Isi konfigurasi Firebase dan endpoint AI sesuai proyek Anda:
+```env
+EXPO_PUBLIC_FIREBASE_API_KEY=AIzaSy...
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=praktikum-ppk-labportal.firebaseapp.com
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=praktikum-ppk-labportal
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=praktikum-ppk-labportal.firebasestorage.app
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=451443064627
+EXPO_PUBLIC_FIREBASE_APP_ID=1:451443064627:web:...
+EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID=G-PVPB052XEP
+
+EXPO_PUBLIC_AI_API_URL=https://api.labif.undip.ac.id/v1/classify-reason
+```
+
+### 3. Menjalankan Aplikasi (Expo Dev Server)
 ```bash
 npx expo start
 ```
-
-Setelah server Expo aktif:
-- **Web Browser**: Tekan tombol `w` di terminal atau buka `http://localhost:8081` di browser.
-- **Android (Expo Go)**: Buka aplikasi Expo Go di HP Android, lalu pindai QR code yang tampil di terminal.
-- **iOS (Expo Go)**: Buka aplikasi Kamera di iPhone, pindai QR code, dan buka di Expo Go.
+* **Web Browser:** Tekan tombol `w` di terminal atau buka `http://localhost:8081` di browser.
+* **Android (Expo Go):** Buka aplikasi Expo Go, pindai QR code yang tampil di terminal.
+* **iOS (Expo Go):** Buka kamera bawaan iPhone, pindai QR code, dan buka via Expo Go.
 
 ---
 
-## 6. Pengujian & Verifikasi Kualitas
+## 6. Pemeriksaan Kualitas & Standar Kode
 
-Aplikasi ini bebas dari kesalahan kompilasi dan mengikuti standar kualitas kode yang ketat:
+Seluruh basis kode diverifikasi secara rutin dan wajib mempertahankan standar kualitas:
 
 ```bash
-# Pemeriksaan tipe data TypeScript
+# 1. Pemeriksaan tipe data statis TypeScript (Harus 0 error)
 npx tsc --noEmit
 
-# Linting kode
+# 2. Pemeriksaan linter Expo / ESLint (Harus 0 warning/error)
 npx expo lint
 
-# Diagnostik kompatibilitas dependensi Expo
+# 3. Diagnostik kompatibilitas dependensi Expo SDK
 npx expo-doctor
 ```
 
 ---
 
-## 7. Informasi Pengguna Dummy untuk Pengujian
+## 7. Protokol Kolaborasi Git (Sprint 2)
 
-Aplikasi menyediakan data dummy siap pakai untuk simulasi alur:
+Pengerjaan fitur Sprint 2 dibagi menjadi dua cabang (*branch*) independen dengan format `feature/`:
 
-### Akun Asisten:
-- **Kak Dzaki M.** (Pengampu Laboratorium Komputasi)
-- **Kak Akmal R.** (Pengampu Laboratorium Komputasi)
+* **Branch `feature/auth-firestore-presensi` (Programmer 1):**
+  * Bertanggung jawab atas: Layar Login & Register, modul `AuthContext`, CRUD Sesi Cloud Firestore, dan pencatatan presensi real-time.
+* **Branch `feature/izin-ai-moderation` (Programmer 2):**
+  * Bertanggung jawab atas: Formulir pengajuan izin praktikan, modul `AIService` penghubung API AI model, kartu analisis AI `AICategoryBadge`, dan panel moderasi asisten laboratorium.
 
-### Akun Praktikan (Informatika UNDIP):
-- **Ahmad Dahlan** (NIM: `24060122130001` — Kelas A)
-- **Budi Santoso** (NIM: `24060122130002` — Kelas A)
-- **Citra Dewi** (NIM: `24060122130003` — Kelas A)
-- **Dimas Prasetyo** (NIM: `24060122140004` — Kelas B)
-- *Dan 6 mahasiswa lainnya di Kelas A & Kelas B.*
+> [!IMPORTANT]
+> **Aturan Git:** Seluruh pengembangan fitur dilakukan di branch masing-masing dan diverifikasi secara lokal sebelum digabungkan (*merge*) ke branch `main`.
 
 ---
 
-## 8. Panduan Skenario Evaluasi Alur Praktikum (Sprint 1)
+## 8. Panduan Skenario Pengujian (Demonstrasi Alur)
 
-Untuk mendemonstrasikan hasil akhir: **Asisten membuka sesi → Praktikan melakukan presensi → Asisten melihat rekap → Asisten menutup sesi (dan membuka kembali jika diperlukan)**, ikuti langkah simulasi berikut:
+### Skenario 1: Alur Presensi Terintegrasi Real-Time
+1. **Asisten Membuka Sesi:** Masuk sebagai Asisten Lab $\rightarrow$ buka tab **Jadwal** $\rightarrow$ pilih sesi berstatus `Belum Dibuka` $\rightarrow$ klik **Buka Sesi Praktikum** (status berubah menjadi `Dibuka`, kode numerik 4 digit aktif).
+2. **Praktikan Melakukan Presensi:** Beralih ke peran Praktikan $\rightarrow$ buka tab **Jadwal** $\rightarrow$ pilih sesi tersebut $\rightarrow$ masukkan 4 digit kode sesi $\rightarrow$ klik **Kirim Presensi Hadir** (status berubah menjadi `Sudah Presensi`, waktu kehadiran resmi tercatat).
+3. **Asisten Memantau Rekap:** Kembali ke peran Asisten $\rightarrow$ buka detail sesi $\rightarrow$ nama praktikan langsung tercatat **Hadir** lengkap dengan timestamp jam kehadiran secara real-time.
+4. **Asisten Menutup Sesi:** Asisten menekan tombol **Tutup Sesi Praktikum** (status berubah menjadi `Ditutup`, formulir presensi mahasiswa terkunci).
 
-1. **Langkah 1 (Asisten Buka Sesi / Tambah Sesi)**:
-   - Di halaman portal utama, pilih **Masuk sebagai Asisten Lab** lalu pilih akun **Kak Dzaki M.**.
-   - Asisten dapat membuat sesi baru dengan menekan **+ Tambah Sesi**, atau memilih sesi yang ada berstatus `Belum Dibuka` (misalnya: *Praktikum PPK - Modul 3*).
-   - Tekan tombol **Buka Sesi Praktikum** dan konfirmasi pada dialog modal.
-   - Status sesi langsung berubah menjadi `Dibuka` (hijau).
-
-2. **Langkah 2 (Praktikan Presensi)**:
-   - Tekan tombol **`Ganti Akun`** di header kanan atas lalu pilih **Ganti Peran ke Portal Utama**.
-   - Pilih **Masuk sebagai Praktikan** lalu pilih **Ahmad Dahlan** (Kelas A).
-   - Buka sesi *Praktikum PPK - Modul 3* yang baru saja dibuka oleh asisten.
-   - Isi form catatan kehadiran (opsional), centang persetujuan integritas, lalu tekan **Kirim Presensi Kehadiran**.
-   - Konfirmasi modal; muncul notifikasi berhasil beserta catatan waktu kehadiran WIB.
-   - Tombol otomatis terkunci menjadi `Sudah Presensi` untuk mencegah presensi ganda (anti-duplikasi).
-
-3. **Langkah 3 (Asisten Melihat Rekap & Roster)**:
-   - Tekan tombol **`Ganti Akun`** di header dan kembali ke akun **Kak Dzaki M.**.
-   - Buka sesi *Praktikum PPK - Modul 3* atau buka tab **Rekap Presensi**.
-   - Terlihat nama **Ahmad Dahlan** kini tercatat **Hadir** lengkap dengan timestamp kehadirannya, serta persentase kehadiran kelas terbarui secara real-time.
-
-4. **Langkah 4 (Asisten Menutup Sesi)**:
-   - Di halaman detail sesi *Praktikum PPK - Modul 3*, tekan tombol **Tutup Sesi Praktikum**.
-   - Konfirmasi dialog modal. Status sesi kini berubah menjadi `Ditutup` (merah).
-   - Saat mahasiswa membuka sesi tersebut kembali, formulir presensi telah terkunci dengan keterangan *"Sesi Telah Ditutup"*.
-
-5. **Langkah 5 (Buka Kembali & Edit Sesi)**:
-   - Sebagai asisten, pada sesi yang telah ditutup, tekan tombol **Buka Kembali Sesi Praktikum** dan konfirmasi dialog modal. Status sesi kembali menjadi `Dibuka`.
-   - Asisten juga dapat menekan **Edit Informasi Sesi** untuk memperbarui materi modul atau ruang laboratorium.
-
-
+### Skenario 2: Alur Pengajuan Izin Berbantuan AI
+1. **Praktikan Mengajukan Izin:** Praktikan membuka formulir pengajuan izin $\rightarrow$ memilih sesi praktikum $\rightarrow$ mengisi alasan ketidakhadiran (misal: sakit demam).
+2. **AI Mengklasifikasikan Alasan:** Sistem mengirim teks ke API model AI $\rightarrow$ model AI merespons dengan kategori `Sakit` dan confidence `94%` $\rightarrow$ data tersimpan di koleksi `/leave_requests` berstatus `menunggu`.
+3. **Asisten Melakukan Moderasi:** Asisten membuka panel moderasi $\rightarrow$ melihat pengajuan izin beserta kartu rekomendasi AI $\rightarrow$ asisten menekan **Setujui Izin**.
+4. **Praktikan Menerima Hasil:** Di layar pemantauan praktikan, status pengajuan langsung terbarui secara real-time menjadi **Izin Disetujui**.

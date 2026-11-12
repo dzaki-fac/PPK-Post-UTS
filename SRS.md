@@ -13,7 +13,14 @@
 ### 1.1 Tujuan
 Dokumen ini menetapkan spesifikasi kebutuhan perangkat lunak (*Software Requirements Specification*) untuk **PPK LabPortal** pada **Sprint 1: Antarmuka dan Alur Praktikum**. Dokumen ini menjadi acuan mutlak bagi seluruh tim pengembang agar pengembangan fitur, antarmuka, dan navigasi tetap kohesif, tepat sasaran, dan konsisten tanpa konflik.
 
-### 1.2 Ruang Lingkup
+### 1.2 Kepatuhan Desain Mutlak (Single Source of Truth: DESIGN.md)
+Setiap pengembang maupun AI coding assistant yang mengimplementasikan kode pada repositori ini **WAJIB MEMATUHI DAN MERUJUK PADA `DESIGN.md`**:
+- **Palet Warna:** Mahasiswa/Praktikan menggunakan Terracotta Orange (`#EA580C`), Asisten Lab menggunakan Academic Teal (`#0D9488`), Kanvas utama `#F8FAFC`, kartu `#FFFFFF`, border `#E2E8F0`.
+- **Anti-Slop (Zero Emojis):** Dilarang keras menggunakan emoji di UI, tombol, maupun notifikasi. Gunakan simbol geometris rapi (`●`, `←`, `→`).
+- **Layout Responsif:** Layar desktop dibungkus kontainer terpusat `maxWidth: 960px` dengan padding adaptif (`web: 20`, `mobile: 14`).
+- **Token Komponen:** `cardRadius: 14`, `buttonRadius: 10`, `pillRadius: 20`, `modalRadius: 20`, area sentuh minimal `minHeight: 44`.
+
+### 1.3 Ruang Lingkup
 Aplikasi mendemonstrasikan kegiatan operasional laboratorium praktikum secara terpadu melalui dua sudut pandang peran:
 1. **Praktikan (Mahasiswa Informatika):** Melihat jadwal praktikum, memeriksa rincian sesi dan materi, melakukan presensi kehadiran mandiri saat sesi dibuka dengan verifikasi integritas, serta memantau catatan riwayat kehadiran pribadi.
 2. **Asisten Laboratorium:** Mengelola sesi praktikum (menambah sesi baru, membuka sesi saat praktikum dimulai, menyunting materi/ruang, memantau kehadiran mahasiswa secara real-time, menutup sesi, membuka kembali sesi untuk presensi susulan, dan menghapus sesi jika dibatalkan).

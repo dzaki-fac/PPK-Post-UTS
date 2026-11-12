@@ -269,6 +269,21 @@ export default function PraktikanDetailSesiScreen() {
                   Menunggu Sesi Dibuka
                 </Text>
               </Pressable>
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Ajukan Izin Berhalangan Hadir"
+                onPress={() =>
+                  router.push({
+                    pathname: '/praktikan/pengajuan-izin',
+                    params: { sessionId: sesi.id },
+                  })
+                }
+                style={styles.leaveOptionButton}>
+                <Text style={styles.leaveOptionButtonText}>
+                  Berhalangan Hadir? Ajukan Izin di Sini →
+                </Text>
+              </Pressable>
             </View>
           ) : sesi.status === 'ditutup' ? (
             /* Case 3: Sesi Ditutup (FR-4.1, FR-3.4) */
@@ -392,6 +407,21 @@ export default function PraktikanDetailSesiScreen() {
                       : styles.actionBtnTextActive
                   }>
                   {isClassMismatch ? 'Beda Kelas - Tidak Dapat Presensi' : 'Kirim Presensi Kehadiran'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Ajukan Izin Praktikum"
+                onPress={() =>
+                  router.push({
+                    pathname: '/praktikan/pengajuan-izin',
+                    params: { sessionId: sesi.id },
+                  })
+                }
+                style={styles.leaveOptionButtonSecondary}>
+                <Text style={styles.leaveOptionButtonSecondaryText}>
+                  Berhalangan Hadir? Ajukan Izin Praktikum →
                 </Text>
               </Pressable>
             </View>
@@ -1027,5 +1057,32 @@ const styles = StyleSheet.create({
     color: '#334155',
     lineHeight: 19,
     textAlign: 'center',
+  },
+  leaveOptionButton: {
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  leaveOptionButtonText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#EA580C',
+  },
+  leaveOptionButtonSecondary: {
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6,
+  },
+  leaveOptionButtonSecondaryText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#EA580C',
   },
 });

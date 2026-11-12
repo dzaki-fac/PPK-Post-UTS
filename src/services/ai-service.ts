@@ -16,7 +16,7 @@ import { createSentimentClassifier, SentimentPrediction } from '../../ai/sentime
 import model from '../../ai/model-edom.json';
 
 export type AICategory = 'Sakit' | 'Akademik' | 'Keluarga' | 'Lainnya';
-export type AISentiment = 'negatif' | 'netral' | 'positif' | 'unknown';
+export type AISentiment = 'negatif' | 'netral' | 'positif';
 
 export interface AIAnalysisResult {
   kategori: AICategory;

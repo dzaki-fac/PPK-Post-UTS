@@ -42,6 +42,13 @@ export default function AsistenLayout() {
           }}
         />
         <Tabs.Screen
+          name="moderasi-izin"
+          options={{
+            title: 'Moderasi Izin',
+            tabBarLabel: 'Moderasi Izin',
+          }}
+        />
+        <Tabs.Screen
           name="rekap"
           options={{
             title: 'Rekap Presensi',
@@ -81,7 +88,7 @@ const styles = StyleSheet.create({
     paddingTop: 6,
   },
   tabBarWeb: {
-    maxWidth: 480,
+    maxWidth: 580,
     width: '100%',
     alignSelf: 'center',
     marginHorizontal: 'auto',

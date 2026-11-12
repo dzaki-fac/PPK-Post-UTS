@@ -91,6 +91,23 @@ export default function PraktikanJadwalScreen() {
         Pilih sesi praktikum untuk mengisi formulir presensi mandiri atau melihat detail materi
       </Text>
 
+      {/* Banner Ajukan Izin */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Ajukan Izin Praktikum"
+        onPress={() => router.push('/praktikan/pengajuan-izin')}
+        style={({ pressed }) => [styles.izinBanner, pressed && styles.cardPressed]}>
+        <View style={styles.izinBannerLeft}>
+          <Text style={styles.izinBannerTitle}>Pengajuan Izin Praktikum</Text>
+          <Text style={styles.izinBannerSub}>
+            Berhalangan hadir? Ajukan izin dengan analisis rekomendasi Model AI EDOM
+          </Text>
+        </View>
+        <View style={styles.izinBannerBtn}>
+          <Text style={styles.izinBannerBtnText}>Ajukan Izin →</Text>
+        </View>
+      </Pressable>
+
       {/* Metrics Overview Cards (Matching Halaman 1 style) */}
       <View style={styles.metricsGrid}>
         <View style={styles.metricCard}>
@@ -431,5 +448,44 @@ const styles = StyleSheet.create({
   },
   countTextActive: {
     color: '#FFFFFF',
+  },
+  izinBanner: {
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    borderRadius: 14,
+    padding: 14,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+  },
+  izinBannerLeft: {
+    flex: 1,
+    gap: 2,
+  },
+  izinBannerTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#C2410C',
+  },
+  izinBannerSub: {
+    fontSize: 11,
+    color: '#9A3412',
+    lineHeight: 16,
+  },
+  izinBannerBtn: {
+    backgroundColor: '#EA580C',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  izinBannerBtnText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  cardPressed: {
+    opacity: 0.85,
   },
 });

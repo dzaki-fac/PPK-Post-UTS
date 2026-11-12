@@ -42,6 +42,13 @@ export default function PraktikanLayout() {
           }}
         />
         <Tabs.Screen
+          name="pengajuan-izin"
+          options={{
+            title: 'Pengajuan Izin',
+            tabBarLabel: 'Ajukan Izin',
+          }}
+        />
+        <Tabs.Screen
           name="riwayat"
           options={{
             title: 'Riwayat Kehadiran',
@@ -74,7 +81,7 @@ const styles = StyleSheet.create({
     paddingTop: 6,
   },
   tabBarWeb: {
-    maxWidth: 380,
+    maxWidth: 480,
     width: '100%',
     alignSelf: 'center',
     marginHorizontal: 'auto',

@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   Platform,
@@ -12,23 +12,38 @@ import {
 import { EmptyState } from '@/components/empty-state';
 import { StatusBadge } from '@/components/status-badge';
 import { usePraktikum } from '@/context/praktikum-context';
+import {
+  LeaveRequestDocument,
+  subscribeLeaveRequests,
+} from '@/services/leave-service';
 import { Praktikan, Sesi } from '@/types/praktikum';
 
 type RekapSesiItem = {
   sesi: Sesi;
   totalKelas: number;
   totalHadir: number;
+  totalIzin: number;
   persentase: number;
   daftarMahasiswa: {
     praktikan: Praktikan;
     hadir: boolean;
+    izin: boolean;
     waktuHadir?: string;
+    alasanIzin?: string;
   }[];
 };
 
 export default function RekapAsistenScreen() {
   const { sesiList, presensiList, daftarPraktikan } = usePraktikum();
   const [expandedSesiId, setExpandedSesiId] = useState<string | null>(null);
+  const [approvedLeaves, setApprovedLeaves] = useState<LeaveRequestDocument[]>([]);
+
+  useEffect(() => {
+    const unsub = subscribeLeaveRequests((data) => {
+      setApprovedLeaves(data.filter((r) => r.status === 'disetujui'));
+    }, 'disetujui');
+    return () => unsub();
+  }, []);
 
   // Bangun rekap data untuk setiap sesi (dibuka dan ditutup diutamakan)
   const rekapData: RekapSesiItem[] = useMemo(() => {
@@ -48,14 +63,20 @@ export default function RekapAsistenScreen() {
 
         const daftar = mahasiswaFinal.map((m) => {
           const record = presensiSesi.find((pres) => pres.praktikanId === m.id);
+          const leave = approvedLeaves.find(
+            (l) => l.sessionId === sesi.id && l.studentId === m.id
+          );
           return {
             praktikan: m,
             hadir: !!record,
+            izin: !record && !!leave,
             waktuHadir: record?.waktuKehadiran,
+            alasanIzin: leave?.alasan,
           };
         });
 
         const totalHadir = presensiSesi.length;
+        const totalIzin = daftar.filter((d) => d.izin).length;
         const totalKelas = mahasiswaFinal.length;
         const persentase =
           totalKelas > 0 ? Math.round((totalHadir / totalKelas) * 100) : 0;
@@ -64,11 +85,12 @@ export default function RekapAsistenScreen() {
           sesi,
           totalKelas,
           totalHadir,
+          totalIzin,
           persentase,
           daftarMahasiswa: daftar,
         };
       });
-  }, [sesiList, presensiList, daftarPraktikan]);
+  }, [sesiList, presensiList, daftarPraktikan, approvedLeaves]);
 
   const totalSesiDiproses = rekapData.length;
   const totalPresensiMasuk = useMemo(
@@ -114,7 +136,7 @@ export default function RekapAsistenScreen() {
             <View style={styles.quickStatItem}>
               <Text style={styles.quickStatLabel}>Kehadiran:</Text>
               <Text style={styles.quickStatValue}>
-                {item.totalHadir}/{item.totalKelas} Mahasiswa
+                {item.totalHadir}/{item.totalKelas} Hadir{item.totalIzin > 0 ? ` • ${item.totalIzin} Izin` : ''}
               </Text>
             </View>
             <View style={styles.quickStatItem}>
@@ -157,7 +179,7 @@ export default function RekapAsistenScreen() {
             </Text>
 
             <View style={styles.studentList}>
-              {item.daftarMahasiswa.map(({ praktikan, hadir, waktuHadir }) => (
+              {item.daftarMahasiswa.map(({ praktikan, hadir, izin, waktuHadir }) => (
                 <View key={praktikan.id} style={styles.studentRow}>
                   <View style={styles.studentAvatar}>
                     <Text style={styles.studentAvatarText}>
@@ -180,6 +202,11 @@ export default function RekapAsistenScreen() {
                               : waktuHadir}
                           </Text>
                         ) : null}
+                      </View>
+                    ) : izin ? (
+                      <View style={styles.izinBadge}>
+                        <Text style={styles.izinBadgeText}>Izin</Text>
+                        <Text style={styles.izinSubText}>Disetujui</Text>
                       </View>
                     ) : (
                       <View style={styles.belumHadirBadge}>
@@ -212,6 +239,23 @@ export default function RekapAsistenScreen() {
       <Text style={styles.headerSubtitle}>
         Pantau ringkasan kehadiran mahasiswa per sesi praktikum dan periksa roster kelas
       </Text>
+
+      {/* Banner Menuju Panel Moderasi Izin */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Buka Panel Moderasi Izin Asisten"
+        onPress={() => router.push('/asisten/moderasi-izin')}
+        style={({ pressed }) => [styles.moderasiBanner, pressed && styles.cardPressed]}>
+        <View style={styles.moderasiBannerLeft}>
+          <Text style={styles.moderasiBannerTitle}>Panel Moderasi Izin Praktikum</Text>
+          <Text style={styles.moderasiBannerSub}>
+            Kelola permohonan izin praktikan berhalangan hadir dengan rekomendasi Model AI EDOM on-device
+          </Text>
+        </View>
+        <View style={styles.moderasiBannerButton}>
+          <Text style={styles.moderasiBannerButtonText}>Buka Panel →</Text>
+        </View>
+      </Pressable>
 
       {/* Aggregate Stats Banner */}
       <View style={styles.metricsGrid}>
@@ -544,5 +588,63 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     color: '#DC2626',
+  },
+  izinBadge: {
+    backgroundColor: '#DBEAFE',
+    borderWidth: 1,
+    borderColor: '#93C5FD',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    alignItems: 'center',
+  },
+  izinBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#1E40AF',
+  },
+  izinSubText: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: '#2563EB',
+  },
+  moderasiBanner: {
+    backgroundColor: '#F0FDFA',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#99F6E4',
+    padding: 14,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+  },
+  moderasiBannerLeft: {
+    flex: 1,
+    gap: 2,
+  },
+  moderasiBannerTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0F766E',
+  },
+  moderasiBannerSub: {
+    fontSize: 11,
+    color: '#115E59',
+    lineHeight: 16,
+  },
+  moderasiBannerButton: {
+    backgroundColor: '#0D9488',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  moderasiBannerButtonText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  cardPressed: {
+    opacity: 0.85,
   },
 });

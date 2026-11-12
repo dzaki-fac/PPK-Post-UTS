@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   Platform,
   Pressable,
@@ -11,56 +12,75 @@ import {
 
 import { EmptyState } from '@/components/empty-state';
 import { SesiCard } from '@/components/sesi-card';
-import { usePraktikum } from '@/context/praktikum-context';
-import { Sesi, SesiStatus } from '@/types/praktikum';
+import { useAuth } from '@/context/auth-context';
+import {
+  normalizeClassCode,
+  subscribeStudentAttendances,
+} from '@/services/attendance-service';
+import { subscribeSessions } from '@/services/session-service';
+import { AttendanceDocument, SessionDocument, SessionStatus } from '@/types/praktikum';
 
-const normalizeClass = (cls?: string) => {
-  if (!cls) return '';
-  return cls.replace(/[^A-Za-z]/g, '').slice(-1).toUpperCase();
-};
-
-type FilterType = 'semua' | 'kelas-saya' | SesiStatus;
+type FilterType = 'semua' | 'kelas-saya' | SessionStatus;
 
 export default function PraktikanJadwalScreen() {
-  const { sesiList, currentPraktikan, isSudahPresensi, presensiList } =
-    usePraktikum();
+  const { userDoc } = useAuth();
+  const [sesiList, setSesiList] = useState<SessionDocument[]>([]);
+  const [myAttendances, setMyAttendances] = useState<AttendanceDocument[]>([]);
+  const [loadingSessions, setLoadingSessions] = useState(true);
   const [filter, setFilter] = useState<FilterType>('semua');
 
-  const studentClass = normalizeClass(currentPraktikan?.kelas);
+  useEffect(() => {
+    const unsubSessions = subscribeSessions(
+      (items) => {
+        setSesiList(items);
+        setLoadingSessions(false);
+      },
+      () => {
+        setLoadingSessions(false);
+      }
+    );
+
+    let unsubAttendances: (() => void) | null = null;
+    if (userDoc?.uid) {
+      unsubAttendances = subscribeStudentAttendances(userDoc.uid, (items) => {
+        setMyAttendances(items);
+      });
+    }
+
+    return () => {
+      unsubSessions();
+      if (unsubAttendances) {
+        unsubAttendances();
+      }
+    };
+  }, [userDoc?.uid]);
+
+  const studentClass = normalizeClassCode(userDoc?.kelas);
 
   const filteredSesiList = useMemo(() => {
     if (filter === 'semua') return sesiList;
     if (filter === 'kelas-saya') {
       if (!studentClass) return sesiList;
-      return sesiList.filter((s) => normalizeClass(s.kelas) === studentClass);
+      return sesiList.filter((s) => normalizeClassCode(s.kelas) === studentClass);
     }
     return sesiList.filter((s) => s.status === filter);
   }, [sesiList, filter, studentClass]);
 
   const totalSesi = sesiList.length;
   const totalDibuka = sesiList.filter((s) => s.status === 'dibuka').length;
-  const totalSudahHadir = currentPraktikan
-    ? presensiList.filter((p) => p.praktikanId === currentPraktikan.id).length
-    : 0;
+  const totalSudahHadir = myAttendances.length;
   const totalBelumBuka = sesiList.filter((s) => s.status === 'belum-dibuka').length;
 
-  const handleCardPress = (sesi: Sesi) => {
+  const handleCardPress = (sesi: SessionDocument) => {
     router.push({
       pathname: '/praktikan/detail-sesi/[id]',
       params: { id: sesi.id },
     });
   };
 
-  const renderItem = ({ item }: { item: Sesi }) => {
-    const isHadir = currentPraktikan
-      ? isSudahPresensi(item.id, currentPraktikan.id)
-      : false;
-
-    const presensiItem = currentPraktikan
-      ? presensiList.find(
-          (p) => p.sesiId === item.id && p.praktikanId === currentPraktikan.id
-        )
-      : undefined;
+  const renderItem = ({ item }: { item: SessionDocument }) => {
+    const presensiItem = myAttendances.find((p) => p.sessionId === item.id);
+    const isHadir = Boolean(presensiItem);
 
     return (
       <SesiCard
@@ -145,11 +165,11 @@ export default function PraktikanJadwalScreen() {
             count={sesiList.length}
             onPress={() => setFilter('semua')}
           />
-          {currentPraktikan ? (
+          {userDoc && studentClass ? (
             <FilterChip
               label={`Kelas Saya (${studentClass})`}
               active={filter === 'kelas-saya'}
-              count={sesiList.filter((s) => normalizeClass(s.kelas) === studentClass).length}
+              count={sesiList.filter((s) => normalizeClassCode(s.kelas) === studentClass).length}
               onPress={() => setFilter('kelas-saya')}
             />
           ) : null}
@@ -189,18 +209,27 @@ export default function PraktikanJadwalScreen() {
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          <EmptyState
-            title="Tidak Ada Sesi"
-            message={
-              filter === 'kelas-saya'
-                ? `Tidak ada sesi praktikum yang terdaftar untuk ${currentPraktikan?.kelas}.`
-                : filter === 'semua'
-                ? 'Belum ada jadwal praktikum yang tersedia saat ini.'
-                : `Tidak ada sesi praktikum dengan status "${filter}".`
-            }
-            actionText={filter !== 'semua' ? 'Tampilkan Semua Sesi' : undefined}
-            onAction={filter !== 'semua' ? () => setFilter('semua') : undefined}
-          />
+          loadingSessions ? (
+            <View style={styles.loadingState}>
+              <ActivityIndicator size="large" color="#EA580C" />
+              <Text style={styles.loadingStateText}>
+                Menyinkronkan jadwal praktikum dari Firestore...
+              </Text>
+            </View>
+          ) : (
+            <EmptyState
+              title="Tidak Ada Sesi"
+              message={
+                filter === 'kelas-saya'
+                  ? `Tidak ada sesi praktikum yang terdaftar untuk Kelas ${studentClass || '-'}.`
+                  : filter === 'semua'
+                  ? 'Belum ada jadwal praktikum yang tersedia saat ini.'
+                  : `Tidak ada sesi praktikum dengan status "${filter}".`
+              }
+              actionText={filter !== 'semua' ? 'Tampilkan Semua Sesi' : undefined}
+              onAction={filter !== 'semua' ? () => setFilter('semua') : undefined}
+            />
+          )
         }
       />
     </View>
@@ -217,7 +246,7 @@ function FilterChip({
   label: string;
   active: boolean;
   count?: number;
-  variant?: SesiStatus;
+  variant?: SessionStatus;
   onPress: () => void;
 }) {
   const getBadgeStyle = () => {
@@ -487,5 +516,16 @@ const styles = StyleSheet.create({
   },
   cardPressed: {
     opacity: 0.85,
+  },
+  loadingState: {
+    paddingVertical: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  loadingStateText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B',
   },
 });

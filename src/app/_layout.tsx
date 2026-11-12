@@ -6,6 +6,7 @@ import { Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { AuthProvider } from '@/context/auth-context';
 import { PraktikumProvider } from '@/context/praktikum-context';
 
 SplashScreen.preventAutoHideAsync();
@@ -20,10 +21,12 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <StatusBar style="dark" />
       <ThemeProvider value={DefaultTheme}>
-        <PraktikumProvider>
-          <Stack screenOptions={{ headerShown: false }} />
-          <AnimatedSplashOverlay />
-        </PraktikumProvider>
+        <AuthProvider>
+          <PraktikumProvider>
+            <Stack screenOptions={{ headerShown: false }} />
+            <AnimatedSplashOverlay />
+          </PraktikumProvider>
+        </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );

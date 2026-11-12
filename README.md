@@ -42,14 +42,16 @@ Aplikasi dirancang secara adaptif dari dua perspektif peran pengguna:
 * **Master Data Pengguna (CRUD Praktikan & Asisten):** Asisten dapat menambah, mengedit, dan menghapus data mahasiswa maupun akun sesama asisten laboratorium melalui tab switcher navigasi `Pengguna`.
 * **Universal RoleHeader:** Navbar universal responsif dengan tombol popup `Ganti Akun` untuk beralih profil praktikan atau asisten secara instan.
 
-### B. Fondasi Data Dinamis & AI (Sprint 2 — Siap Dikerjakan)
-* **Multi-Metode Autentikasi:** Mendukung pendaftaran/login via **Email & Password** serta **Sign-In with Google Account**.
+### B. Fondasi Data Dinamis & AI (Sprint 2 — Selesai & Teruji Sepenuhnya)
+* **Multi-Metode Autentikasi:** Mendukung pendaftaran/login via **Email & Password** serta **Native Google Sign-In** (Google Play Services di Android via `@react-native-google-signin/google-signin` & `signInWithPopup` di Web).
+* **Role Guard & Navigasi Terproteksi:** Otomatis mengarahkan pengguna ke Portal Praktikan atau Portal Asisten berdasarkan `peran` di Firestore `/users/{uid}`, dilengkapi modal kelengkapan profil Google.
+* **Bottom Bar Responsif & Safe Area Inset:** Navigasi tab bawah mobile dilengkapi ikon vektor adaptif dan penyesuaian gesture navigation bar Android modern (`useSafeAreaInsets`).
 * **Cloud Firestore Real-Time:** Penyimpanan data persisten dan sinkronisasi instan via `onSnapshot` untuk koleksi `/users`, `/sessions`, `/attendances`, dan `/leave_requests`.
-* **Keamanan Database Ter-deploy:** File `firestore.rules` menerapkan pembatasan hak akses berbasis peran (RBAC) dan telah aktif di server Google Cloud Firestore.
+* **Keamanan Database Ter-deploy:** File `firestore.rules` menerapkan pembatasan hak akses berbasis peran (RBAC) dan aktif di server Cloud Firestore.
 * **Pengajuan Izin Ketidakhadiran:** Praktikan dapat mengajukan permohonan izin dengan alasan tertulis dan tautan dokumen bukti.
-* **Integrasi API Model AI Pengajar:** Alasan izin dikirim ke API Model AI untuk diklasifikasikan ke dalam 4 kategori (`Sakit`, `Akademik`, `Keluarga`, `Lainnya`) dengan skor keyakinan (*confidence score*) sebagai pendukung keputusan non-binding bagi asisten.
-* **Resilience & Fallback AI:** Sistem otomatis beralih ke *NLP Heuristic Engine* lokal jika server AI dosen offline atau mengalami timeout (maksimal 5 detik), menjamin aplikasi tidak pernah macet saat pengujian.
-* **Panel Moderasi Asisten:** Dashboard khusus asisten untuk meninjau pengajuan izin, memeriksa rekomendasi AI, dan menetapkan keputusan (*Setujui* atau *Tolak*).
+* **On-Device AI Classification (Model EDOM):** Alasan izin dianalisis secara lokal menggunakan mesin inferensi JavaScript model EDOM resmi (`ai/model-edom.json` & `ai/sentiment.js`) tanpa latensi jaringan untuk klasifikasi 4 kategori (`Sakit`, `Akademik`, `Keluarga`, `Lainnya`).
+* **Panel Moderasi Asisten:** Dashboard khusus asisten untuk meninjau antrean izin real-time, memeriksa rekomendasi AI, dan menetapkan keputusan (*Setujui* atau *Tolak*).
+* **Rekapitulasi Kehadiran Akurat:** Mahasiswa yang izinnya disetujui otomatis tercatat berstatus Izin (bukan Alpa) pada rekap kehadiran kelas asisten.
 
 ---
 
@@ -59,46 +61,64 @@ Aplikasi dirancang secara adaptif dari dua perspektif peran pengguna:
 PPK-Post-UTS/
 ├── DESIGN.md                     # Sumber kebenaran sistem desain resmi (E-Stock Inspired)
 ├── SRS.md                        # Spesifikasi kebutuhan Sprint 1
-├── SRS2.md                       # Spesifikasi kebutuhan Sprint 2 (Firebase & AI)
+├── SRS2.md                       # Spesifikasi kebutuhan Sprint 2 (Firebase, AI & Programmer Matrix)
 ├── README.md                     # Dokumentasi utama proyek
 ├── .env.example                  # Template variabel lingkungan untuk tim
+├── .easignore                    # Berkas yang dikecualikan dari unggahan EAS Build
+├── eas.json                      # Konfigurasi profil build EAS (preview APK & production)
 ├── .firebaserc                   # Konfigurasi project ID Firebase CLI
 ├── firebase.json                 # Konfigurasi rilis layanan Firebase
 ├── firestore.rules               # Aturan keamanan database Cloud Firestore (RBAC)
 ├── firestore.indexes.json        # Pengaturan indeks komposit Firestore
-├── package.json                  # Dependensi proyek (Expo SDK 57 & Firebase SDK)
+├── package.json                  # Dependensi proyek (Expo SDK 57, Firebase SDK, Google Sign-In)
 ├── tsconfig.json                 # Konfigurasi TypeScript strict
+├── ai/                           # On-Device AI Engine (Model EDOM Resmi)
+│   ├── model-edom.json           # Bobot kamus sentimen & leksikon model EDOM
+│   └── sentiment.js              # Pure JavaScript inference engine (< 20ms, 100% offline)
 ├── src/
 │   ├── app/                      # Expo Router (File-based routing)
 │   │   ├── _layout.tsx           # Root layout dengan safe-area, web title & provider
-│   │   ├── index.tsx             # Halaman portal landing & pemilihan identitas
+│   │   ├── index.tsx             # Halaman portal landing & redirect role guard
+│   │   ├── login.tsx             # Layar Masuk (Email & Password + Native Google Sign-In)
+│   │   ├── register.tsx          # Layar Daftar Baru (Peran Mahasiswa / Asisten Lab)
 │   │   ├── asisten/
-│   │   │   ├── _layout.tsx       # Tab navigator asisten dengan RoleHeader
+│   │   │   ├── _layout.tsx       # Tab navigator asisten dengan RoleHeader & vektor ikon
 │   │   │   ├── jadwal.tsx        # Pengelolaan sesi praktikum & metrik asisten
+│   │   │   ├── moderasi-izin.tsx # Panel moderasi persetujuan izin berbantuan rekomendasi AI
 │   │   │   ├── mahasiswa.tsx     # Master Data Pengguna (CRUD Praktikan & Asisten)
-│   │   │   ├── rekap.tsx         # Rekapitulasi kehadiran kelas per sesi
+│   │   │   ├── rekap.tsx         # Rekapitulasi kehadiran kelas per sesi & status izin
 │   │   │   └── detail-sesi/
 │   │   │       └── [id].tsx      # Kontrol sesi (buka/tutup/buka kembali), kode 4 digit & roster
 │   │   └── praktikan/
-│   │       ├── _layout.tsx       # Tab navigator praktikan dengan RoleHeader
-│   │       ├── jadwal.tsx        # Jadwal praktikum & status sesi
+│   │       ├── _layout.tsx       # Tab navigator praktikan dengan RoleHeader & vektor ikon
+│   │       ├── jadwal.tsx        # Jadwal praktikum, filter kelas saya & status sesi
+│   │       ├── pengajuan-izin.tsx# Formulir izin praktikum dengan analisis AI on-device
 │   │       ├── riwayat.tsx       # Riwayat kehadiran & persentase keaktifan pribadi
 │   │       └── detail-sesi/
 │   │           └── [id].tsx      # Formulir presensi mandiri dengan verifikasi kode & kelas
 │   ├── components/               # Komponen UI modular (E-Stock Inspired, Anti-Slop)
+│   │   ├── ai-category-badge.tsx # Badge visual rekomendasi AI (Kategori & Tingkat Keyakinan)
 │   │   ├── confirmation-modal.tsx# Dialog modal konfirmasi aksi & feedback
 │   │   ├── empty-state.tsx       # Tampilan terstruktur saat data kosong
+│   │   ├── google-profile-modal.tsx# Dialog kelengkapan profil pengguna baru Google Sign-In
+│   │   ├── leave-card.tsx        # Kartu antrean izin dengan rekomendasi AI & aksi moderasi
 │   │   ├── role-header.tsx       # Universal header dengan switch user modal
 │   │   ├── sesi-card.tsx         # Kartu jadwal sesi seragam
-│   │   └── status-badge.tsx      # Badge status sesi & kehadiran
+│   │   ├── status-badge.tsx      # Badge status sesi & kehadiran
+│   │   └── tab-icons.tsx         # Komponen ikon vektor murni untuk bottom navigation bar
 │   ├── context/
-│   │   └── praktikum-context.tsx # State runtime terpusat (sesi, CRUD, presensi, pengguna)
+│   │   ├── auth-context.tsx      # Manajemen sesi Firebase Auth & sinkronisasi profil user
+│   │   └── praktikum-context.tsx # State runtime fallback & cache sesi
 │   ├── data/
 │   │   └── dummy.ts              # Data dummy realistis Informatika FSM UNDIP (NIM 240601...)
 │   ├── lib/
-│   │   └── firebase.ts           # Inisialisasi Firebase App, Auth, dan Firestore Client
+│   │   └── firebase.ts           # Inisialisasi Firebase App, Auth, Firestore & Google Client ID
+│   ├── services/
+│   │   ├── ai-service.ts         # Layanan klasifikasi AI On-Device EDOM (offline resilience)
+│   │   ├── leave-service.ts      # Layanan CRUD pengajuan izin Cloud Firestore
+│   │   └── session-service.ts    # Layanan CRUD jadwal sesi Cloud Firestore
 │   └── types/
-│       └── praktikum.ts          # Kontrak antarmuka TypeScript
+│       └── praktikum.ts          # Kontrak antarmuka TypeScript terpadu
 ```
 
 ---
@@ -108,7 +128,7 @@ PPK-Post-UTS/
 ### Prasyarat
 - **Node.js** versi 18 atau lebih baru.
 - **npm** (atau bun).
-- Perangkat pengujian: **Web Browser** modern, atau ponsel fisik dengan aplikasi **Expo Go** (Android / iOS).
+- Perangkat pengujian: **Web Browser** modern, atau ponsel fisik Android / iOS.
 
 ### 1. Kloning & Pengaturan Dependensi
 ```bash
@@ -121,7 +141,7 @@ Salin berkas template `.env.example` menjadi `.env` lokal:
 ```bash
 cp .env.example .env
 ```
-Isi konfigurasi Firebase dan endpoint AI sesuai proyek Anda:
+Isi konfigurasi Firebase dan Google OAuth Client ID:
 ```env
 EXPO_PUBLIC_FIREBASE_API_KEY=AIzaSy...
 EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=praktikum-ppk-labportal.firebaseapp.com
@@ -131,16 +151,31 @@ EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=451443064627
 EXPO_PUBLIC_FIREBASE_APP_ID=1:451443064627:web:...
 EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID=G-PVPB052XEP
 
-EXPO_PUBLIC_AI_API_URL=https://api.labif.undip.ac.id/v1/classify-reason
+EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=451443064627-5tgabgh2hienk8i6thm3tuh14qhs0dk6.apps.googleusercontent.com
 ```
 
-### 3. Menjalankan Aplikasi (Expo Dev Server)
+### 3. Menjalankan Aplikasi di Mode Pengembangan (Expo Dev Server)
 ```bash
 npx expo start
 ```
 * **Web Browser:** Tekan tombol `w` di terminal atau buka `http://localhost:8081` di browser.
 * **Android (Expo Go):** Buka aplikasi Expo Go, pindai QR code yang tampil di terminal.
 * **iOS (Expo Go):** Buka kamera bawaan iPhone, pindai QR code, dan buka via Expo Go.
+
+### 4. Build Standalone Android APK (EAS Build)
+Aplikasi mendukung kompilasi mandiri ke berkas `.apk` siap pasang tanpa memerlukan Android Studio lokal:
+```bash
+# Login ke akun Expo EAS Anda
+npx eas-cli login
+
+# Mulai proses cloud build APK Android
+npx eas-cli build -p android --profile preview
+```
+
+> [!TIP]
+> **Registrasi SHA-1 Fingerprint untuk Google Sign-In:**  
+> Agar fitur Native Google Sign-In dapat berkomunikasi dengan Google Play Services di HP Android tanpa error `DEVELOPER_ERROR`, pastikan SHA-1 Keystore EAS berikut telah ditambahkan di **Firebase Console** $\rightarrow$ **Project Settings** $\rightarrow$ **Your Apps (Android)**:  
+> `58:3A:22:E2:5F:01:A3:82:E1:87:F2:8F:FB:F4:62:24:91:0F:7D:B2`
 
 ---
 
@@ -161,17 +196,21 @@ npx expo-doctor
 
 ---
 
-## 7. Protokol Kolaborasi Git (Sprint 2)
+## 7. Status Integrasi & Kolaborasi Git (Sprint 2)
 
-Pengerjaan fitur Sprint 2 dibagi menjadi dua cabang (*branch*) independen dengan format `feature/`:
+Seluruh modul Sprint 2 telah selesai dikembangkan, diintegrasikan, dan diuji penuh di branch `main`:
 
-* **Branch `feature/auth-firestore-presensi` (Programmer 1):**
-  * Bertanggung jawab atas: Layar Login & Register, modul `AuthContext`, CRUD Sesi Cloud Firestore, dan pencatatan presensi real-time.
-* **Branch `feature/izin-ai-moderation` (Programmer 2):**
-  * Bertanggung jawab atas: Formulir pengajuan izin praktikan, modul `AIService` penghubung API AI model, kartu analisis AI `AICategoryBadge`, dan panel moderasi asisten laboratorium.
-
-> [!IMPORTANT]
-> **Aturan Git:** Seluruh pengembangan fitur dilakukan di branch masing-masing dan diverifikasi secara lokal sebelum digabungkan (*merge*) ke branch `main`.
+| No | Modul / Fitur | Programmer Penanggung Jawab | Status Integrasi | Keterangan Hasil |
+|---|---|:---:|:---:|---|
+| 1 | **Autentikasi Multi-Metode** | Programmer 1 | **Selesai (100%)** | Email/Password & Native Google Sign-In aktif dengan role router guard. |
+| 2 | **Master Sesi Firestore (CRUD)** | Programmer 1 | **Selesai (100%)** | Tambah, buka/tutup sesi real-time, generate 4 digit kode sesi unik. |
+| 3 | **Presensi & Roster Real-Time** | Programmer 1 | **Selesai (100%)** | Validasi kelas, anti-duplikasi `${sessionId}_${studentId}`, live roster asisten. |
+| 4 | **On-Device AI Engine (EDOM)** | Programmer 2 | **Selesai (100%)** | Klasifikasi sentimen & kategori alasan murni lokal (< 20ms, offline resilience). |
+| 5 | **Formulir Pengajuan Izin** | Programmer 2 | **Selesai (100%)** | Terhubung live Firestore `/leave_requests` dengan metadata AI terlampir. |
+| 6 | **Badge Rekomendasi AI** | Programmer 2 | **Selesai (100%)** | Tampilan label visual rapi sesuai token palet warna `DESIGN.md`. |
+| 7 | **Panel Moderasi Izin Asisten** | Programmer 2 | **Selesai (100%)** | Review izin live dengan rekomendasi AI dan aksi Setujui / Tolak izin. |
+| 8 | **Rekapitulasi Presensi & Izin** | Programmer 2 | **Selesai (100%)** | Mahasiswa izin berstatus disetujui tercatat resmi izin (bukan alpa). |
+| 9 | **Bottom Bar Safe Area & Vektor** | Tim Gabungan | **Selesai (100%)** | Mengatasi missing icon `☒` & kompatibel dengan gesture navigation Android. |
 
 ---
 

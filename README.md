@@ -172,6 +172,10 @@ npx eas-cli login
 npx eas-cli build -p android --profile preview
 ```
 
+#### 📥 Tautan Unduhan Build APK Terbaru (Rilis Preview):
+- **Tautan Unduhan Langsung APK:** [Download PPK LabPortal (RbqbR1h7... .apk)](https://expo.dev/artifacts/eas/RbqbR1h7Jcwkja6SnXLwfWCAogg6VVFzBvUrdPCRx1k.apk)
+- **Halaman Riwayat Build EAS:** [expo.dev/accounts/gregoriusseptiano/projects/PPK-Post-UTS/builds/641614c0-3599-4fac-b25c-c5db63acffac](https://expo.dev/accounts/gregoriusseptiano/projects/PPK-Post-UTS/builds/641614c0-3599-4fac-b25c-c5db63acffac)
+
 > [!TIP]
 > **Registrasi SHA-1 Fingerprint untuk Google Sign-In:**  
 > Agar fitur Native Google Sign-In dapat berkomunikasi dengan Google Play Services di HP Android tanpa error `DEVELOPER_ERROR`, pastikan SHA-1 Keystore EAS berikut telah ditambahkan di **Firebase Console** $\rightarrow$ **Project Settings** $\rightarrow$ **Your Apps (Android)**:  
@@ -211,6 +215,8 @@ Seluruh modul Sprint 2 telah selesai dikembangkan, diintegrasikan, dan diuji pen
 | 7 | **Panel Moderasi Izin Asisten** | Programmer 2 | **Selesai (100%)** | Review izin live dengan rekomendasi AI dan aksi Setujui / Tolak izin. |
 | 8 | **Rekapitulasi Presensi & Izin** | Programmer 2 | **Selesai (100%)** | Mahasiswa izin berstatus disetujui tercatat resmi izin (bukan alpa). |
 | 9 | **Bottom Bar Safe Area & Vektor** | Tim Gabungan | **Selesai (100%)** | Mengatasi missing icon `☒` & kompatibel dengan gesture navigation Android. |
+| 10 | **Persistensi Sesi & Token AsyncStorage** | Tim Gabungan | **Selesai (100%)** | Token auth & profil user tersimpan permanen di perangkat, bebas re-login saat restart. |
+| 11 | **Header Navbar Single-Row & Preservasi Izin** | Tim Gabungan | **Selesai (100%)** | Layout RoleHeader sejajar rapi satu baris horizontal & sinkronisasi izin lama-baru. |
 
 ---
 
@@ -224,6 +230,12 @@ Seluruh modul Sprint 2 telah selesai dikembangkan, diintegrasikan, dan diuji pen
 
 ### Skenario 2: Alur Pengajuan Izin Berbantuan AI
 1. **Praktikan Mengajukan Izin:** Praktikan membuka formulir pengajuan izin $\rightarrow$ memilih sesi praktikum $\rightarrow$ mengisi alasan ketidakhadiran (misal: sakit demam).
-2. **AI Mengklasifikasikan Alasan:** Sistem mengirim teks ke API model AI $\rightarrow$ model AI merespons dengan kategori `Sakit` dan confidence `94%` $\rightarrow$ data tersimpan di koleksi `/leave_requests` berstatus `menunggu`.
+2. **AI Mengklasifikasikan Alasan:** Sistem mengeksekusi model sentimen EDOM lokal on-device $\rightarrow$ model AI merespons dengan kategori `Sakit` dan confidence `94%` $\rightarrow$ data tersimpan di koleksi `/leave_requests` berstatus `menunggu`.
 3. **Asisten Melakukan Moderasi:** Asisten membuka panel moderasi $\rightarrow$ melihat pengajuan izin beserta kartu rekomendasi AI $\rightarrow$ asisten menekan **Setujui Izin**.
 4. **Praktikan Menerima Hasil:** Di layar pemantauan praktikan, status pengajuan langsung terbarui secara real-time menjadi **Izin Disetujui**.
+
+### Skenario 3: Pengujian Persistensi Sesi & Cold-Start
+1. **Masuk ke Akun:** Buka aplikasi dan masuk menggunakan Email & Kata Sandi atau Google Sign-In.
+2. **Tutup Paksa Aplikasi (*Kill App*):** Usap aplikasi keluar dari layar *Recent Apps* Android atau matikan proses aplikasi secara penuh.
+3. **Buka Kembali Aplikasi:** Buka ikon PPK LabPortal $\rightarrow$ aplikasi langsung menampilkan halaman beranda portal sesuai peran Anda (Praktikan/Asisten) **tanpa dialihkan ke layar login**.
+4. **Periksa Header Atas:** Perhatikan navbar atas, nama pengguna dan tombol **Keluar** berada rapi di pojok kanan atas, sejajar horizontal satu baris dengan logo dan judul *PPK LabPortal*.

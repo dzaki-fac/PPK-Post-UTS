@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   Modal,
@@ -13,7 +13,13 @@ import {
 import { ConfirmationModal } from '@/components/confirmation-modal';
 import { EmptyState } from '@/components/empty-state';
 import { usePraktikum } from '@/context/praktikum-context';
-import { Asisten, Praktikan } from '@/types/praktikum';
+import {
+  createPraktikanUser,
+  deletePraktikanUser,
+  subscribePraktikanUsers,
+  updatePraktikanUser,
+} from '@/services/attendance-service';
+import { Asisten, Praktikan, UserDocument } from '@/types/praktikum';
 
 type UserTab = 'praktikan' | 'asisten';
 type FilterKelas = 'semua' | 'A' | 'B';
@@ -73,10 +79,35 @@ export default function AsistenMahasiswaScreen() {
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const [feedbackVisible, setFeedbackVisible] = useState(false);
 
+  // Subscribe ke data mahasiswa di Cloud Firestore /users
+  const [firestoreStudents, setFirestoreStudents] = useState<UserDocument[]>([]);
+
+  useEffect(() => {
+    const unsub = subscribePraktikanUsers((items) => {
+      setFirestoreStudents(items);
+    });
+    return () => unsub();
+  }, []);
+
+  // Gabungkan data praktikan dari Firestore dan lokal
+  const allPraktikan = useMemo(() => {
+    const map = new Map<string, Praktikan>();
+    daftarPraktikan.forEach((p) => map.set(p.nim, p));
+    firestoreStudents.forEach((fs) => {
+      map.set(fs.nim || fs.uid, {
+        id: fs.uid,
+        nama: fs.nama,
+        nim: fs.nim || '-',
+        kelas: (fs.kelas || 'A') as 'A' | 'B',
+      });
+    });
+    return Array.from(map.values()).sort((a, b) => a.nama.localeCompare(b.nama));
+  }, [daftarPraktikan, firestoreStudents]);
+
   // Metrik ringkasan Praktikan
-  const totalMahasiswa = daftarPraktikan.length;
-  const totalKelasA = daftarPraktikan.filter((p) => p.kelas === 'A').length;
-  const totalKelasB = daftarPraktikan.filter((p) => p.kelas === 'B').length;
+  const totalMahasiswa = allPraktikan.length;
+  const totalKelasA = allPraktikan.filter((p) => p.kelas === 'A').length;
+  const totalKelasB = allPraktikan.filter((p) => p.kelas === 'B').length;
   const totalPresensiMasuk = presensiList.length;
 
   // Metrik ringkasan Asisten
@@ -85,14 +116,14 @@ export default function AsistenMahasiswaScreen() {
 
   // Filter & Search List Praktikan
   const filteredPraktikanList = useMemo(() => {
-    return daftarPraktikan.filter((p) => {
+    return allPraktikan.filter((p) => {
       const matchKelas = filterKelas === 'semua' || p.kelas === filterKelas;
       const matchSearch =
         p.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.nim.toLowerCase().includes(searchQuery.toLowerCase());
       return matchKelas && matchSearch;
     });
-  }, [daftarPraktikan, filterKelas, searchQuery]);
+  }, [allPraktikan, filterKelas, searchQuery]);
 
   // Filter & Search List Asisten
   const filteredAsistenList = useMemo(() => {
@@ -119,7 +150,7 @@ export default function AsistenMahasiswaScreen() {
     setModalTambahVisible(true);
   };
 
-  const handleSimpanTambahPraktikan = () => {
+  const handleSimpanTambahPraktikan = async () => {
     if (!namaBaru.trim()) {
       alert('Nama mahasiswa wajib diisi.');
       return;
@@ -134,6 +165,16 @@ export default function AsistenMahasiswaScreen() {
       nim: nimBaru.trim(),
       kelas: kelasBaru,
     });
+
+    try {
+      await createPraktikanUser({
+        nama: namaBaru.trim(),
+        nim: nimBaru.trim(),
+        kelas: kelasBaru,
+      });
+    } catch (err) {
+      console.warn('Gagal menyimpan praktikan ke Firestore:', err);
+    }
 
     setModalTambahVisible(false);
     setFeedbackTitle('Praktikan Berhasil Ditambahkan');
@@ -151,7 +192,7 @@ export default function AsistenMahasiswaScreen() {
     setModalEditVisible(true);
   };
 
-  const handleSimpanEditPraktikan = () => {
+  const handleSimpanEditPraktikan = async () => {
     if (!selectedPraktikan) return;
     if (!editNama.trim() || !editNim.trim()) {
       alert('Nama dan NIM mahasiswa wajib diisi.');
@@ -163,6 +204,16 @@ export default function AsistenMahasiswaScreen() {
       nim: editNim.trim(),
       kelas: editKelas,
     });
+
+    try {
+      await updatePraktikanUser(selectedPraktikan.id, {
+        nama: editNama.trim(),
+        nim: editNim.trim(),
+        kelas: editKelas,
+      });
+    } catch (err) {
+      console.warn('Gagal memperbarui praktikan di Firestore:', err);
+    }
 
     setModalEditVisible(false);
     setFeedbackTitle('Data Praktikan Diperbarui');
@@ -177,10 +228,17 @@ export default function AsistenMahasiswaScreen() {
     setModalHapusVisible(true);
   };
 
-  const handleConfirmHapusPraktikan = () => {
+  const handleConfirmHapusPraktikan = async () => {
     if (!praktikanToDelete) return;
     const deletedName = praktikanToDelete.nama;
     hapusPraktikan(praktikanToDelete.id);
+
+    try {
+      await deletePraktikanUser(praktikanToDelete.id);
+    } catch (err) {
+      console.warn('Gagal menghapus praktikan di Firestore:', err);
+    }
+
     setModalHapusVisible(false);
     setPraktikanToDelete(null);
 

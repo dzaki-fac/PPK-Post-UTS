@@ -26,7 +26,7 @@ import { SessionDocument } from '@/types/praktikum';
 
 export default function PengajuanIzinScreen() {
   const params = useLocalSearchParams<{ sessionId?: string }>();
-  const { userDoc } = useAuth();
+  const { user, userDoc } = useAuth();
   const { currentPraktikan, sesiList: dummySesiList } = usePraktikum();
   const [firestoreSessions, setFirestoreSessions] = useState<SessionDocument[]>([]);
 
@@ -49,8 +49,16 @@ export default function PengajuanIzinScreen() {
         kelas: (userDoc.kelas || 'A') as 'A' | 'B',
       };
     }
+    if (user) {
+      return {
+        id: user.uid,
+        nama: user.displayName || user.email?.split('@')[0] || 'Mahasiswa',
+        nim: '24060122130000',
+        kelas: 'A' as const,
+      };
+    }
     return currentPraktikan;
-  }, [userDoc, currentPraktikan]);
+  }, [userDoc, user, currentPraktikan]);
 
   // State Form
   const [selectedSessionId, setSelectedSessionId] = useState<string>(

@@ -20,6 +20,7 @@ import {
   subscribePraktikanUsers,
   subscribeSessionAttendances,
 } from '@/services/attendance-service';
+import { LeaveRequestDocument, subscribeLeaveRequests } from '@/services/leave-service';
 import {
   deleteSession,
   subscribeSessionById,
@@ -28,7 +29,7 @@ import {
 } from '@/services/session-service';
 import { AttendanceDocument, SessionDocument, UserDocument } from '@/types/praktikum';
 
-type KehadiranFilter = 'semua' | 'hadir' | 'belum-hadir';
+type KehadiranFilter = 'semua' | 'hadir' | 'izin' | 'belum-hadir';
 type ModalAction = 'buka' | 'tutup' | 'buka-kembali' | 'hapus';
 
 interface RosterRow {
@@ -38,6 +39,10 @@ interface RosterRow {
   kelas: string;
   hadir: boolean;
   waktuHadir?: string;
+  leaveStatus?: 'menunggu' | 'disetujui' | 'ditolak';
+  aiCategory?: string;
+  aiConfidence?: number;
+  alasanIzin?: string;
 }
 
 export default function DetailSesiAsistenScreen() {
@@ -49,6 +54,7 @@ export default function DetailSesiAsistenScreen() {
   const [loadingSession, setLoadingSession] = useState(Boolean(sessionId));
   const [presensiSesi, setPresensiSesi] = useState<AttendanceDocument[]>([]);
   const [praktikanUsers, setPraktikanUsers] = useState<UserDocument[]>([]);
+  const [sessionLeaves, setSessionLeaves] = useState<LeaveRequestDocument[]>([]);
 
   const [modalAction, setModalAction] = useState<ModalAction | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -89,10 +95,15 @@ export default function DetailSesiAsistenScreen() {
       setPraktikanUsers(students);
     });
 
+    const unsubLeaves = subscribeLeaveRequests((leaves) => {
+      setSessionLeaves(leaves.filter((l) => l.sessionId === sessionId));
+    });
+
     return () => {
       unsubSession();
       unsubAttendances();
       unsubStudents();
+      unsubLeaves();
     };
   }, [sessionId]);
 
@@ -110,11 +121,17 @@ export default function DetailSesiAsistenScreen() {
       attendanceMap.set(rec.studentId, rec);
     });
 
+    const leaveMap = new Map<string, LeaveRequestDocument>();
+    sessionLeaves.forEach((l) => {
+      leaveMap.set(l.studentId, l);
+    });
+
     const rows: RosterRow[] = mahasiswaKelas.map((p) => {
       const record = attendanceMap.get(p.uid);
       if (record) {
         attendanceMap.delete(p.uid);
       }
+      const leave = leaveMap.get(p.uid);
       return {
         id: p.uid,
         nama: p.nama,
@@ -122,11 +139,16 @@ export default function DetailSesiAsistenScreen() {
         kelas: p.kelas ?? '-',
         hadir: Boolean(record),
         waktuHadir: record?.waktuKehadiran,
+        leaveStatus: leave?.status,
+        aiCategory: leave?.aiClassification?.category,
+        aiConfidence: leave?.aiClassification?.confidence,
+        alasanIzin: leave?.alasan,
       };
     });
 
     // Sertakan presensi yang masuk meskipun profil belum termuat di filter kelas
     attendanceMap.forEach((rec) => {
+      const leave = leaveMap.get(rec.studentId);
       rows.unshift({
         id: rec.studentId,
         nama: rec.studentName,
@@ -134,23 +156,32 @@ export default function DetailSesiAsistenScreen() {
         kelas: rec.studentClass,
         hadir: true,
         waktuHadir: rec.waktuKehadiran,
+        leaveStatus: leave?.status,
+        aiCategory: leave?.aiClassification?.category,
+        aiConfidence: leave?.aiClassification?.confidence,
+        alasanIzin: leave?.alasan,
       });
     });
 
     return rows;
-  }, [mahasiswaKelas, presensiSesi]);
+  }, [mahasiswaKelas, presensiSesi, sessionLeaves]);
 
   const filteredDaftar = useMemo(() => {
     if (filterKehadiran === 'hadir') {
       return daftarStatusPraktikan.filter((d) => d.hadir);
     }
+    if (filterKehadiran === 'izin') {
+      return daftarStatusPraktikan.filter((d) => Boolean(d.leaveStatus));
+    }
     if (filterKehadiran === 'belum-hadir') {
-      return daftarStatusPraktikan.filter((d) => !d.hadir);
+      return daftarStatusPraktikan.filter((d) => !d.hadir && !d.leaveStatus);
     }
     return daftarStatusPraktikan;
   }, [daftarStatusPraktikan, filterKehadiran]);
 
   const totalHadir = presensiSesi.length;
+  const totalIzin = daftarStatusPraktikan.filter((d) => d.leaveStatus === 'disetujui').length;
+  const totalIzinMenunggu = sessionLeaves.filter((l) => l.status === 'menunggu').length;
   const totalMahasiswa = daftarStatusPraktikan.length;
   const persentaseHadir =
     totalMahasiswa > 0 ? Math.round((totalHadir / totalMahasiswa) * 100) : 0;
@@ -466,10 +497,30 @@ export default function DetailSesiAsistenScreen() {
               <View>
                 <Text style={styles.sectionHeader}>Daftar Kehadiran Mahasiswa</Text>
                 <Text style={styles.rosterSubtitle}>
-                  Kelas {sesi.kelas} • {totalHadir} hadir dari {totalMahasiswa} mahasiswa
+                  Kelas {sesi.kelas} • {totalHadir} hadir{totalIzin > 0 ? ` • ${totalIzin} izin disetujui` : ''} dari {totalMahasiswa} mahasiswa
                 </Text>
               </View>
             </View>
+
+            {/* Quick Banner jika ada permohonan izin pada sesi ini */}
+            {totalIzinMenunggu > 0 && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Tinjau izin pada sesi ini"
+                onPress={() => router.push('/asisten/moderasi-izin')}
+                style={({ pressed }) => [styles.sessionIzinNotice, pressed && styles.btnPressed]}>
+                <View style={styles.sessionIzinNoticeDot} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.sessionIzinNoticeTitle}>
+                    {totalIzinMenunggu} Mahasiswa Mengajukan Izin untuk Sesi Ini
+                  </Text>
+                  <Text style={styles.sessionIzinNoticeSubtitle}>
+                    Rekomendasi AI telah disematkan. Klik untuk membuka panel moderasi izin.
+                  </Text>
+                </View>
+                <Text style={styles.sessionIzinNoticeAction}>Periksa →</Text>
+              </Pressable>
+            )}
 
             {/* Filter Tabs for Roster */}
             <View style={styles.filterTabsRow}>
@@ -506,6 +557,21 @@ export default function DetailSesiAsistenScreen() {
               <Pressable
                 style={[
                   styles.filterTab,
+                  filterKehadiran === 'izin' && styles.filterTabActive,
+                ]}
+                onPress={() => setFilterKehadiran('izin')}>
+                <Text
+                  style={[
+                    styles.filterTabText,
+                    filterKehadiran === 'izin' && styles.filterTabTextActive,
+                  ]}>
+                  Izin ({sessionLeaves.length})
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={[
+                  styles.filterTab,
                   filterKehadiran === 'belum-hadir' && styles.filterTabActive,
                 ]}
                 onPress={() => setFilterKehadiran('belum-hadir')}>
@@ -514,7 +580,7 @@ export default function DetailSesiAsistenScreen() {
                     styles.filterTabText,
                     filterKehadiran === 'belum-hadir' && styles.filterTabTextActive,
                   ]}>
-                  Belum Hadir ({totalMahasiswa - totalHadir})
+                  Belum Hadir ({Math.max(0, totalMahasiswa - totalHadir - totalIzin)})
                 </Text>
               </Pressable>
             </View>
@@ -527,6 +593,8 @@ export default function DetailSesiAsistenScreen() {
                     ? 'Belum ada mahasiswa terdaftar pada kelas ini.'
                     : filterKehadiran === 'hadir'
                     ? 'Belum ada mahasiswa yang mencatat kehadiran.'
+                    : filterKehadiran === 'izin'
+                    ? 'Tidak ada permohonan izin untuk sesi praktikum ini.'
                     : 'Semua mahasiswa telah hadir.'}
                 </Text>
               </View>
@@ -557,9 +625,27 @@ export default function DetailSesiAsistenScreen() {
                             </Text>
                           ) : null}
                         </View>
+                      ) : item.leaveStatus === 'disetujui' ? (
+                        <View style={styles.izinBadge}>
+                          <Text style={styles.izinBadgeText}>Izin Disetujui</Text>
+                          {item.aiCategory ? (
+                            <Text style={styles.izinAiSubText}>AI: {item.aiCategory}</Text>
+                          ) : null}
+                        </View>
+                      ) : item.leaveStatus === 'menunggu' ? (
+                        <Pressable
+                          onPress={() => router.push('/asisten/moderasi-izin')}
+                          style={styles.izinMenungguBadge}>
+                          <Text style={styles.izinMenungguBadgeText}>Menunggu Izin</Text>
+                          {item.aiCategory ? (
+                            <Text style={styles.izinAiSubText}>AI: {item.aiCategory}</Text>
+                          ) : null}
+                        </Pressable>
                       ) : (
                         <View style={styles.belumHadirBadge}>
-                          <Text style={styles.belumHadirBadgeText}>Belum Hadir</Text>
+                          <Text style={styles.belumHadirBadgeText}>
+                            {item.leaveStatus === 'ditolak' ? 'Belum Hadir (Izin Ditolak)' : 'Belum Hadir'}
+                          </Text>
                         </View>
                       )}
                     </View>
@@ -1076,6 +1162,38 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 2,
   },
+  sessionIzinNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 10,
+    padding: 10,
+    gap: 10,
+    marginBottom: 12,
+  },
+  sessionIzinNoticeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#D97706',
+  },
+  sessionIzinNoticeTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#92400E',
+  },
+  sessionIzinNoticeSubtitle: {
+    fontSize: 11,
+    color: '#B45309',
+    marginTop: 1,
+  },
+  sessionIzinNoticeAction: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#B45309',
+  },
   filterTabsRow: {
     flexDirection: 'row',
     gap: 8,
@@ -1183,6 +1301,40 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#64748B',
+  },
+  izinBadge: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    alignItems: 'flex-end',
+  },
+  izinBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#1D4ED8',
+  },
+  izinMenungguBadge: {
+    backgroundColor: '#FFFBEB',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    alignItems: 'flex-end',
+  },
+  izinMenungguBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#B45309',
+  },
+  izinAiSubText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#64748B',
+    marginTop: 1,
   },
   reopenBtn: {
     backgroundColor: '#0D9488',

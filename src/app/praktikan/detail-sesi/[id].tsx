@@ -22,6 +22,10 @@ import {
   submitAttendance,
   subscribeStudentSessionAttendance,
 } from '@/services/attendance-service';
+import {
+  LeaveRequestDocument,
+  subscribeStudentLeaveRequests,
+} from '@/services/leave-service';
 import { subscribeSessionById } from '@/services/session-service';
 import { AttendanceDocument, SessionDocument } from '@/types/praktikum';
 
@@ -29,11 +33,14 @@ export default function PraktikanDetailSesiScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const sessionId = Array.isArray(id) ? id[0] : id;
-  const { userDoc } = useAuth();
+  const { user, userDoc } = useAuth();
+
+  const studentUid = userDoc?.uid || user?.uid;
 
   const [sesi, setSesi] = useState<SessionDocument | null>(null);
   const [loadingSession, setLoadingSession] = useState(Boolean(sessionId));
   const [attendanceRecord, setAttendanceRecord] = useState<AttendanceDocument | null>(null);
+  const [studentLeaves, setStudentLeaves] = useState<LeaveRequestDocument[]>([]);
 
   const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false);
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
@@ -61,14 +68,20 @@ export default function PraktikanDetailSesiScreen() {
     );
 
     let unsubAttendance: (() => void) | null = null;
-    if (userDoc?.uid) {
+    let unsubLeaves: (() => void) | null = null;
+
+    if (studentUid) {
       unsubAttendance = subscribeStudentSessionAttendance(
         sessionId,
-        userDoc.uid,
+        studentUid,
         (record) => {
           setAttendanceRecord(record);
         }
       );
+
+      unsubLeaves = subscribeStudentLeaveRequests(studentUid, (leaves) => {
+        setStudentLeaves(leaves);
+      });
     }
 
     return () => {
@@ -76,8 +89,11 @@ export default function PraktikanDetailSesiScreen() {
       if (unsubAttendance) {
         unsubAttendance();
       }
+      if (unsubLeaves) {
+        unsubLeaves();
+      }
     };
-  }, [sessionId, userDoc?.uid]);
+  }, [sessionId, studentUid]);
 
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -118,6 +134,7 @@ export default function PraktikanDetailSesiScreen() {
   }
 
   const alreadyPresensi = Boolean(attendanceRecord);
+  const leaveRecord = studentLeaves.find((l) => l.sessionId === sessionId);
   const studentClass = normalizeClassCode(userDoc?.kelas);
   const sessionClass = normalizeClassCode(sesi.kelas);
 
@@ -276,6 +293,64 @@ export default function PraktikanDetailSesiScreen() {
         {/* Attendance Action & Status Section */}
         <View style={styles.card}>
           <Text style={styles.sectionHeader}>Status & Formulir Presensi</Text>
+
+          {/* Banner Permohonan Izin jika ada */}
+          {leaveRecord ? (
+            <View
+              style={[
+                styles.leaveStatusBox,
+                leaveRecord.status === 'disetujui' && styles.leaveStatusBoxApproved,
+                leaveRecord.status === 'menunggu' && styles.leaveStatusBoxPending,
+                leaveRecord.status === 'ditolak' && styles.leaveStatusBoxRejected,
+              ]}>
+              <View style={styles.leaveStatusHeader}>
+                <Text
+                  style={[
+                    styles.leaveStatusBadgeText,
+                    leaveRecord.status === 'disetujui' && { color: '#16A34A' },
+                    leaveRecord.status === 'menunggu' && { color: '#D97706' },
+                    leaveRecord.status === 'ditolak' && { color: '#DC2626' },
+                  ]}>
+                  {leaveRecord.status === 'disetujui'
+                    ? '● IZIN DISETUJUI ASISTEN'
+                    : leaveRecord.status === 'menunggu'
+                    ? '● MENUNGGU VERIFIKASI ASISTEN'
+                    : '● PERMOHONAN IZIN DITOLAK'}
+                </Text>
+                {leaveRecord.aiClassification?.category ? (
+                  <View style={styles.leaveAiBadge}>
+                    <Text style={styles.leaveAiBadgeText}>
+                      AI: {leaveRecord.aiClassification.category}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+
+              <Text style={styles.leaveStatusTitle}>
+                {leaveRecord.status === 'disetujui'
+                  ? 'Anda Telah Memperoleh Izin pada Sesi Ini'
+                  : leaveRecord.status === 'menunggu'
+                  ? 'Pengajuan Izin Sedang Diperiksa'
+                  : 'Pengajuan Izin Tidak Disetujui'}
+              </Text>
+              <Text style={styles.leaveStatusAlasan}>
+                {`Alasan: "${leaveRecord.alasan}"`}
+              </Text>
+
+              {leaveRecord.reviewNotes ? (
+                <View style={styles.reviewNotesBox}>
+                  <Text style={styles.reviewNotesLabel}>Catatan Evaluasi Asisten:</Text>
+                  <Text style={styles.reviewNotesText}>{leaveRecord.reviewNotes}</Text>
+                </View>
+              ) : null}
+
+              <Pressable
+                onPress={() => router.push('/praktikan/riwayat')}
+                style={styles.viewHistoryBtn}>
+                <Text style={styles.viewHistoryBtnText}>Lihat Riwayat Lengkap →</Text>
+              </Pressable>
+            </View>
+          ) : null}
 
           {/* Case 1: Sudah Presensi (FR-4.4) */}
           {alreadyPresensi ? (
@@ -1150,5 +1225,93 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#EA580C',
+  },
+  leaveStatusBox: {
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 8,
+    marginBottom: 14,
+  },
+  leaveStatusBoxApproved: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
+  },
+  leaveStatusBoxPending: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
+  },
+  leaveStatusBoxRejected: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+  },
+  leaveStatusHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  leaveStatusBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  leaveAiBadge: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  leaveAiBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  leaveStatusTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  leaveStatusAlasan: {
+    fontSize: 12,
+    color: '#475569',
+    lineHeight: 18,
+    fontStyle: 'italic',
+  },
+  reviewNotesBox: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    padding: 10,
+    gap: 2,
+  },
+  reviewNotesLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  reviewNotesText: {
+    fontSize: 12,
+    color: '#334155',
+    lineHeight: 17,
+  },
+  viewHistoryBtn: {
+    alignSelf: 'flex-start',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 6,
+    marginTop: 2,
+  },
+  viewHistoryBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#475569',
   },
 });

@@ -15,45 +15,83 @@ import { EmptyState } from '@/components/empty-state';
 import { StatusBadge } from '@/components/status-badge';
 import { useAuth } from '@/context/auth-context';
 import { usePraktikum } from '@/context/praktikum-context';
+import { subscribeStudentAttendances } from '@/services/attendance-service';
 import {
   LeaveRequestDocument,
   subscribeStudentLeaveRequests,
 } from '@/services/leave-service';
-import { RiwayatItem } from '@/types/praktikum';
+import { subscribeSessions } from '@/services/session-service';
+import { AttendanceDocument, RiwayatItem, SessionDocument } from '@/types/praktikum';
 
 type ActiveTab = 'presensi' | 'izin';
 
 export default function PraktikanRiwayatScreen() {
-  const { userDoc } = useAuth();
-  const { currentPraktikan, getRiwayatPraktikan, sesiList } = usePraktikum();
+  const { user, userDoc } = useAuth();
+  const { currentPraktikan, getRiwayatPraktikan, sesiList: dummySesi } = usePraktikum();
 
-  const studentId = userDoc?.uid || currentPraktikan?.id;
+  const studentId = userDoc?.uid || user?.uid || currentPraktikan?.id;
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('presensi');
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequestDocument[]>([]);
+  const [firestoreAttendances, setFirestoreAttendances] = useState<AttendanceDocument[]>([]);
+  const [firestoreSessions, setFirestoreSessions] = useState<SessionDocument[]>([]);
 
-  // Subscribe ke pengajuan izin praktikan secara real-time
+  // Subscribe ke pengajuan izin praktikan, riwayat presensi, dan data sesi secara real-time
   useEffect(() => {
-    if (!studentId) return;
+    const unsubSessions = subscribeSessions((items) => {
+      setFirestoreSessions(items);
+    });
 
-    const unsubscribe = subscribeStudentLeaveRequests(
+    if (!studentId) {
+      return () => {
+        unsubSessions();
+      };
+    }
+
+    const unsubLeaves = subscribeStudentLeaveRequests(
       studentId,
       (data) => {
         setLeaveRequests(data);
       }
     );
 
+    const unsubAttendances = subscribeStudentAttendances(
+      studentId,
+      (items) => {
+        setFirestoreAttendances(items);
+      }
+    );
+
     return () => {
-      unsubscribe();
+      unsubSessions();
+      unsubLeaves();
+      unsubAttendances();
     };
   }, [studentId]);
 
-  const riwayatList = useMemo(() => {
-    if (!currentPraktikan) return [];
-    return getRiwayatPraktikan(currentPraktikan.id);
-  }, [currentPraktikan, getRiwayatPraktikan]);
+  const effectiveSessions = firestoreSessions.length > 0 ? firestoreSessions : dummySesi;
 
-  const totalSesiTersedia = sesiList.length;
+  const riwayatList: RiwayatItem[] = useMemo(() => {
+    if (firestoreAttendances.length > 0) {
+      return firestoreAttendances.map((att) => {
+        const sesi = effectiveSessions.find((s) => s.id === att.sessionId);
+        return {
+          id: att.id,
+          sesiId: att.sessionId,
+          praktikanId: att.studentId,
+          waktuKehadiran: att.waktuKehadiran,
+          status: 'hadir',
+          sesi: sesi,
+        } as RiwayatItem;
+      });
+    }
+    if (currentPraktikan) {
+      return getRiwayatPraktikan(currentPraktikan.id);
+    }
+    return [];
+  }, [firestoreAttendances, effectiveSessions, currentPraktikan, getRiwayatPraktikan]);
+
+  const totalSesiTersedia = effectiveSessions.length;
   const totalHadir = riwayatList.length;
   const persentase =
     totalSesiTersedia > 0

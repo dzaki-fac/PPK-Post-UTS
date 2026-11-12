@@ -17,6 +17,7 @@ import { EmptyState } from '@/components/empty-state';
 import { SesiCard } from '@/components/sesi-card';
 import { useAuth } from '@/context/auth-context';
 import { subscribeAllAttendances } from '@/services/attendance-service';
+import { LeaveRequestDocument, subscribeLeaveRequests } from '@/services/leave-service';
 import { createSession, subscribeSessions } from '@/services/session-service';
 import { AttendanceDocument, SessionDocument, SessionStatus } from '@/types/praktikum';
 
@@ -26,6 +27,7 @@ export default function JadwalAsistenScreen() {
   const { userDoc } = useAuth();
   const [sesiList, setSesiList] = useState<SessionDocument[]>([]);
   const [attendances, setAttendances] = useState<AttendanceDocument[]>([]);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequestDocument[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [filter, setFilter] = useState<FilterType>('semua');
 
@@ -56,9 +58,14 @@ export default function JadwalAsistenScreen() {
       setAttendances(items);
     });
 
+    const unsubLeaves = subscribeLeaveRequests((items) => {
+      setLeaveRequests(items);
+    });
+
     return () => {
       unsubSessions();
       unsubAttendances();
+      unsubLeaves();
     };
   }, []);
 
@@ -71,6 +78,10 @@ export default function JadwalAsistenScreen() {
   const totalDibuka = sesiList.filter((s) => s.status === 'dibuka').length;
   const totalPresensiMasuk = attendances.length;
   const totalDitutup = sesiList.filter((s) => s.status === 'ditutup').length;
+  const pendingLeaves = useMemo(
+    () => leaveRequests.filter((r) => r.status === 'menunggu').length,
+    [leaveRequests]
+  );
 
   const handleCardPress = (sesi: SessionDocument) => {
     router.push({
@@ -120,12 +131,16 @@ export default function JadwalAsistenScreen() {
 
   const renderItem = ({ item }: { item: SessionDocument }) => {
     const totalHadir = attendances.filter((p) => p.sessionId === item.id).length;
+    const totalIzin = leaveRequests.filter(
+      (l) => l.sessionId === item.id && (l.status === 'disetujui' || l.status === 'menunggu')
+    ).length;
 
     return (
       <SesiCard
         sesi={item}
         role="asisten"
         totalHadir={totalHadir}
+        totalIzin={totalIzin}
         onPress={() => handleCardPress(item)}
       />
     );
@@ -178,12 +193,64 @@ export default function JadwalAsistenScreen() {
           <Text style={styles.metricDesc}>Mahasiswa Hadir</Text>
         </View>
 
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Buka Panel Moderasi Izin"
+          onPress={() => router.push('/asisten/moderasi-izin')}
+          style={({ pressed }) => [
+            styles.metricCard,
+            pendingLeaves > 0 && styles.metricCardIzin,
+            pressed && styles.chipPressed,
+          ]}>
+          <Text
+            style={[
+              styles.metricVal,
+              { color: pendingLeaves > 0 ? '#D97706' : '#64748B' },
+            ]}>
+            {pendingLeaves}
+          </Text>
+          <Text style={styles.metricLbl}>Izin Menunggu</Text>
+          <Text style={styles.metricDesc}>
+            {pendingLeaves > 0 ? 'Perlu Diverifikasi →' : 'Semua Ditinjau'}
+          </Text>
+        </Pressable>
+
         <View style={styles.metricCard}>
           <Text style={[styles.metricVal, { color: '#64748B' }]}>{totalDitutup}</Text>
           <Text style={styles.metricLbl}>Sesi Ditutup</Text>
           <Text style={styles.metricDesc}>Selesai Dikelola</Text>
         </View>
       </View>
+
+      {/* Banner Permohonan Izin Menunggu Keputusan */}
+      {pendingLeaves > 0 ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Buka Panel Moderasi Izin Praktikum"
+          onPress={() => router.push('/asisten/moderasi-izin')}
+          style={({ pressed }) => [
+            styles.pendingLeaveBanner,
+            pressed && styles.chipPressed,
+          ]}>
+          <View style={styles.pendingLeaveBadge}>
+            <View style={styles.pendingLeaveDot} />
+            <Text style={styles.pendingLeaveBadgeText}>
+              MODERASI IZIN ({pendingLeaves})
+            </Text>
+          </View>
+          <View style={styles.pendingLeaveContent}>
+            <Text style={styles.pendingLeaveTitle}>
+              Terdapat {pendingLeaves} pengajuan izin praktikan menunggu keputusan Anda
+            </Text>
+            <Text style={styles.pendingLeaveSubtitle}>
+              Rekomendasi kategori dari Model AI Pengajar telah tersedia. Klik untuk menyetujui atau menolak.
+            </Text>
+          </View>
+          <View style={styles.pendingLeaveActionBtn}>
+            <Text style={styles.pendingLeaveActionText}>Tinjau Sekarang →</Text>
+          </View>
+        </Pressable>
+      ) : null}
 
       {/* Filter Section */}
       <View style={styles.filterSection}>
@@ -576,6 +643,67 @@ const styles = StyleSheet.create({
   metricCardPresensi: {
     borderColor: '#99F6E4',
     backgroundColor: '#F0FDFA',
+  },
+  metricCardIzin: {
+    borderColor: '#FDE68A',
+    backgroundColor: '#FFFBEB',
+  },
+  pendingLeaveBanner: {
+    backgroundColor: '#FFFBEB',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    padding: 14,
+    gap: 8,
+    marginVertical: 4,
+  },
+  pendingLeaveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 6,
+  },
+  pendingLeaveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#D97706',
+  },
+  pendingLeaveBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#B45309',
+    letterSpacing: 0.3,
+  },
+  pendingLeaveContent: {
+    gap: 2,
+  },
+  pendingLeaveTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#92400E',
+  },
+  pendingLeaveSubtitle: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#78350F',
+  },
+  pendingLeaveActionBtn: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  pendingLeaveActionText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   metricVal: {
     fontSize: 24,

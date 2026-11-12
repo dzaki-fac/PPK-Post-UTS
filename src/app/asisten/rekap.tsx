@@ -13,19 +13,30 @@ import { EmptyState } from '@/components/empty-state';
 import { StatusBadge } from '@/components/status-badge';
 import { usePraktikum } from '@/context/praktikum-context';
 import {
+  normalizeClassCode,
+  subscribeAllAttendances,
+  subscribePraktikanUsers,
+} from '@/services/attendance-service';
+import {
   LeaveRequestDocument,
   subscribeLeaveRequests,
 } from '@/services/leave-service';
-import { Praktikan, Sesi } from '@/types/praktikum';
+import { subscribeSessions } from '@/services/session-service';
+import {
+  AttendanceDocument,
+  Sesi,
+  SessionDocument,
+  UserDocument,
+} from '@/types/praktikum';
 
 type RekapSesiItem = {
-  sesi: Sesi;
+  sesi: Sesi | SessionDocument;
   totalKelas: number;
   totalHadir: number;
   totalIzin: number;
   persentase: number;
   daftarMahasiswa: {
-    praktikan: Praktikan;
+    praktikan: { id: string; nama: string; nim: string; kelas: string };
     hadir: boolean;
     izin: boolean;
     waktuHadir?: string;
@@ -34,35 +45,78 @@ type RekapSesiItem = {
 };
 
 export default function RekapAsistenScreen() {
-  const { sesiList, presensiList, daftarPraktikan } = usePraktikum();
+  const { sesiList: dummySesi, presensiList: dummyPresensi, daftarPraktikan: dummyStudents } = usePraktikum();
   const [expandedSesiId, setExpandedSesiId] = useState<string | null>(null);
   const [approvedLeaves, setApprovedLeaves] = useState<LeaveRequestDocument[]>([]);
+  const [firestoreSessions, setFirestoreSessions] = useState<SessionDocument[]>([]);
+  const [firestoreAttendances, setFirestoreAttendances] = useState<AttendanceDocument[]>([]);
+  const [firestoreStudents, setFirestoreStudents] = useState<UserDocument[]>([]);
 
   useEffect(() => {
-    const unsub = subscribeLeaveRequests((data) => {
+    const unsubSessions = subscribeSessions((items) => {
+      setFirestoreSessions(items);
+    });
+
+    const unsubAttendances = subscribeAllAttendances((items) => {
+      setFirestoreAttendances(items);
+    });
+
+    const unsubStudents = subscribePraktikanUsers((items) => {
+      setFirestoreStudents(items);
+    });
+
+    const unsubLeaves = subscribeLeaveRequests((data) => {
       setApprovedLeaves(data.filter((r) => r.status === 'disetujui'));
     }, 'disetujui');
-    return () => unsub();
+
+    return () => {
+      unsubSessions();
+      unsubAttendances();
+      unsubStudents();
+      unsubLeaves();
+    };
   }, []);
+
+  const sesiList = firestoreSessions.length > 0 ? firestoreSessions : dummySesi;
+  const daftarMahasiswaMaster = useMemo(() => {
+    if (firestoreStudents.length > 0) {
+      return firestoreStudents.map((s) => ({
+        id: s.uid,
+        nama: s.nama,
+        nim: s.nim || '-',
+        kelas: s.kelas || 'A',
+      }));
+    }
+    return dummyStudents.map((s) => ({
+      id: s.id,
+      nama: s.nama,
+      nim: s.nim,
+      kelas: s.kelas,
+    }));
+  }, [firestoreStudents, dummyStudents]);
 
   // Bangun rekap data untuk setiap sesi (dibuka dan ditutup diutamakan)
   const rekapData: RekapSesiItem[] = useMemo(() => {
     return sesiList
       .filter((s) => s.status === 'dibuka' || s.status === 'ditutup')
       .map((sesi) => {
-        const kodeKelas = sesi.kelas.replace(/[^A-Za-z]/g, '').slice(-1);
-        const kelasMahasiswa = daftarPraktikan.filter(
-          (p) =>
-            p.kelas.toUpperCase() === kodeKelas.toUpperCase() ||
-            sesi.kelas.includes(p.kelas)
+        const kodeKelas = normalizeClassCode(sesi.kelas);
+        const kelasMahasiswa = daftarMahasiswaMaster.filter(
+          (p) => normalizeClassCode(p.kelas) === kodeKelas
         );
         const mahasiswaFinal =
-          kelasMahasiswa.length > 0 ? kelasMahasiswa : daftarPraktikan;
+          kelasMahasiswa.length > 0 ? kelasMahasiswa : daftarMahasiswaMaster;
 
-        const presensiSesi = presensiList.filter((p) => p.sesiId === sesi.id);
+        const attendancesForSession =
+          firestoreAttendances.length > 0
+            ? firestoreAttendances.filter((a) => a.sessionId === sesi.id)
+            : dummyPresensi.filter((p) => p.sesiId === sesi.id);
 
         const daftar = mahasiswaFinal.map((m) => {
-          const record = presensiSesi.find((pres) => pres.praktikanId === m.id);
+          const record = attendancesForSession.find(
+            (pres) =>
+              ('studentId' in pres ? pres.studentId : pres.praktikanId) === m.id
+          );
           const leave = approvedLeaves.find(
             (l) => l.sessionId === sesi.id && l.studentId === m.id
           );
@@ -75,7 +129,7 @@ export default function RekapAsistenScreen() {
           };
         });
 
-        const totalHadir = presensiSesi.length;
+        const totalHadir = attendancesForSession.length;
         const totalIzin = daftar.filter((d) => d.izin).length;
         const totalKelas = mahasiswaFinal.length;
         const persentase =
@@ -90,12 +144,15 @@ export default function RekapAsistenScreen() {
           daftarMahasiswa: daftar,
         };
       });
-  }, [sesiList, presensiList, daftarPraktikan, approvedLeaves]);
+  }, [sesiList, firestoreAttendances, dummyPresensi, daftarMahasiswaMaster, approvedLeaves]);
 
   const totalSesiDiproses = rekapData.length;
   const totalPresensiMasuk = useMemo(
-    () => presensiList.length,
-    [presensiList]
+    () =>
+      firestoreAttendances.length > 0
+        ? firestoreAttendances.length
+        : dummyPresensi.length,
+    [firestoreAttendances, dummyPresensi]
   );
   const rataRataKehadiran = useMemo(() => {
     if (rekapData.length === 0) return 0;

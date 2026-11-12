@@ -17,17 +17,24 @@ import {
   normalizeClassCode,
   subscribeStudentAttendances,
 } from '@/services/attendance-service';
+import {
+  LeaveRequestDocument,
+  subscribeStudentLeaveRequests,
+} from '@/services/leave-service';
 import { subscribeSessions } from '@/services/session-service';
 import { AttendanceDocument, SessionDocument, SessionStatus } from '@/types/praktikum';
 
 type FilterType = 'semua' | 'kelas-saya' | SessionStatus;
 
 export default function PraktikanJadwalScreen() {
-  const { userDoc } = useAuth();
+  const { user, userDoc } = useAuth();
   const [sesiList, setSesiList] = useState<SessionDocument[]>([]);
   const [myAttendances, setMyAttendances] = useState<AttendanceDocument[]>([]);
+  const [myLeaves, setMyLeaves] = useState<LeaveRequestDocument[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [filter, setFilter] = useState<FilterType>('semua');
+
+  const studentUid = userDoc?.uid || user?.uid;
 
   useEffect(() => {
     const unsubSessions = subscribeSessions(
@@ -41,9 +48,14 @@ export default function PraktikanJadwalScreen() {
     );
 
     let unsubAttendances: (() => void) | null = null;
-    if (userDoc?.uid) {
-      unsubAttendances = subscribeStudentAttendances(userDoc.uid, (items) => {
+    let unsubLeaves: (() => void) | null = null;
+
+    if (studentUid) {
+      unsubAttendances = subscribeStudentAttendances(studentUid, (items) => {
         setMyAttendances(items);
+      });
+      unsubLeaves = subscribeStudentLeaveRequests(studentUid, (items) => {
+        setMyLeaves(items);
       });
     }
 
@@ -52,8 +64,11 @@ export default function PraktikanJadwalScreen() {
       if (unsubAttendances) {
         unsubAttendances();
       }
+      if (unsubLeaves) {
+        unsubLeaves();
+      }
     };
-  }, [userDoc?.uid]);
+  }, [studentUid]);
 
   const studentClass = normalizeClassCode(userDoc?.kelas);
 
@@ -70,6 +85,8 @@ export default function PraktikanJadwalScreen() {
   const totalDibuka = sesiList.filter((s) => s.status === 'dibuka').length;
   const totalSudahHadir = myAttendances.length;
   const totalBelumBuka = sesiList.filter((s) => s.status === 'belum-dibuka').length;
+  const totalIzinDisetujui = myLeaves.filter((l) => l.status === 'disetujui').length;
+  const totalIzinMenunggu = myLeaves.filter((l) => l.status === 'menunggu').length;
 
   const handleCardPress = (sesi: SessionDocument) => {
     router.push({
@@ -80,6 +97,7 @@ export default function PraktikanJadwalScreen() {
 
   const renderItem = ({ item }: { item: SessionDocument }) => {
     const presensiItem = myAttendances.find((p) => p.sessionId === item.id);
+    const leaveItem = myLeaves.find((l) => l.sessionId === item.id);
     const isHadir = Boolean(presensiItem);
 
     return (
@@ -88,6 +106,8 @@ export default function PraktikanJadwalScreen() {
         role="praktikan"
         isHadir={isHadir}
         waktuHadir={presensiItem?.waktuKehadiran}
+        leaveStatus={leaveItem?.status}
+        leaveCategory={leaveItem?.aiClassification?.category}
         onPress={() => handleCardPress(item)}
       />
     );
@@ -128,6 +148,26 @@ export default function PraktikanJadwalScreen() {
         </View>
       </Pressable>
 
+      {/* Notice jika ada izin yang sedang menunggu keputusan */}
+      {totalIzinMenunggu > 0 && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Pantau Status Izin Menunggu"
+          onPress={() => router.push('/praktikan/riwayat')}
+          style={({ pressed }) => [styles.pendingStudentNotice, pressed && styles.cardPressed]}>
+          <View style={styles.pendingStudentDot} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.pendingStudentTitle}>
+              {totalIzinMenunggu} Pengajuan Izin Menunggu Verifikasi Asisten
+            </Text>
+            <Text style={styles.pendingStudentSub}>
+              Rekomendasi AI telah disematkan. Klik untuk memantau status persetujuan.
+            </Text>
+          </View>
+          <Text style={styles.pendingStudentAction}>Cek Status →</Text>
+        </Pressable>
+      )}
+
       {/* Metrics Overview Cards (Matching Halaman 1 style) */}
       <View style={styles.metricsGrid}>
         <View style={styles.metricCard}>
@@ -147,6 +187,24 @@ export default function PraktikanJadwalScreen() {
           <Text style={styles.metricLbl}>Sudah Hadir</Text>
           <Text style={styles.metricDesc}>Tercatat Sistem</Text>
         </View>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Lihat Riwayat Izin"
+          onPress={() => router.push('/praktikan/riwayat')}
+          style={({ pressed }) => [
+            styles.metricCard,
+            styles.metricCardIzin,
+            pressed && styles.cardPressed,
+          ]}>
+          <Text style={[styles.metricVal, { color: '#2563EB' }]}>
+            {totalIzinDisetujui}
+          </Text>
+          <Text style={styles.metricLbl}>Izin Disetujui</Text>
+          <Text style={styles.metricDesc}>
+            {totalIzinMenunggu > 0 ? `${totalIzinMenunggu} Menunggu →` : 'Riwayat Izin'}
+          </Text>
+        </Pressable>
 
         <View style={styles.metricCard}>
           <Text style={[styles.metricVal, { color: '#64748B' }]}>{totalBelumBuka}</Text>
@@ -395,6 +453,42 @@ const styles = StyleSheet.create({
   metricCardHadir: {
     borderColor: '#FED7AA',
     backgroundColor: '#FFF7ED',
+  },
+  metricCardIzin: {
+    borderColor: '#BFDBFE',
+    backgroundColor: '#EFF6FF',
+  },
+  pendingStudentNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 12,
+    padding: 12,
+    gap: 10,
+    marginTop: 6,
+  },
+  pendingStudentDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#D97706',
+  },
+  pendingStudentTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#92400E',
+  },
+  pendingStudentSub: {
+    fontSize: 11,
+    color: '#B45309',
+    marginTop: 1,
+  },
+  pendingStudentAction: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#B45309',
   },
   metricVal: {
     fontSize: 24,

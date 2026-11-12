@@ -79,9 +79,13 @@ export default function PraktikanDetailSesiScreen() {
         }
       );
 
-      unsubLeaves = subscribeStudentLeaveRequests(studentUid, (leaves) => {
-        setStudentLeaves(leaves);
-      });
+      unsubLeaves = subscribeStudentLeaveRequests(
+        studentUid,
+        (leaves) => {
+          setStudentLeaves(leaves);
+        },
+        userDoc?.nim
+      );
     }
 
     return () => {
@@ -93,7 +97,7 @@ export default function PraktikanDetailSesiScreen() {
         unsubLeaves();
       }
     };
-  }, [sessionId, studentUid]);
+  }, [sessionId, studentUid, userDoc?.nim]);
 
   const handleBack = () => {
     if (router.canGoBack()) {

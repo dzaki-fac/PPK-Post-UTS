@@ -52,7 +52,8 @@ export default function PraktikanRiwayatScreen() {
       studentId,
       (data) => {
         setLeaveRequests(data);
-      }
+      },
+      userDoc?.nim
     );
 
     const unsubAttendances = subscribeStudentAttendances(
@@ -67,7 +68,7 @@ export default function PraktikanRiwayatScreen() {
       unsubLeaves();
       unsubAttendances();
     };
-  }, [studentId]);
+  }, [studentId, userDoc?.nim]);
 
   const effectiveSessions = firestoreSessions.length > 0 ? firestoreSessions : dummySesi;
 

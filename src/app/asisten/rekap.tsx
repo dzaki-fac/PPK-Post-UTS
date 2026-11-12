@@ -115,10 +115,13 @@ export default function RekapAsistenScreen() {
         const daftar = mahasiswaFinal.map((m) => {
           const record = attendancesForSession.find(
             (pres) =>
-              ('studentId' in pres ? pres.studentId : pres.praktikanId) === m.id
+              ('studentId' in pres ? pres.studentId : pres.praktikanId) === m.id ||
+              ('studentNim' in pres && m.nim && m.nim !== '-' && pres.studentNim === m.nim)
           );
           const leave = approvedLeaves.find(
-            (l) => l.sessionId === sesi.id && l.studentId === m.id
+            (l) =>
+              l.sessionId === sesi.id &&
+              (l.studentId === m.id || (m.nim && m.nim !== '-' && l.studentNim === m.nim))
           );
           return {
             praktikan: m,

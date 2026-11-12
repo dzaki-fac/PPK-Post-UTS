@@ -43,9 +43,9 @@ Aplikasi dirancang secara adaptif dari dua perspektif peran pengguna:
 * **Universal RoleHeader:** Navbar universal responsif dengan tombol popup `Ganti Akun` untuk beralih profil praktikan atau asisten secara instan.
 
 ### B. Fondasi Data Dinamis & AI (Sprint 2 — Selesai & Teruji Sepenuhnya)
-* **Multi-Metode Autentikasi:** Mendukung pendaftaran/login via **Email & Password** serta **Native Google Sign-In** (Google Play Services di Android via `@react-native-google-signin/google-signin` & `signInWithPopup` di Web).
+* **Multi-Metode Autentikasi & Persistensi Sesi:** Mendukung pendaftaran/login via **Email & Password** serta **Native Google Sign-In** (Google Play Services di Android via `@react-native-google-signin/google-signin` & `signInWithPopup` di Web). Dilengkapi **persisten sesi instan `@react-native-async-storage/async-storage`** sehingga pengguna tidak ter-logout saat aplikasi ditutup/restart.
 * **Role Guard & Navigasi Terproteksi:** Otomatis mengarahkan pengguna ke Portal Praktikan atau Portal Asisten berdasarkan `peran` di Firestore `/users/{uid}`, dilengkapi modal kelengkapan profil Google.
-* **Bottom Bar Responsif & Safe Area Inset:** Navigasi tab bawah mobile dilengkapi ikon vektor adaptif dan penyesuaian gesture navigation bar Android modern (`useSafeAreaInsets`).
+* **Header & Bottom Bar Responsif Single-Row:** Navbar atas (`RoleHeader`) presisi sejajar satu baris horizontal dengan informasi profil dan tombol keluar di sisi kanan atas, serta bottom navigation bar mobile dengan ikon vektor adaptif dan safe area insets.
 * **Cloud Firestore Real-Time:** Penyimpanan data persisten dan sinkronisasi instan via `onSnapshot` untuk koleksi `/users`, `/sessions`, `/attendances`, dan `/leave_requests`.
 * **Keamanan Database Ter-deploy:** File `firestore.rules` menerapkan pembatasan hak akses berbasis peran (RBAC) dan aktif di server Cloud Firestore.
 * **Pengajuan Izin Ketidakhadiran:** Praktikan dapat mengajukan permohonan izin dengan alasan tertulis dan tautan dokumen bukti.

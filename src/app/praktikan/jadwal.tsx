@@ -54,9 +54,13 @@ export default function PraktikanJadwalScreen() {
       unsubAttendances = subscribeStudentAttendances(studentUid, (items) => {
         setMyAttendances(items);
       });
-      unsubLeaves = subscribeStudentLeaveRequests(studentUid, (items) => {
-        setMyLeaves(items);
-      });
+      unsubLeaves = subscribeStudentLeaveRequests(
+        studentUid,
+        (items) => {
+          setMyLeaves(items);
+        },
+        userDoc?.nim
+      );
     }
 
     return () => {
@@ -68,7 +72,7 @@ export default function PraktikanJadwalScreen() {
         unsubLeaves();
       }
     };
-  }, [studentUid]);
+  }, [studentUid, userDoc?.nim]);
 
   const studentClass = normalizeClassCode(userDoc?.kelas);
 

@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   GoogleAuthProvider,
   User,
@@ -156,13 +157,38 @@ function buildUserDocument(
   return base;
 }
 
+const CACHED_USER_DOC_KEY = '@ppk_labportal_user_doc';
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(auth.currentUser);
   const [userDoc, setUserDoc] = useState<UserDocument | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [needsProfileCompletion, setNeedsProfileCompletion] = useState<boolean>(false);
 
+  const persistUserDoc = useCallback((docData: UserDocument | null) => {
+    setUserDoc(docData);
+    if (docData) {
+      AsyncStorage.setItem(CACHED_USER_DOC_KEY, JSON.stringify(docData)).catch(() => {});
+    } else {
+      AsyncStorage.removeItem(CACHED_USER_DOC_KEY).catch(() => {});
+    }
+  }, []);
+
   useEffect(() => {
+    let isMounted = true;
+
+    // Muat profil dari AsyncStorage untuk pemulihan instan saat cold start aplikasi
+    AsyncStorage.getItem(CACHED_USER_DOC_KEY)
+      .then((raw) => {
+        if (raw && isMounted) {
+          try {
+            const parsed = JSON.parse(raw) as UserDocument;
+            setUserDoc((prev) => prev || parsed);
+          } catch {}
+        }
+      })
+      .catch(() => {});
+
     let unsubscribeProfile: (() => void) | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
@@ -174,7 +200,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(firebaseUser);
 
       if (!firebaseUser) {
-        setUserDoc(null);
+        persistUserDoc(null);
         setNeedsProfileCompletion(false);
         setLoading(false);
         return;
@@ -188,47 +214,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         (snap) => {
           if (snap.exists()) {
             const data = snap.data() as UserDocument;
-            setUserDoc({ ...data, uid: snap.id });
+            persistUserDoc({ ...data, uid: snap.id });
             setNeedsProfileCompletion(false);
           } else {
-            setUserDoc(null);
+            persistUserDoc(null);
             setNeedsProfileCompletion(true);
           }
           setLoading(false);
         },
         () => {
-          setUserDoc(null);
+          // Pertahankan userDoc yang sudah tercache jika terjadi gangguan jaringan sementara
           setLoading(false);
         }
       );
     });
 
     return () => {
+      isMounted = false;
       if (unsubscribeProfile) {
         unsubscribeProfile();
       }
       unsubscribeAuth();
     };
-  }, []);
+  }, [persistUserDoc]);
 
   const refreshUserDoc = useCallback(async (): Promise<UserDocument | null> => {
     const current = auth.currentUser;
     if (!current) {
-      setUserDoc(null);
+      persistUserDoc(null);
       setNeedsProfileCompletion(false);
       return null;
     }
     const snap = await getDoc(doc(db, 'users', current.uid));
     if (snap.exists()) {
       const data = { ...(snap.data() as UserDocument), uid: snap.id };
-      setUserDoc(data);
+      persistUserDoc(data);
       setNeedsProfileCompletion(false);
       return data;
     }
-    setUserDoc(null);
+    persistUserDoc(null);
     setNeedsProfileCompletion(true);
     return null;
-  }, []);
+  }, [persistUserDoc]);
 
   const login = useCallback(async (email: string, password: string): Promise<UserDocument | null> => {
     if (!isFirebaseConfigured()) {
@@ -247,17 +274,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const snap = await getDoc(doc(db, 'users', credential.user.uid));
       if (snap.exists()) {
         const data = { ...(snap.data() as UserDocument), uid: snap.id };
-        setUserDoc(data);
+        persistUserDoc(data);
         setNeedsProfileCompletion(false);
         return data;
       }
-      setUserDoc(null);
+      persistUserDoc(null);
       setNeedsProfileCompletion(true);
       return null;
     } catch (error) {
       throw new Error(mapFirebaseAuthError(error));
     }
-  }, []);
+  }, [persistUserDoc]);
 
   const register = useCallback(
     async (
@@ -304,14 +331,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         );
 
         await setDoc(doc(db, 'users', credential.user.uid), profile);
-        setUserDoc(profile);
+        persistUserDoc(profile);
         setNeedsProfileCompletion(false);
         return profile;
       } catch (error) {
         throw new Error(mapFirebaseAuthError(error));
       }
     },
-    []
+    [persistUserDoc]
   );
 
   const loginWithGoogle = useCallback(async (): Promise<GoogleLoginResult> => {
@@ -348,12 +375,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (snap.exists()) {
         const data = { ...(snap.data() as UserDocument), uid: snap.id };
-        setUserDoc(data);
+        persistUserDoc(data);
         setNeedsProfileCompletion(false);
         return { user: firebaseUser, userDoc: data, isNewUser: false };
       }
 
-      setUserDoc(null);
+      persistUserDoc(null);
       setNeedsProfileCompletion(true);
       return { user: firebaseUser, userDoc: null, isNewUser: true };
     } catch (error: any) {
@@ -376,7 +403,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       throw new Error(mapFirebaseAuthError(error));
     }
-  }, []);
+  }, [persistUserDoc]);
 
   const completeGoogleProfile = useCallback(
     async (
@@ -413,14 +440,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         );
 
         await setDoc(doc(db, 'users', current.uid), profile);
-        setUserDoc(profile);
+        persistUserDoc(profile);
         setNeedsProfileCompletion(false);
         return profile;
       } catch (error) {
         throw new Error(mapFirebaseAuthError(error));
       }
     },
-    []
+    [persistUserDoc]
   );
 
   const logout = useCallback(async () => {
@@ -434,12 +461,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       await signOut(auth);
       setUser(null);
-      setUserDoc(null);
+      persistUserDoc(null);
       setNeedsProfileCompletion(false);
     } catch (error) {
       throw new Error(mapFirebaseAuthError(error));
     }
-  }, []);
+  }, [persistUserDoc]);
 
   const role: UserRole | null = userDoc?.peran ?? null;
 

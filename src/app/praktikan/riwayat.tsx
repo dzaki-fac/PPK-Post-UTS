@@ -13,6 +13,7 @@ import {
 import { AICategoryBadge } from '@/components/ai-category-badge';
 import { EmptyState } from '@/components/empty-state';
 import { StatusBadge } from '@/components/status-badge';
+import { useAuth } from '@/context/auth-context';
 import { usePraktikum } from '@/context/praktikum-context';
 import {
   LeaveRequestDocument,
@@ -23,17 +24,20 @@ import { RiwayatItem } from '@/types/praktikum';
 type ActiveTab = 'presensi' | 'izin';
 
 export default function PraktikanRiwayatScreen() {
+  const { userDoc } = useAuth();
   const { currentPraktikan, getRiwayatPraktikan, sesiList } = usePraktikum();
+
+  const studentId = userDoc?.uid || currentPraktikan?.id;
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('presensi');
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequestDocument[]>([]);
 
   // Subscribe ke pengajuan izin praktikan secara real-time
   useEffect(() => {
-    if (!currentPraktikan) return;
+    if (!studentId) return;
 
     const unsubscribe = subscribeStudentLeaveRequests(
-      currentPraktikan.id,
+      studentId,
       (data) => {
         setLeaveRequests(data);
       }
@@ -42,7 +46,7 @@ export default function PraktikanRiwayatScreen() {
     return () => {
       unsubscribe();
     };
-  }, [currentPraktikan]);
+  }, [studentId]);
 
   const riwayatList = useMemo(() => {
     if (!currentPraktikan) return [];

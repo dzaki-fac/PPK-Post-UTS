@@ -14,16 +14,43 @@ import {
 } from 'react-native';
 
 import { AICategoryBadge } from '@/components/ai-category-badge';
+import { useAuth } from '@/context/auth-context';
 import { usePraktikum } from '@/context/praktikum-context';
 import { AIAnalysisResult, analyzeLeaveReason } from '@/services/ai-service';
 import {
   checkExistingLeaveRequest,
   createLeaveRequest,
 } from '@/services/leave-service';
+import { subscribeSessions } from '@/services/session-service';
+import { SessionDocument } from '@/types/praktikum';
 
 export default function PengajuanIzinScreen() {
   const params = useLocalSearchParams<{ sessionId?: string }>();
-  const { currentPraktikan, sesiList } = usePraktikum();
+  const { userDoc } = useAuth();
+  const { currentPraktikan, sesiList: dummySesiList } = usePraktikum();
+  const [firestoreSessions, setFirestoreSessions] = useState<SessionDocument[]>([]);
+
+  useEffect(() => {
+    const unsub = subscribeSessions((items) => {
+      if (items && items.length > 0) {
+        setFirestoreSessions(items);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  const sesiList = firestoreSessions.length > 0 ? firestoreSessions : dummySesiList;
+  const currentStudent = useMemo(() => {
+    if (userDoc) {
+      return {
+        id: userDoc.uid,
+        nama: userDoc.nama,
+        nim: userDoc.nim || '24060122130000',
+        kelas: (userDoc.kelas || 'A') as 'A' | 'B',
+      };
+    }
+    return currentPraktikan;
+  }, [userDoc, currentPraktikan]);
 
   // State Form
   const [selectedSessionId, setSelectedSessionId] = useState<string>(
@@ -46,14 +73,14 @@ export default function PengajuanIzinScreen() {
 
   // Sesi yang relevan untuk kelas praktikan
   const availableSessions = useMemo(() => {
-    if (!currentPraktikan) return sesiList;
-    const kodeKelas = currentPraktikan.kelas.toUpperCase();
+    if (!currentStudent) return sesiList;
+    const kodeKelas = currentStudent.kelas.toUpperCase();
     return sesiList.filter(
       (s) =>
         s.kelas.toUpperCase().includes(kodeKelas) ||
-        s.kelas.includes(currentPraktikan.kelas)
+        s.kelas.includes(currentStudent.kelas)
     );
-  }, [sesiList, currentPraktikan]);
+  }, [sesiList, currentStudent]);
 
   // ID sesi aktif (pilihan pengguna atau opsi pertama yang tersedia)
   const activeSessionId =
@@ -61,7 +88,7 @@ export default function PengajuanIzinScreen() {
 
   // Cek duplikasi izin saat sesi berubah
   useEffect(() => {
-    if (!activeSessionId || !currentPraktikan) return;
+    if (!activeSessionId || !currentStudent) return;
 
     let isMounted = true;
 
@@ -69,7 +96,7 @@ export default function PengajuanIzinScreen() {
       try {
         const exists = await checkExistingLeaveRequest(
           activeSessionId,
-          currentPraktikan.id
+          currentStudent.id
         );
         if (isMounted) {
           setIsDuplicate(exists);
@@ -84,7 +111,7 @@ export default function PengajuanIzinScreen() {
     return () => {
       isMounted = false;
     };
-  }, [activeSessionId, currentPraktikan]);
+  }, [activeSessionId, currentStudent]);
 
   // Inferensi AI on-device saat teks alasan berubah
   useEffect(() => {
@@ -131,7 +158,7 @@ export default function PengajuanIzinScreen() {
     !isSubmitting;
 
   const handleSubmit = async () => {
-    if (!isFormValid || !currentPraktikan || !selectedSession) return;
+    if (!isFormValid || !currentStudent || !selectedSession) return;
 
     setErrorMessage(null);
     setIsSubmitting(true);
@@ -140,10 +167,10 @@ export default function PengajuanIzinScreen() {
       await createLeaveRequest({
         sessionId: selectedSession.id,
         sessionName: `${selectedSession.praktikum} - ${selectedSession.materi}`,
-        studentId: currentPraktikan.id,
-        studentName: currentPraktikan.nama,
-        studentNim: currentPraktikan.nim,
-        studentClass: currentPraktikan.kelas,
+        studentId: currentStudent.id,
+        studentName: currentStudent.nama,
+        studentNim: currentStudent.nim,
+        studentClass: currentStudent.kelas,
         alasan: alasan.trim(),
         lampiranUrl: lampiranUrl.trim() || undefined,
       });
@@ -204,17 +231,17 @@ export default function PengajuanIzinScreen() {
           <View style={styles.identityCard}>
             <View style={styles.avatarCircle}>
               <Text style={styles.avatarText}>
-                {currentPraktikan?.nama?.charAt(0).toUpperCase() || 'M'}
+                {currentStudent?.nama?.charAt(0).toUpperCase() || 'M'}
               </Text>
             </View>
             <View style={styles.identityMeta}>
               <View style={styles.identityNameRow}>
-                <Text style={styles.identityName}>{currentPraktikan?.nama || '-'}</Text>
+                <Text style={styles.identityName}>{currentStudent?.nama || '-'}</Text>
                 <View style={styles.classChip}>
-                  <Text style={styles.classText}>Kelas {currentPraktikan?.kelas || '-'}</Text>
+                  <Text style={styles.classText}>Kelas {currentStudent?.kelas || '-'}</Text>
                 </View>
               </View>
-              <Text style={styles.identityNim}>NIM: {currentPraktikan?.nim || '-'}</Text>
+              <Text style={styles.identityNim}>NIM: {currentStudent?.nim || '-'}</Text>
             </View>
           </View>
 

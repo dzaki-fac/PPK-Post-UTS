@@ -13,6 +13,7 @@ import {
 import { ConfirmationModal } from '@/components/confirmation-modal';
 import { EmptyState } from '@/components/empty-state';
 import { LeaveCard } from '@/components/leave-card';
+import { useAuth } from '@/context/auth-context';
 import { usePraktikum } from '@/context/praktikum-context';
 import {
   LeaveRequestDocument,
@@ -24,7 +25,11 @@ import {
 type FilterType = 'semua' | LeaveStatus;
 
 export default function ModerasiIzinScreen() {
+  const { userDoc } = useAuth();
   const { currentAsisten } = usePraktikum();
+
+  const reviewerUid = userDoc?.uid || currentAsisten?.id || 'asisten-lab';
+  const reviewerName = userDoc?.nama || currentAsisten?.nama || 'Asisten Laboratorium';
 
   const [requests, setRequests] = useState<LeaveRequestDocument[]>([]);
   const [activeFilter, setActiveFilter] = useState<FilterType>('menunggu');
@@ -74,8 +79,8 @@ export default function ModerasiIzinScreen() {
         approveTarget.id,
         'disetujui',
         'Izin telah disetujui oleh asisten laboratorium.',
-        currentAsisten?.id || 'asisten-lab',
-        currentAsisten?.nama || 'Asisten Laboratorium'
+        reviewerUid,
+        reviewerName
       );
       setApproveTarget(null);
     } catch (err) {
@@ -102,8 +107,8 @@ export default function ModerasiIzinScreen() {
         rejectTarget.id,
         'ditolak',
         rejectNotes.trim(),
-        currentAsisten?.id || 'asisten-lab',
-        currentAsisten?.nama || 'Asisten Laboratorium'
+        reviewerUid,
+        reviewerName
       );
       setRejectTarget(null);
       setRejectNotes('');

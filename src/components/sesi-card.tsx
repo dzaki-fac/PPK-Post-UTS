@@ -2,10 +2,10 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { StatusBadge } from '@/components/status-badge';
-import { Sesi } from '@/types/praktikum';
+import { Sesi, SessionDocument } from '@/types/praktikum';
 
 interface SesiCardProps {
-  sesi: Sesi;
+  sesi: Sesi | SessionDocument;
   isHadir?: boolean;
   waktuHadir?: string;
   totalHadir?: number;

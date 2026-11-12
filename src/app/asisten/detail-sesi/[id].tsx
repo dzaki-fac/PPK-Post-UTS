@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Modal,
   Pressable,
   ScrollView,
@@ -14,26 +15,43 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ConfirmationModal } from '@/components/confirmation-modal';
 import { EmptyState } from '@/components/empty-state';
 import { StatusBadge } from '@/components/status-badge';
-import { usePraktikum } from '@/context/praktikum-context';
+import {
+  normalizeClassCode,
+  subscribePraktikanUsers,
+  subscribeSessionAttendances,
+} from '@/services/attendance-service';
+import {
+  deleteSession,
+  subscribeSessionById,
+  updateSession,
+  updateSessionStatus,
+} from '@/services/session-service';
+import { AttendanceDocument, SessionDocument, UserDocument } from '@/types/praktikum';
 
 type KehadiranFilter = 'semua' | 'hadir' | 'belum-hadir';
 type ModalAction = 'buka' | 'tutup' | 'buka-kembali' | 'hapus';
 
+interface RosterRow {
+  id: string;
+  nama: string;
+  nim: string;
+  kelas: string;
+  hadir: boolean;
+  waktuHadir?: string;
+}
+
 export default function DetailSesiAsistenScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const {
-    getSesiById,
-    bukaSesi,
-    tutupSesi,
-    bukaKembaliSesi,
-    editSesi,
-    hapusSesi,
-    getPresensiBySesi,
-    daftarPraktikan,
-  } = usePraktikum();
+  const sessionId = Array.isArray(id) ? id[0] : id;
+
+  const [sesi, setSesi] = useState<SessionDocument | null>(null);
+  const [loadingSession, setLoadingSession] = useState(Boolean(sessionId));
+  const [presensiSesi, setPresensiSesi] = useState<AttendanceDocument[]>([]);
+  const [praktikanUsers, setPraktikanUsers] = useState<UserDocument[]>([]);
 
   const [modalAction, setModalAction] = useState<ModalAction | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [filterKehadiran, setFilterKehadiran] = useState<KehadiranFilter>('semua');
 
@@ -44,34 +62,82 @@ export default function DetailSesiAsistenScreen() {
   const [editTanggal, setEditTanggal] = useState('');
   const [editWaktuMulai, setEditWaktuMulai] = useState('');
   const [editWaktuSelesai, setEditWaktuSelesai] = useState('');
+  const [editError, setEditError] = useState<string | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
 
-  const sesi = getSesiById(id);
+  useEffect(() => {
+    if (!sessionId) {
+      return;
+    }
 
-  const presensiSesi = useMemo(() => {
-    if (!sesi) return [];
-    return getPresensiBySesi(sesi.id);
-  }, [sesi, getPresensiBySesi]);
+    const unsubSession = subscribeSessionById(
+      sessionId,
+      (item) => {
+        setSesi(item);
+        setLoadingSession(false);
+      },
+      () => {
+        setLoadingSession(false);
+      }
+    );
 
-  // Mahasiswa yang terdaftar pada kelas ini (mis. "Kelas A" -> kelas === 'A')
+    const unsubAttendances = subscribeSessionAttendances(sessionId, (items) => {
+      setPresensiSesi(items);
+    });
+
+    const unsubStudents = subscribePraktikanUsers((students) => {
+      setPraktikanUsers(students);
+    });
+
+    return () => {
+      unsubSession();
+      unsubAttendances();
+      unsubStudents();
+    };
+  }, [sessionId]);
+
   const mahasiswaKelas = useMemo(() => {
     if (!sesi) return [];
-    const kodeKelas = sesi.kelas.replace(/[^A-Za-z]/g, '').slice(-1);
-    const matched = daftarPraktikan.filter((p) =>
-      p.kelas.toUpperCase() === kodeKelas.toUpperCase() || sesi.kelas.includes(p.kelas)
+    const kodeKelas = normalizeClassCode(sesi.kelas);
+    return praktikanUsers.filter(
+      (p) => normalizeClassCode(p.kelas) === kodeKelas
     );
-    return matched.length > 0 ? matched : daftarPraktikan;
-  }, [sesi, daftarPraktikan]);
+  }, [sesi, praktikanUsers]);
 
-  // Status kehadiran setiap mahasiswa kelas
-  const daftarStatusPraktikan = useMemo(() => {
-    return mahasiswaKelas.map((p) => {
-      const record = presensiSesi.find((pres) => pres.praktikanId === p.id);
+  const daftarStatusPraktikan = useMemo<RosterRow[]>(() => {
+    const attendanceMap = new Map<string, AttendanceDocument>();
+    presensiSesi.forEach((rec) => {
+      attendanceMap.set(rec.studentId, rec);
+    });
+
+    const rows: RosterRow[] = mahasiswaKelas.map((p) => {
+      const record = attendanceMap.get(p.uid);
+      if (record) {
+        attendanceMap.delete(p.uid);
+      }
       return {
-        praktikan: p,
-        hadir: !!record,
+        id: p.uid,
+        nama: p.nama,
+        nim: p.nim ?? '-',
+        kelas: p.kelas ?? '-',
+        hadir: Boolean(record),
         waktuHadir: record?.waktuKehadiran,
       };
     });
+
+    // Sertakan presensi yang masuk meskipun profil belum termuat di filter kelas
+    attendanceMap.forEach((rec) => {
+      rows.unshift({
+        id: rec.studentId,
+        nama: rec.studentName,
+        nim: rec.studentNim,
+        kelas: rec.studentClass,
+        hadir: true,
+        waktuHadir: rec.waktuKehadiran,
+      });
+    });
+
+    return rows;
   }, [mahasiswaKelas, presensiSesi]);
 
   const filteredDaftar = useMemo(() => {
@@ -85,10 +151,9 @@ export default function DetailSesiAsistenScreen() {
   }, [daftarStatusPraktikan, filterKehadiran]);
 
   const totalHadir = presensiSesi.length;
-  const totalMahasiswa = mahasiswaKelas.length;
-  const persentaseHadir = totalMahasiswa > 0
-    ? Math.round((totalHadir / totalMahasiswa) * 100)
-    : 0;
+  const totalMahasiswa = daftarStatusPraktikan.length;
+  const persentaseHadir =
+    totalMahasiswa > 0 ? Math.round((totalHadir / totalMahasiswa) * 100) : 0;
 
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -97,6 +162,15 @@ export default function DetailSesiAsistenScreen() {
       router.replace('/asisten/jadwal');
     }
   };
+
+  if (loadingSession) {
+    return (
+      <View style={styles.loadingScreen}>
+        <ActivityIndicator size="large" color="#0D9488" />
+        <Text style={styles.loadingText}>Memuat detail sesi & roster real-time...</Text>
+      </View>
+    );
+  }
 
   if (!sesi) {
     return (
@@ -111,7 +185,7 @@ export default function DetailSesiAsistenScreen() {
         </View>
         <EmptyState
           title="Sesi Tidak Ditemukan"
-          message="Sesi praktikum yang Anda cari tidak terdaftar dalam jadwal."
+          message="Sesi praktikum yang Anda cari tidak terdaftar dalam jadwal Firestore."
           actionText="Kembali ke Jadwal"
           onAction={handleBack}
         />
@@ -125,56 +199,72 @@ export default function DetailSesiAsistenScreen() {
     setEditTanggal(sesi.tanggal || '');
     setEditWaktuMulai(sesi.waktuMulai || '');
     setEditWaktuSelesai(sesi.waktuSelesai || '');
+    setEditError(null);
     setIsEditModalVisible(true);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
+    setEditError(null);
     if (!editMateri.trim()) {
-      alert('Materi praktikum tidak boleh kosong');
+      setEditError('Materi praktikum tidak boleh kosong.');
       return;
     }
-    editSesi(sesi.id, {
-      materi: editMateri.trim(),
-      ruang: editRuang.trim(),
-      tanggal: editTanggal.trim(),
-      waktuMulai: editWaktuMulai.trim(),
-      waktuSelesai: editWaktuSelesai.trim(),
-    });
-    setIsEditModalVisible(false);
-    setFeedbackMessage('Informasi sesi praktikum berhasil diperbarui.');
+
+    setSavingEdit(true);
+    try {
+      await updateSession(sesi.id, {
+        materi: editMateri.trim(),
+        ruang: editRuang.trim(),
+        tanggal: editTanggal.trim(),
+        waktuMulai: editWaktuMulai.trim(),
+        waktuSelesai: editWaktuSelesai.trim(),
+      });
+      setIsEditModalVisible(false);
+      setFeedbackMessage('Informasi sesi praktikum berhasil diperbarui di Firestore.');
+    } catch (err) {
+      setEditError(
+        err instanceof Error ? err.message : 'Gagal memperbarui informasi sesi.'
+      );
+    } finally {
+      setSavingEdit(false);
+    }
   };
 
-  const handleEksekusiAksi = () => {
+  const handleEksekusiAksi = async () => {
     if (!modalAction) return;
 
-    if (modalAction === 'buka') {
-      const ok = bukaSesi(sesi.id);
+    setActionLoading(true);
+    try {
+      if (modalAction === 'buka') {
+        await updateSessionStatus(sesi.id, 'dibuka');
+        setModalAction(null);
+        setFeedbackMessage(
+          'Sesi berhasil dibuka! Praktikan kini dapat melakukan presensi kehadiran.'
+        );
+      } else if (modalAction === 'tutup') {
+        await updateSessionStatus(sesi.id, 'ditutup');
+        setModalAction(null);
+        setFeedbackMessage(
+          'Sesi berhasil ditutup. Pencatatan presensi praktikan resmi diakhiri.'
+        );
+      } else if (modalAction === 'buka-kembali') {
+        await updateSessionStatus(sesi.id, 'dibuka');
+        setModalAction(null);
+        setFeedbackMessage(
+          'Sesi berhasil dibuka kembali! Praktikan sekarang dapat melakukan presensi kehadiran susulan.'
+        );
+      } else if (modalAction === 'hapus') {
+        await deleteSession(sesi.id);
+        setModalAction(null);
+        router.replace('/asisten/jadwal');
+      }
+    } catch (err) {
       setModalAction(null);
       setFeedbackMessage(
-        ok
-          ? 'Sesi berhasil dibuka! Praktikan kini dapat melakukan presensi kehadiran.'
-          : 'Gagal membuka sesi. Pastikan sesi belum dibuka sebelumnya.'
+        err instanceof Error ? err.message : 'Gagal memproses aksi sesi di Firestore.'
       );
-    } else if (modalAction === 'tutup') {
-      const ok = tutupSesi(sesi.id);
-      setModalAction(null);
-      setFeedbackMessage(
-        ok
-          ? 'Sesi berhasil ditutup. Pencatatan presensi praktikan resmi diakhiri.'
-          : 'Gagal menutup sesi.'
-      );
-    } else if (modalAction === 'buka-kembali') {
-      const ok = bukaKembaliSesi(sesi.id);
-      setModalAction(null);
-      setFeedbackMessage(
-        ok
-          ? 'Sesi berhasil dibuka kembali! Praktikan sekarang dapat melakukan presensi kehadiran susulan.'
-          : 'Gagal membuka kembali sesi praktikum.'
-      );
-    } else if (modalAction === 'hapus') {
-      setModalAction(null);
-      hapusSesi(sesi.id);
-      router.replace('/asisten/jadwal');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -433,35 +523,37 @@ export default function DetailSesiAsistenScreen() {
             {filteredDaftar.length === 0 ? (
               <View style={styles.emptyRosterWrap}>
                 <Text style={styles.emptyRosterText}>
-                  {filterKehadiran === 'hadir'
+                  {totalMahasiswa === 0
+                    ? 'Belum ada mahasiswa terdaftar pada kelas ini.'
+                    : filterKehadiran === 'hadir'
                     ? 'Belum ada mahasiswa yang mencatat kehadiran.'
                     : 'Semua mahasiswa telah hadir.'}
                 </Text>
               </View>
             ) : (
               <View style={styles.studentList}>
-                {filteredDaftar.map(({ praktikan, hadir, waktuHadir }) => (
-                  <View key={praktikan.id} style={styles.studentRow}>
+                {filteredDaftar.map((item) => (
+                  <View key={item.id} style={styles.studentRow}>
                     <View style={styles.studentAvatar}>
                       <Text style={styles.studentAvatarText}>
-                        {praktikan.nama.charAt(0)}
+                        {item.nama.charAt(0)}
                       </Text>
                     </View>
                     <View style={styles.studentMeta}>
-                      <Text style={styles.studentName}>{praktikan.nama}</Text>
+                      <Text style={styles.studentName}>{item.nama}</Text>
                       <Text style={styles.studentSub}>
-                        NIM: {praktikan.nim} • Kelas {praktikan.kelas}
+                        NIM: {item.nim} • Kelas {item.kelas}
                       </Text>
                     </View>
                     <View style={styles.studentStatusWrap}>
-                      {hadir ? (
+                      {item.hadir ? (
                         <View style={styles.hadirBadge}>
                           <Text style={styles.hadirBadgeText}>Hadir</Text>
-                          {waktuHadir ? (
+                          {item.waktuHadir ? (
                             <Text style={styles.hadirTimeText}>
-                              {waktuHadir.includes(',')
-                                ? waktuHadir.split(',')[1]?.trim()
-                                : waktuHadir}
+                              {item.waktuHadir.includes(',')
+                                ? item.waktuHadir.split(',')[1]?.trim()
+                                : item.waktuHadir}
                             </Text>
                           ) : null}
                         </View>
@@ -515,8 +607,9 @@ export default function DetailSesiAsistenScreen() {
             ? 'primary'
             : 'danger'
         }
+        isLoading={actionLoading}
         onConfirm={handleEksekusiAksi}
-        onCancel={() => setModalAction(null)}
+        onCancel={() => !actionLoading && setModalAction(null)}
       />
 
       {/* Edit Session Popup Modal */}
@@ -546,6 +639,11 @@ export default function DetailSesiAsistenScreen() {
             </View>
 
             <ScrollView style={styles.editModalBody} showsVerticalScrollIndicator={false}>
+              {editError ? (
+                <View style={styles.editErrorBox}>
+                  <Text style={styles.editErrorText}>{editError}</Text>
+                </View>
+              ) : null}
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Materi Praktikum</Text>
                 <TextInput
@@ -609,7 +707,8 @@ export default function DetailSesiAsistenScreen() {
                   styles.cancelBtn,
                   pressed && styles.buttonPressed,
                 ]}
-                onPress={() => setIsEditModalVisible(false)}>
+                onPress={() => setIsEditModalVisible(false)}
+                disabled={savingEdit}>
                 <Text style={styles.cancelBtnText}>Batal</Text>
               </Pressable>
               <Pressable
@@ -617,8 +716,13 @@ export default function DetailSesiAsistenScreen() {
                   styles.saveBtn,
                   pressed && styles.buttonPressed,
                 ]}
-                onPress={handleSaveEdit}>
-                <Text style={styles.saveBtnText}>Simpan Perubahan</Text>
+                onPress={handleSaveEdit}
+                disabled={savingEdit}>
+                {savingEdit ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.saveBtnText}>Simpan Perubahan</Text>
+                )}
               </Pressable>
             </View>
           </View>
@@ -640,6 +744,18 @@ export default function DetailSesiAsistenScreen() {
 }
 
 const styles = StyleSheet.create({
+  loadingScreen: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B',
+  },
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
@@ -1234,5 +1350,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  editErrorBox: {
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 12,
+  },
+  editErrorText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#B91C1C',
   },
 });

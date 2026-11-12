@@ -1,6 +1,13 @@
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore';
+import { FirebaseApp, getApp, getApps, initializeApp } from 'firebase/app';
+import { Auth, getAuth } from 'firebase/auth';
+import {
+  Firestore,
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from 'firebase/firestore';
+import { Platform } from 'react-native';
 
 /**
  * ==============================================================================
@@ -20,14 +27,44 @@ export const firebaseConfig = {
   measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
+export function isFirebaseConfigured(): boolean {
+  const apiKey = firebaseConfig.apiKey?.trim();
+  const projectId = firebaseConfig.projectId?.trim();
+  const appId = firebaseConfig.appId?.trim();
+
+  if (!apiKey || !projectId || !appId) {
+    return false;
+  }
+
+  return (
+    !apiKey.includes('ExampleKey') &&
+    !projectId.includes('your-') &&
+    !appId.includes('abcdef123456')
+  );
+}
+
 // Inisialisasi aplikasi Firebase tunggal (Singleton pattern untuk mencegah inisialisasi ganda)
 const app: FirebaseApp = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-// Inisialisasi Firebase Authentication
+// Inisialisasi Firebase Authentication (di Web otomatis persistensi lokal via IndexedDB)
 export const auth: Auth = getAuth(app);
 
-// Inisialisasi Cloud Firestore Database
-export const db: Firestore = getFirestore(app);
+// Inisialisasi Cloud Firestore dengan dukungan cache offline pada Web
+function createFirestoreInstance(firebaseApp: FirebaseApp): Firestore {
+  if (Platform.OS === 'web') {
+    try {
+      return initializeFirestore(firebaseApp, {
+        localCache: persistentLocalCache({
+          tabManager: persistentMultipleTabManager(),
+        }),
+      });
+    } catch {
+      return getFirestore(firebaseApp);
+    }
+  }
+  return getFirestore(firebaseApp);
+}
+
+export const db: Firestore = createFirestoreInstance(app);
 
 export default app;
-

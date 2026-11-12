@@ -154,7 +154,6 @@ export default function JadwalAsistenScreen() {
           <Text style={styles.eyebrowText}>ASISTEN LABORATORIUM</Text>
         </View>
         <View style={styles.liveTag}>
-          <View style={styles.liveDot} />
           <Text style={styles.liveTagText}>Kontrol Real-Time</Text>
         </View>
       </View>
@@ -233,7 +232,6 @@ export default function JadwalAsistenScreen() {
             pressed && styles.chipPressed,
           ]}>
           <View style={styles.pendingLeaveBadge}>
-            <View style={styles.pendingLeaveDot} />
             <Text style={styles.pendingLeaveBadgeText}>
               MODERASI IZIN ({pendingLeaves})
             </Text>
@@ -488,7 +486,6 @@ function FilterChip({
   label,
   active,
   count,
-  variant,
   onPress,
 }: {
   label: string;
@@ -507,21 +504,6 @@ function FilterChip({
     return styles.chipTextInactive;
   };
 
-  const getDotColor = () => {
-    switch (variant) {
-      case 'dibuka':
-        return '#16A34A';
-      case 'belum-dibuka':
-        return '#EAB308';
-      case 'ditutup':
-        return '#DC2626';
-      default:
-        return undefined;
-    }
-  };
-
-  const dotColor = getDotColor();
-
   return (
     <Pressable
       style={({ pressed }) => [
@@ -530,9 +512,6 @@ function FilterChip({
         pressed && styles.chipPressed,
       ]}
       onPress={onPress}>
-      {dotColor ? (
-        <View style={[styles.chipDot, { backgroundColor: dotColor }]} />
-      ) : null}
       <Text style={[styles.chipText, getTextStyle()]}>{label}</Text>
       {count !== undefined ? (
         <View style={[styles.countBadge, active && styles.countBadgeActive]}>
@@ -592,12 +571,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 16,
-  },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#16A34A',
   },
   liveTagText: {
     fontSize: 11,
@@ -666,12 +639,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
     gap: 6,
-  },
-  pendingLeaveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#D97706',
   },
   pendingLeaveBadgeText: {
     fontSize: 11,
@@ -752,12 +719,6 @@ const styles = StyleSheet.create({
   },
   chipPressed: {
     opacity: 0.85,
-  },
-  chipDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 6,
   },
   chipText: {
     fontSize: 12,

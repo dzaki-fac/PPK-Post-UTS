@@ -159,7 +159,7 @@ export default function RegisterScreen() {
                         styles.roleEyebrowText,
                         isPraktikan ? styles.textPraktikan : styles.textAsisten,
                       ]}>
-                      {isPraktikan ? '● REGISTRASI PRAKTIKAN' : '● REGISTRASI ASISTEN LAB'}
+                      {isPraktikan ? 'REGISTRASI PRAKTIKAN' : 'REGISTRASI ASISTEN LAB'}
                     </Text>
                   </View>
                 </View>

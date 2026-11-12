@@ -290,7 +290,6 @@ export default function RekapAsistenScreen() {
           <Text style={styles.eyebrowText}>REKAPITULASI KELAS</Text>
         </View>
         <View style={styles.liveTag}>
-          <View style={styles.liveDot} />
           <Text style={styles.liveTagText}>Sinkron Real-Time</Text>
         </View>
       </View>
@@ -409,12 +408,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 16,
-  },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#16A34A',
   },
   liveTagText: {
     fontSize: 11,

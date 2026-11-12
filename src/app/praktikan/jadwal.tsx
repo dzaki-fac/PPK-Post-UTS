@@ -125,7 +125,6 @@ export default function PraktikanJadwalScreen() {
           <Text style={styles.eyebrowText}>PORTAL MAHASISWA</Text>
         </View>
         <View style={styles.liveTag}>
-          <View style={styles.liveDot} />
           <Text style={styles.liveTagText}>Sesi Real-Time</Text>
         </View>
       </View>
@@ -159,7 +158,6 @@ export default function PraktikanJadwalScreen() {
           accessibilityLabel="Pantau Status Izin Menunggu"
           onPress={() => router.push('/praktikan/riwayat')}
           style={({ pressed }) => [styles.pendingStudentNotice, pressed && styles.cardPressed]}>
-          <View style={styles.pendingStudentDot} />
           <View style={{ flex: 1 }}>
             <Text style={styles.pendingStudentTitle}>
               {totalIzinMenunggu} Pengajuan Izin Menunggu Verifikasi Asisten
@@ -302,7 +300,6 @@ function FilterChip({
   label,
   active,
   count,
-  variant,
   onPress,
 }: {
   label: string;
@@ -321,21 +318,6 @@ function FilterChip({
     return styles.chipTextInactive;
   };
 
-  const getDotColor = () => {
-    switch (variant) {
-      case 'dibuka':
-        return '#16A34A';
-      case 'belum-dibuka':
-        return '#EAB308';
-      case 'ditutup':
-        return '#DC2626';
-      default:
-        return undefined;
-    }
-  };
-
-  const dotColor = getDotColor();
-
   return (
     <Pressable
       style={({ pressed }) => [
@@ -344,9 +326,6 @@ function FilterChip({
         pressed && styles.chipPressed,
       ]}
       onPress={onPress}>
-      {dotColor ? (
-        <View style={[styles.chipDot, { backgroundColor: dotColor }]} />
-      ) : null}
       <Text style={[styles.chipText, getTextStyle()]}>{label}</Text>
       {count !== undefined ? (
         <View style={[styles.countBadge, active && styles.countBadgeActive]}>
@@ -407,12 +386,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 16,
   },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#16A34A',
-  },
   liveTagText: {
     fontSize: 11,
     fontWeight: '700',
@@ -472,12 +445,6 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 10,
     marginTop: 6,
-  },
-  pendingStudentDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#D97706',
   },
   pendingStudentTitle: {
     fontSize: 13,
@@ -541,12 +508,6 @@ const styles = StyleSheet.create({
   },
   chipPressed: {
     opacity: 0.85,
-  },
-  chipDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 6,
   },
   chipText: {
     fontSize: 12,

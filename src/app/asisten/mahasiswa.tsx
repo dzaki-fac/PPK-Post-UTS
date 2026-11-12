@@ -331,7 +331,6 @@ export default function AsistenMahasiswaScreen() {
           <Text style={styles.eyebrowText}>ASISTEN LABORATORIUM</Text>
         </View>
         <View style={styles.liveTag}>
-          <View style={styles.liveDot} />
           <Text style={styles.liveTagText}>Master Data Pengguna</Text>
         </View>
       </View>
@@ -546,7 +545,6 @@ export default function AsistenMahasiswaScreen() {
 
               <View style={styles.metaRow}>
                 <View style={styles.kehadiranBadge}>
-                  <View style={styles.miniDotGreen} />
                   <Text style={styles.kehadiranBadgeText}>
                     {kehadiranCount > 0 ? `${kehadiranCount} Sesi Hadir` : 'Belum Ada Presensi'}
                   </Text>
@@ -606,7 +604,6 @@ export default function AsistenMahasiswaScreen() {
 
               <View style={styles.metaRow}>
                 <View style={styles.asistenStatusTag}>
-                  <View style={styles.miniDotTeal} />
                   <Text style={styles.asistenStatusText}>Hak Akses Pengampu Aktif</Text>
                 </View>
               </View>
@@ -1139,12 +1136,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#0D9488',
-  },
   liveTagText: {
     fontSize: 11,
     fontWeight: '700',
@@ -1471,18 +1462,6 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     borderWidth: 1,
     borderColor: '#CCFBF1',
-  },
-  miniDotGreen: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#16A34A',
-  },
-  miniDotTeal: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#0D9488',
   },
   kehadiranBadgeText: {
     fontSize: 11,

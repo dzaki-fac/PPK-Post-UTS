@@ -316,10 +316,10 @@ export default function PraktikanDetailSesiScreen() {
                     leaveRecord.status === 'ditolak' && { color: '#DC2626' },
                   ]}>
                   {leaveRecord.status === 'disetujui'
-                    ? '● IZIN DISETUJUI ASISTEN'
+                    ? 'IZIN DISETUJUI ASISTEN'
                     : leaveRecord.status === 'menunggu'
-                    ? '● MENUNGGU VERIFIKASI ASISTEN'
-                    : '● PERMOHONAN IZIN DITOLAK'}
+                    ? 'MENUNGGU VERIFIKASI ASISTEN'
+                    : 'PERMOHONAN IZIN DITOLAK'}
                 </Text>
                 {leaveRecord.aiClassification?.category ? (
                   <View style={styles.leaveAiBadge}>
@@ -360,7 +360,7 @@ export default function PraktikanDetailSesiScreen() {
           {alreadyPresensi ? (
             <View style={styles.alreadyBox}>
               <View style={styles.successIconCircle}>
-                <View style={styles.successIconDot} />
+                <Text style={styles.successIconText}>✓</Text>
               </View>
               <Text style={styles.alreadyTitle}>Anda Sudah Presensi</Text>
               <Text style={styles.alreadySubtitle}>
@@ -388,7 +388,6 @@ export default function PraktikanDetailSesiScreen() {
           ) : sesi.status === 'belum-dibuka' ? (
             /* Case 2: Sesi Belum Dibuka (FR-4.1) */
             <View style={styles.warningBox}>
-              <View style={styles.warningDot} />
               <Text style={styles.warningTitle}>Sesi Belum Dibuka</Text>
               <Text style={styles.warningMessage}>
                 Asisten praktikum belum membuka sesi ini. Tombol presensi akan
@@ -420,7 +419,6 @@ export default function PraktikanDetailSesiScreen() {
           ) : sesi.status === 'ditutup' ? (
             /* Case 3: Sesi Ditutup (FR-4.1, FR-3.4) */
             <View style={styles.dangerBox}>
-              <View style={styles.dangerDot} />
               <Text style={styles.dangerTitle}>Sesi Telah Ditutup</Text>
               <Text style={styles.dangerMessage}>
                 Waktu sesi praktikum ini telah berakhir dan ditutup oleh
@@ -439,7 +437,6 @@ export default function PraktikanDetailSesiScreen() {
             /* Case 4: Sesi Dibuka & Belum Presensi (FR-4.1, FR-4.5) */
             <View style={styles.formContainer}>
               <View style={styles.openNoticeBox}>
-                <View style={styles.openNoticeDot} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.openNoticeTitle}>Sesi Sedang Berlangsung</Text>
                   <Text style={styles.openNoticeDesc}>
@@ -451,7 +448,6 @@ export default function PraktikanDetailSesiScreen() {
               {/* Class Mismatch Notice */}
               {isClassMismatch ? (
                 <View style={styles.classMismatchNotice}>
-                  <View style={styles.classMismatchDot} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.classMismatchTitle}>Perhatian: Kelas Tidak Sesuai</Text>
                     <Text style={styles.classMismatchDesc}>
@@ -883,11 +879,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#86EFAC',
   },
-  successIconDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#16A34A',
+  successIconText: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#15803D',
   },
   alreadyTitle: {
     fontSize: 17,
@@ -929,13 +924,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FDE68A',
   },
-  warningDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#EAB308',
-    marginBottom: 8,
-  },
   warningTitle: {
     fontSize: 15,
     fontWeight: '700',
@@ -956,13 +944,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#FECACA',
-  },
-  dangerDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#DC2626',
-    marginBottom: 8,
   },
   dangerTitle: {
     fontSize: 15,
@@ -989,12 +970,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#CCFBF1',
-  },
-  openNoticeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#0D9488',
   },
   openNoticeTitle: {
     fontSize: 13,
@@ -1119,13 +1094,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     alignItems: 'flex-start',
-  },
-  classMismatchDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#EF4444',
-    marginTop: 5,
   },
   classMismatchTitle: {
     fontSize: 13,

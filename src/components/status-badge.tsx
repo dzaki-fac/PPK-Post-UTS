@@ -20,13 +20,6 @@ export function StatusBadge({ status, size = 'medium' }: StatusBadgeProps) {
         { backgroundColor: config.bg, borderColor: config.border },
         isSmall && styles.badgeSmall,
       ]}>
-      <View
-        style={[
-          styles.dot,
-          { backgroundColor: config.dot },
-          isSmall && styles.dotSmall,
-        ]}
-      />
       <Text
         style={[
           styles.label,
@@ -47,7 +40,6 @@ function getStatusConfig(status: SesiStatus | 'hadir' | 'belum-hadir') {
         bg: '#DCFCE7', // Tailwind green-100
         border: '#86EFAC', // Tailwind green-300
         text: '#15803D', // Tailwind green-700
-        dot: '#16A34A', // Success
       };
     case 'belum-dibuka':
       return {
@@ -55,7 +47,6 @@ function getStatusConfig(status: SesiStatus | 'hadir' | 'belum-hadir') {
         bg: '#FEF3C7', // Tailwind amber-100
         border: '#FDE68A', // Tailwind amber-300
         text: '#B45309', // Tailwind amber-700
-        dot: '#EAB308', // Warning
       };
     case 'ditutup':
       return {
@@ -63,7 +54,6 @@ function getStatusConfig(status: SesiStatus | 'hadir' | 'belum-hadir') {
         bg: '#FEE2E2', // Tailwind red-100
         border: '#FCA5A5', // Tailwind red-300
         text: '#B91C1C', // Tailwind red-700
-        dot: '#DC2626', // Error
       };
     case 'hadir':
       return {
@@ -71,7 +61,6 @@ function getStatusConfig(status: SesiStatus | 'hadir' | 'belum-hadir') {
         bg: '#DCFCE7',
         border: '#86EFAC',
         text: '#15803D',
-        dot: '#16A34A',
       };
     case 'belum-hadir':
       return {
@@ -79,7 +68,6 @@ function getStatusConfig(status: SesiStatus | 'hadir' | 'belum-hadir') {
         bg: '#F3F4F6',
         border: '#E5E7EB',
         text: '#6B7280',
-        dot: '#9CA3AF',
       };
   }
 }
@@ -97,17 +85,6 @@ const styles = StyleSheet.create({
   badgeSmall: {
     paddingHorizontal: 8,
     paddingVertical: 2,
-  },
-  dot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    marginRight: 6,
-  },
-  dotSmall: {
-    width: 6,
-    height: 6,
-    marginRight: 4,
   },
   label: {
     fontSize: 12,

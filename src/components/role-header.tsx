@@ -22,7 +22,11 @@ export function RoleHeader() {
   const name = userDoc?.nama ?? (isPraktikan ? 'Praktikan' : 'Asisten');
   const subInfo = isPraktikan
     ? `Kelas ${userDoc?.kelas ?? '-'}`
-    : userDoc?.peranLab ?? 'Pengampu Lab';
+    : 'Asisten Lab';
+
+  const fullSubInfo = isPraktikan
+    ? `Kelas ${userDoc?.kelas ?? '-'}`
+    : userDoc?.peranLab ?? 'Pengampu Lab Komputasi';
 
   const handleConfirmLogout = async () => {
     setLoggingOut(true);
@@ -122,7 +126,7 @@ export function RoleHeader() {
               NIM: {userDoc?.nim ?? '-'} • Kelas {userDoc?.kelas ?? '-'}
             </Text>
           ) : (
-            <Text style={styles.summaryMeta}>{subInfo}</Text>
+            <Text style={styles.summaryMeta}>{fullSubInfo}</Text>
           )}
         </View>
       </ConfirmationModal>
@@ -151,13 +155,13 @@ const styles = StyleSheet.create({
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
+    gap: 6,
     flexShrink: 1,
   },
   logoBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 7,
     backgroundColor: '#FFF7ED',
     borderWidth: 1.5,
     borderColor: '#FED7AA',
@@ -165,37 +169,37 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoBadgeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '900',
     color: '#EA580C',
     letterSpacing: 0.5,
   },
   brandTitle: {
-    fontSize: Platform.OS === 'web' ? 15 : 12.5,
+    fontSize: Platform.OS === 'web' ? 14 : 12,
     fontWeight: '800',
     color: '#0F172A',
     letterSpacing: -0.3,
   },
   brandSubtitle: {
-    fontSize: 9,
+    fontSize: 8.5,
     color: '#64748B',
     fontWeight: '500',
   },
   rightGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
     flexShrink: 0,
   },
   userPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    paddingHorizontal: 7,
-    paddingVertical: 3.5,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
     borderRadius: 8,
     borderWidth: 1,
-    maxWidth: Platform.OS === 'web' ? 210 : 150,
+    maxWidth: Platform.OS === 'web' ? 240 : 180,
   },
   userPillPraktikan: {
     backgroundColor: '#FFF7ED',
@@ -207,20 +211,22 @@ const styles = StyleSheet.create({
   },
   userInfoWrap: {
     gap: 0.5,
+    flexShrink: 1,
   },
   userName: {
-    fontSize: 11,
+    fontSize: 11.5,
     fontWeight: '700',
     color: '#0F172A',
-    maxWidth: Platform.OS === 'web' ? 140 : 75,
+    maxWidth: Platform.OS === 'web' ? 160 : 125,
   },
   userSub: {
     fontSize: 8.5,
     color: '#64748B',
+    maxWidth: Platform.OS === 'web' ? 160 : 125,
   },
   roleMiniBadge: {
     paddingHorizontal: 4,
-    paddingVertical: 1,
+    paddingVertical: 1.5,
     borderRadius: 4,
   },
   roleMiniPraktikan: {
@@ -241,12 +247,12 @@ const styles = StyleSheet.create({
     color: '#0F766E',
   },
   logoutBtn: {
-    height: 32,
+    height: 30,
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#CBD5E1',
-    paddingHorizontal: 8,
-    borderRadius: 8,
+    paddingHorizontal: 7,
+    borderRadius: 7,
     alignItems: 'center',
     justifyContent: 'center',
   },

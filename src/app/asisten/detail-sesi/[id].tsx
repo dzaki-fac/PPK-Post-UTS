@@ -448,7 +448,6 @@ export default function DetailSesiAsistenScreen() {
             ) : (
               <View style={styles.actionNoticeBox}>
                 <View style={styles.closedNoticeBox}>
-                  <View style={styles.closedNoticeDot} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.closedNoticeTitle}>Sesi Praktikum Telah Ditutup</Text>
                     <Text style={styles.closedNoticeSubtitle}>
@@ -509,7 +508,6 @@ export default function DetailSesiAsistenScreen() {
                 accessibilityLabel="Tinjau izin pada sesi ini"
                 onPress={() => router.push('/asisten/moderasi-izin')}
                 style={({ pressed }) => [styles.sessionIzinNotice, pressed && styles.btnPressed]}>
-                <View style={styles.sessionIzinNoticeDot} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.sessionIzinNoticeTitle}>
                     {totalIzinMenunggu} Mahasiswa Mengajukan Izin untuk Sesi Ini
@@ -1138,12 +1136,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
-  closedNoticeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#64748B',
-  },
   closedNoticeTitle: {
     fontSize: 13,
     fontWeight: '700',
@@ -1172,12 +1164,6 @@ const styles = StyleSheet.create({
     padding: 10,
     gap: 10,
     marginBottom: 12,
-  },
-  sessionIzinNoticeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#D97706',
   },
   sessionIzinNoticeTitle: {
     fontSize: 12,

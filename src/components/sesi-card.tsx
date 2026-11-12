@@ -81,14 +81,12 @@ export function SesiCard({
         <View style={styles.asistenFooter}>
           <View style={styles.asistenFooterLeft}>
             <View style={styles.attendanceCountBadge}>
-              <View style={styles.miniDotAsisten} />
               <Text style={styles.attendanceCountText}>
-                {totalHadir !== undefined ? `${totalHadir} Mahasiswa Hadir` : 'Kelola Kehadiran'}
+                {totalHadir !== undefined ? `${totalHadir} Hadir` : 'Kelola'}
               </Text>
             </View>
             {totalIzin && totalIzin > 0 ? (
               <View style={styles.izinCountBadge}>
-                <View style={styles.miniDotIzin} />
                 <Text style={styles.izinCountText}>{totalIzin} Izin</Text>
               </View>
             ) : null}
@@ -99,7 +97,9 @@ export function SesiCard({
               </View>
             ) : null}
           </View>
-          <Text style={styles.actionHint}>Kelola sesi →</Text>
+          <View style={styles.actionHintWrap}>
+            <Text style={styles.actionHint}>Kelola sesi →</Text>
+          </View>
         </View>
       ) : null}
 
@@ -268,16 +268,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
     marginTop: 12,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#F8FAFC',
+    borderTopColor: '#F1F5F9',
   },
   asistenFooterLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     flexWrap: 'wrap',
+    flexShrink: 1,
   },
   codePill: {
     flexDirection: 'row',
@@ -286,8 +289,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF7ED',
     borderWidth: 1,
     borderColor: '#FED7AA',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
     borderRadius: 6,
   },
   codePillLabel: {
@@ -302,48 +305,34 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   attendanceCountBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
     backgroundColor: '#F0FDFA',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3.5,
+    borderRadius: 7,
     borderWidth: 1,
     borderColor: '#CCFBF1',
   },
-  miniDotAsisten: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#0D9488',
-  },
   attendanceCountText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
     color: '#0F766E',
   },
   izinCountBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
     backgroundColor: '#EFF6FF',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 3.5,
+    borderRadius: 7,
     borderWidth: 1,
     borderColor: '#BFDBFE',
   },
-  miniDotIzin: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#2563EB',
-  },
   izinCountText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
     color: '#1E40AF',
+  },
+  actionHintWrap: {
+    marginLeft: 'auto',
+    alignSelf: 'center',
   },
   actionHint: {
     fontSize: 12,

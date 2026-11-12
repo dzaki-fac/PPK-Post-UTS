@@ -76,14 +76,6 @@ export function LeaveCard({
             isApproved && styles.statusPillApproved,
             isRejected && styles.statusPillRejected,
           ]}>
-          <View
-            style={[
-              styles.statusDot,
-              isPending && { backgroundColor: '#D97706' },
-              isApproved && { backgroundColor: '#16A34A' },
-              isRejected && { backgroundColor: '#DC2626' },
-            ]}
-          />
           <Text
             style={[
               styles.statusText,
@@ -235,9 +227,9 @@ const styles = StyleSheet.create({
   studentInfoWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     flex: 1,
-    minWidth: 200,
+    minWidth: 140,
   },
   avatar: {
     width: 42,
@@ -304,11 +296,6 @@ const styles = StyleSheet.create({
   statusPillRejected: {
     backgroundColor: '#FEE2E2',
     borderColor: '#FECACA',
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
   },
   statusText: {
     fontSize: 11,

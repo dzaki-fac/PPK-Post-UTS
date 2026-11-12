@@ -172,7 +172,6 @@ export default function PraktikanRiwayatScreen() {
         </View>
 
         <View style={styles.timestampContainer}>
-          <View style={styles.timestampDot} />
           <View style={{ flex: 1 }}>
             <Text style={styles.timestampLabel}>Waktu Presensi Tercatat:</Text>
             <Text style={styles.timestampValue}>{item.waktuKehadiran}</Text>
@@ -208,14 +207,6 @@ export default function PraktikanRiwayatScreen() {
               isApproved && styles.leaveStatusApproved,
               isRejected && styles.leaveStatusRejected,
             ]}>
-            <View
-              style={[
-                styles.leaveStatusDot,
-                isPending && { backgroundColor: '#EAB308' },
-                isApproved && { backgroundColor: '#2563EB' },
-                isRejected && { backgroundColor: '#DC2626' },
-              ]}
-            />
             <Text
               style={[
                 styles.leaveStatusText,
@@ -308,7 +299,6 @@ export default function PraktikanRiwayatScreen() {
           <Text style={styles.eyebrowText}>REKAP PRIBADI</Text>
         </View>
         <View style={styles.liveTag}>
-          <View style={styles.liveDot} />
           <Text style={styles.liveTagText}>Data Tersinkron Real-Time</Text>
         </View>
       </View>
@@ -519,12 +509,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 16,
   },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#16A34A',
-  },
   liveTagText: {
     fontSize: 11,
     fontWeight: '700',
@@ -662,7 +646,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: 8,
-    minWidth: 200,
+    minWidth: 140,
   },
   praktikumTitle: {
     fontSize: 15,
@@ -718,12 +702,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#DCFCE7',
   },
-  timestampDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#16A34A',
-  },
   timestampLabel: {
     fontSize: 11,
     color: '#15803D',
@@ -756,11 +734,6 @@ const styles = StyleSheet.create({
   leaveStatusRejected: {
     backgroundColor: '#FEE2E2',
     borderColor: '#FCA5A5',
-  },
-  leaveStatusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
   },
   leaveStatusText: {
     fontSize: 11,

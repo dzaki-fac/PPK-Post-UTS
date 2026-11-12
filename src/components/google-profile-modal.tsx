@@ -71,7 +71,7 @@ function GoogleProfileModalContent({
         <View style={styles.card}>
           <View style={styles.header}>
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>● LENGKAPI PROFIL</Text>
+              <Text style={styles.badgeText}>LENGKAPI PROFIL</Text>
             </View>
             <Text style={styles.title}>Konfirmasi Identitas Portal</Text>
             <Text style={styles.subtitle}>
@@ -101,7 +101,7 @@ function GoogleProfileModalContent({
                       styles.roleBtnText,
                       isPraktikan && styles.roleBtnTextPraktikan,
                     ]}>
-                    ● Praktikan
+                    Praktikan
                   </Text>
                 </Pressable>
                 <Pressable
@@ -116,7 +116,7 @@ function GoogleProfileModalContent({
                       styles.roleBtnText,
                       !isPraktikan && styles.roleBtnTextAsisten,
                     ]}>
-                    ● Asisten Lab
+                    Asisten Lab
                   </Text>
                 </Pressable>
               </View>

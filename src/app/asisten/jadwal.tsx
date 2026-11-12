@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   Modal,
   Platform,
@@ -14,13 +15,18 @@ import {
 
 import { EmptyState } from '@/components/empty-state';
 import { SesiCard } from '@/components/sesi-card';
-import { usePraktikum } from '@/context/praktikum-context';
-import { Sesi, SesiStatus } from '@/types/praktikum';
+import { useAuth } from '@/context/auth-context';
+import { subscribeAllAttendances } from '@/services/attendance-service';
+import { createSession, subscribeSessions } from '@/services/session-service';
+import { AttendanceDocument, SessionDocument, SessionStatus } from '@/types/praktikum';
 
-type FilterType = 'semua' | SesiStatus;
+type FilterType = 'semua' | SessionStatus;
 
 export default function JadwalAsistenScreen() {
-  const { sesiList, presensiList, tambahSesi } = usePraktikum();
+  const { userDoc } = useAuth();
+  const [sesiList, setSesiList] = useState<SessionDocument[]>([]);
+  const [attendances, setAttendances] = useState<AttendanceDocument[]>([]);
+  const [loadingSessions, setLoadingSessions] = useState(true);
   const [filter, setFilter] = useState<FilterType>('semua');
 
   // Add Session Modal State
@@ -28,10 +34,33 @@ export default function JadwalAsistenScreen() {
   const [newPraktikum, setNewPraktikum] = useState('Praktikum PPK');
   const [newMateri, setNewMateri] = useState('');
   const [newKelas, setNewKelas] = useState<'Kelas A' | 'Kelas B'>('Kelas A');
-  const [newTanggal, setNewTanggal] = useState('05 Nov 2026');
+  const [newTanggal, setNewTanggal] = useState('12 Nov 2026');
   const [newWaktuMulai, setNewWaktuMulai] = useState('07.30');
   const [newWaktuSelesai, setNewWaktuSelesai] = useState('09.30');
   const [newRuang, setNewRuang] = useState('Lab Komputasi 1');
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const unsubSessions = subscribeSessions(
+      (items) => {
+        setSesiList(items);
+        setLoadingSessions(false);
+      },
+      () => {
+        setLoadingSessions(false);
+      }
+    );
+
+    const unsubAttendances = subscribeAllAttendances((items) => {
+      setAttendances(items);
+    });
+
+    return () => {
+      unsubSessions();
+      unsubAttendances();
+    };
+  }, []);
 
   const filteredSesiList = useMemo(() => {
     if (filter === 'semua') return sesiList;
@@ -40,42 +69,57 @@ export default function JadwalAsistenScreen() {
 
   const totalSesi = sesiList.length;
   const totalDibuka = sesiList.filter((s) => s.status === 'dibuka').length;
-  const totalPresensiMasuk = presensiList.length;
+  const totalPresensiMasuk = attendances.length;
   const totalDitutup = sesiList.filter((s) => s.status === 'ditutup').length;
 
-  const handleCardPress = (sesi: Sesi) => {
+  const handleCardPress = (sesi: SessionDocument) => {
     router.push({
       pathname: '/asisten/detail-sesi/[id]',
       params: { id: sesi.id },
     });
   };
 
-  const handleSimpanSesiBaru = () => {
+  const handleSimpanSesiBaru = async () => {
+    setFormError(null);
     if (!newMateri.trim()) {
-      alert('Materi praktikum harus diisi.');
+      setFormError('Materi praktikum wajib diisi.');
       return;
     }
-    const newCreated = tambahSesi({
-      praktikum: newPraktikum.trim() || 'Praktikum PPK',
-      kelas: newKelas,
-      tanggal: newTanggal.trim() || '05 Nov 2026',
-      waktuMulai: newWaktuMulai.trim() || '07.30',
-      waktuSelesai: newWaktuSelesai.trim() || '09.30',
-      ruang: newRuang.trim() || 'Lab Komputasi 1',
-      materi: newMateri.trim(),
-      status: 'belum-dibuka',
-    });
-    setNewMateri('');
-    setModalTambahVisible(false);
-    // Redirect langsung ke detail sesi yang baru saja dibuat
-    router.push({
-      pathname: '/asisten/detail-sesi/[id]',
-      params: { id: newCreated.id },
-    });
+    if (!userDoc?.uid) {
+      setFormError('Identitas asisten tidak ditemukan. Silakan masuk ulang.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const newCreated = await createSession({
+        praktikum: newPraktikum.trim() || 'Praktikum PPK',
+        kelas: newKelas,
+        tanggal: newTanggal.trim() || '12 Nov 2026',
+        waktuMulai: newWaktuMulai.trim() || '07.30',
+        waktuSelesai: newWaktuSelesai.trim() || '09.30',
+        ruang: newRuang.trim() || 'Lab Komputasi 1',
+        materi: newMateri.trim(),
+        createdBy: userDoc.uid,
+        status: 'belum-dibuka',
+      });
+      setNewMateri('');
+      setModalTambahVisible(false);
+      router.push({
+        pathname: '/asisten/detail-sesi/[id]',
+        params: { id: newCreated.id },
+      });
+    } catch (err) {
+      setFormError(
+        err instanceof Error ? err.message : 'Gagal menyimpan sesi ke Firestore.'
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const renderItem = ({ item }: { item: Sesi }) => {
-    const totalHadir = presensiList.filter((p) => p.sesiId === item.id).length;
+  const renderItem = ({ item }: { item: SessionDocument }) => {
+    const totalHadir = attendances.filter((p) => p.sessionId === item.id).length;
 
     return (
       <SesiCard
@@ -187,16 +231,23 @@ export default function JadwalAsistenScreen() {
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          <EmptyState
-            title="Tidak Ada Sesi"
-            message={
-              filter === 'semua'
-                ? 'Belum ada jadwal praktikum yang tersedia saat ini.'
-                : `Tidak ada sesi praktikum dengan status "${filter}".`
-            }
-            actionText={filter !== 'semua' ? 'Tampilkan Semua Sesi' : undefined}
-            onAction={filter !== 'semua' ? () => setFilter('semua') : undefined}
-          />
+          loadingSessions ? (
+            <View style={styles.loadingState}>
+              <ActivityIndicator size="large" color="#0D9488" />
+              <Text style={styles.loadingStateText}>Menyinkronkan jadwal sesi dari Firestore...</Text>
+            </View>
+          ) : (
+            <EmptyState
+              title="Tidak Ada Sesi"
+              message={
+                filter === 'semua'
+                  ? 'Belum ada jadwal praktikum yang tersedia saat ini. Klik "+ Tambah Sesi" untuk membuat sesi baru.'
+                  : `Tidak ada sesi praktikum dengan status "${filter}".`
+              }
+              actionText={filter !== 'semua' ? 'Tampilkan Semua Sesi' : undefined}
+              onAction={filter !== 'semua' ? () => setFilter('semua') : undefined}
+            />
+          )
         }
       />
 
@@ -216,7 +267,7 @@ export default function JadwalAsistenScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.modalTitle}>Tambah Sesi Praktikum</Text>
                 <Text style={styles.modalSubtitle}>
-                  Jadwalkan sesi praktikum baru untuk mahasiswa
+                  Jadwalkan sesi praktikum baru ke Cloud Firestore
                 </Text>
               </View>
               <Pressable
@@ -227,6 +278,11 @@ export default function JadwalAsistenScreen() {
             </View>
 
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              {formError ? (
+                <View style={styles.formErrorBox}>
+                  <Text style={styles.formErrorText}>{formError}</Text>
+                </View>
+              ) : null}
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Mata Praktikum</Text>
                 <TextInput
@@ -335,16 +391,23 @@ export default function JadwalAsistenScreen() {
                   styles.cancelBtn,
                   pressed && styles.chipPressed,
                 ]}
-                onPress={() => setModalTambahVisible(false)}>
+                onPress={() => setModalTambahVisible(false)}
+                disabled={saving}>
                 <Text style={styles.cancelBtnText}>Batal</Text>
               </Pressable>
               <Pressable
                 style={({ pressed }) => [
                   styles.saveBtn,
                   pressed && styles.chipPressed,
+                  saving && styles.disabledBtn,
                 ]}
-                onPress={handleSimpanSesiBaru}>
-                <Text style={styles.saveBtnText}>Simpan & Buat Sesi</Text>
+                onPress={handleSimpanSesiBaru}
+                disabled={saving}>
+                {saving ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.saveBtnText}>Simpan & Buat Sesi</Text>
+                )}
               </Pressable>
             </View>
           </View>
@@ -364,7 +427,7 @@ function FilterChip({
   label: string;
   active: boolean;
   count?: number;
-  variant?: SesiStatus;
+  variant?: SessionStatus;
   onPress: () => void;
 }) {
   const getBadgeStyle = () => {
@@ -609,6 +672,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   tambahBtn: {
+    minHeight: 44,
+    justifyContent: 'center',
     backgroundColor: '#0D9488',
     paddingVertical: 10,
     paddingHorizontal: 16,
@@ -748,9 +813,11 @@ const styles = StyleSheet.create({
     borderTopColor: '#F1F5F9',
   },
   cancelBtn: {
+    minHeight: 44,
+    justifyContent: 'center',
     paddingVertical: 10,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: 10,
     backgroundColor: '#F1F5F9',
     alignItems: 'center',
   },
@@ -760,9 +827,11 @@ const styles = StyleSheet.create({
     color: '#475569',
   },
   saveBtn: {
+    minHeight: 44,
+    justifyContent: 'center',
     paddingVertical: 10,
     paddingHorizontal: 18,
-    borderRadius: 8,
+    borderRadius: 10,
     backgroundColor: '#0D9488',
     alignItems: 'center',
   },
@@ -770,5 +839,32 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  disabledBtn: {
+    opacity: 0.65,
+  },
+  loadingState: {
+    paddingVertical: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  loadingStateText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  formErrorBox: {
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 12,
+  },
+  formErrorText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#B91C1C',
   },
 });

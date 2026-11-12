@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -15,28 +16,68 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ConfirmationModal } from '@/components/confirmation-modal';
 import { EmptyState } from '@/components/empty-state';
 import { StatusBadge } from '@/components/status-badge';
-import { usePraktikum } from '@/context/praktikum-context';
+import { useAuth } from '@/context/auth-context';
+import {
+  normalizeClassCode,
+  submitAttendance,
+  subscribeStudentSessionAttendance,
+} from '@/services/attendance-service';
+import { subscribeSessionById } from '@/services/session-service';
+import { AttendanceDocument, SessionDocument } from '@/types/praktikum';
 
 export default function PraktikanDetailSesiScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const {
-    sesiList,
-    currentPraktikan,
-    isSudahPresensi,
-    tandaiPresensi,
-    presensiList,
-  } = usePraktikum();
+  const sessionId = Array.isArray(id) ? id[0] : id;
+  const { userDoc } = useAuth();
+
+  const [sesi, setSesi] = useState<SessionDocument | null>(null);
+  const [loadingSession, setLoadingSession] = useState(Boolean(sessionId));
+  const [attendanceRecord, setAttendanceRecord] = useState<AttendanceDocument | null>(null);
 
   const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false);
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [kodeInput, setKodeInput] = useState('');
   const [catatan, setCatatan] = useState('');
   const [agreementChecked, setAgreementChecked] = useState(true);
 
-  const sesi = sesiList.find((s) => s.id === id);
+  useEffect(() => {
+    if (!sessionId) {
+      return;
+    }
+
+    const unsubSession = subscribeSessionById(
+      sessionId,
+      (item) => {
+        setSesi(item);
+        setLoadingSession(false);
+      },
+      () => {
+        setLoadingSession(false);
+      }
+    );
+
+    let unsubAttendance: (() => void) | null = null;
+    if (userDoc?.uid) {
+      unsubAttendance = subscribeStudentSessionAttendance(
+        sessionId,
+        userDoc.uid,
+        (record) => {
+          setAttendanceRecord(record);
+        }
+      );
+    }
+
+    return () => {
+      unsubSession();
+      if (unsubAttendance) {
+        unsubAttendance();
+      }
+    };
+  }, [sessionId, userDoc?.uid]);
 
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -45,6 +86,15 @@ export default function PraktikanDetailSesiScreen() {
       router.replace('/praktikan/jadwal');
     }
   };
+
+  if (loadingSession) {
+    return (
+      <View style={styles.loadingScreen}>
+        <ActivityIndicator size="large" color="#EA580C" />
+        <Text style={styles.loadingText}>Memuat detail sesi praktikum...</Text>
+      </View>
+    );
+  }
 
   if (!sesi) {
     return (
@@ -67,23 +117,9 @@ export default function PraktikanDetailSesiScreen() {
     );
   }
 
-  const alreadyPresensi = currentPraktikan
-    ? isSudahPresensi(sesi.id, currentPraktikan.id)
-    : false;
-
-  const currentPresensiRecord = currentPraktikan
-    ? presensiList.find(
-        (p) => p.sesiId === sesi.id && p.praktikanId === currentPraktikan.id
-      )
-    : undefined;
-
-  const normalizeClass = (cls?: string) => {
-    if (!cls) return '';
-    return cls.replace(/[^A-Za-z]/g, '').slice(-1).toUpperCase();
-  };
-
-  const studentClass = normalizeClass(currentPraktikan?.kelas);
-  const sessionClass = normalizeClass(sesi.kelas);
+  const alreadyPresensi = Boolean(attendanceRecord);
+  const studentClass = normalizeClassCode(userDoc?.kelas);
+  const sessionClass = normalizeClassCode(sesi.kelas);
 
   const isClassMismatch = Boolean(
     studentClass && sessionClass && studentClass !== sessionClass
@@ -91,7 +127,7 @@ export default function PraktikanDetailSesiScreen() {
 
   const isSubmitDisabled =
     !agreementChecked ||
-    !currentPraktikan ||
+    !userDoc ||
     Boolean(sesi.kodeSesi && kodeInput.trim().length !== 4) ||
     isClassMismatch;
 
@@ -99,8 +135,8 @@ export default function PraktikanDetailSesiScreen() {
     setIsConfirmModalVisible(true);
   };
 
-  const handleConfirmPresensi = () => {
-    if (!currentPraktikan) return;
+  const handleConfirmPresensi = async () => {
+    if (!userDoc) return;
 
     if (sesi.kodeSesi && kodeInput.trim().length !== 4) {
       setIsConfirmModalVisible(false);
@@ -108,14 +144,31 @@ export default function PraktikanDetailSesiScreen() {
       return;
     }
 
-    const result = tandaiPresensi(sesi.id, currentPraktikan.id, kodeInput.trim());
-    setIsConfirmModalVisible(false);
+    setSubmitting(true);
+    try {
+      const result = await submitAttendance({
+        session: sesi,
+        student: userDoc,
+        kodeInput: kodeInput.trim(),
+        catatan,
+      });
+      setIsConfirmModalVisible(false);
 
-    if (result.success) {
-      setSuccessMessage(result.message);
-      setIsSuccessModalVisible(true);
-    } else {
-      setErrorMessage(result.message);
+      if (result.success) {
+        setSuccessMessage(result.message);
+        setIsSuccessModalVisible(true);
+      } else {
+        setErrorMessage(result.message);
+      }
+    } catch (err) {
+      setIsConfirmModalVisible(false);
+      setErrorMessage(
+        err instanceof Error
+          ? err.message
+          : 'Gagal menyimpan presensi ke Cloud Firestore.'
+      );
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -203,18 +256,18 @@ export default function PraktikanDetailSesiScreen() {
           <View style={styles.profileRow}>
             <View style={styles.avatarCircle}>
               <Text style={styles.avatarText}>
-                {currentPraktikan?.nama?.charAt(0) ?? 'P'}
+                {userDoc?.nama?.charAt(0) ?? 'P'}
               </Text>
             </View>
             <View style={styles.profileInfo}>
               <Text style={styles.profileName}>
-                {currentPraktikan?.nama ?? 'Praktikan'}
+                {userDoc?.nama ?? 'Praktikan'}
               </Text>
               <Text style={styles.profileNim}>
-                NIM: {currentPraktikan?.nim ?? '-'}
+                NIM: {userDoc?.nim ?? '-'}
               </Text>
               <Text style={styles.profileClass}>
-                Kelas: {currentPraktikan?.kelas ?? '-'}
+                Kelas: {userDoc?.kelas ?? '-'}
               </Text>
             </View>
           </View>
@@ -236,7 +289,7 @@ export default function PraktikanDetailSesiScreen() {
               </Text>
               <View style={styles.timestampBadge}>
                 <Text style={styles.timestampText}>
-                  {currentPresensiRecord?.waktuKehadiran ?? 'Tercatat'}
+                  {attendanceRecord?.waktuKehadiran ?? 'Tercatat'}
                 </Text>
               </View>
               <Text style={styles.alreadyNotice}>
@@ -408,13 +461,14 @@ export default function PraktikanDetailSesiScreen() {
         confirmText="Ya, Catat Kehadiran"
         cancelText="Batal"
         confirmVariant="primary"
+        isLoading={submitting}
         onConfirm={handleConfirmPresensi}
-        onCancel={() => setIsConfirmModalVisible(false)}>
+        onCancel={() => !submitting && setIsConfirmModalVisible(false)}>
         <View style={styles.modalSummaryBox}>
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>Praktikan:</Text>
             <Text style={styles.summaryValue}>
-              {currentPraktikan?.nama} ({currentPraktikan?.nim})
+              {userDoc?.nama} ({userDoc?.nim ?? '-'})
             </Text>
           </View>
           <View style={styles.summaryItem}>
@@ -482,6 +536,18 @@ export default function PraktikanDetailSesiScreen() {
 }
 
 const styles = StyleSheet.create({
+  loadingScreen: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B',
+  },
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',

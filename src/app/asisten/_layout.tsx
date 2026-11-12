@@ -1,16 +1,28 @@
-import { Redirect, Tabs } from 'expo-router';
+import { Redirect, Tabs, type Href } from 'expo-router';
 import React from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 
 import { RoleHeader } from '@/components/role-header';
-import { usePraktikum } from '@/context/praktikum-context';
+import { useAuth } from '@/context/auth-context';
 
 export default function AsistenLayout() {
-  const { role, currentAsisten } = usePraktikum();
+  const { user, userDoc, loading, role } = useAuth();
 
-  // Route Guard: Redirect to portal landing if not authenticated as assistant
-  if (role !== 'asisten' || !currentAsisten) {
-    return <Redirect href="/" />;
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0D9488" />
+        <Text style={styles.loadingText}>Memverifikasi akses asisten...</Text>
+      </View>
+    );
+  }
+
+  if (!user || !userDoc) {
+    return <Redirect href={'/login' as Href} />;
+  }
+
+  if (role !== 'asisten') {
+    return <Redirect href={'/praktikan/jadwal' as Href} />;
   }
 
   return (
@@ -68,6 +80,18 @@ export default function AsistenLayout() {
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B',
+  },
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',

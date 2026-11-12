@@ -22,7 +22,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.dzxkyaf.PPKPostUTS"
+      "package": "Praktikum.PPK_LabPortal",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",

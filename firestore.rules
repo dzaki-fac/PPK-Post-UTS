@@ -1,0 +1,94 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Mengambil dokumen user untuk mengecek peran (Role-Based Access Control)
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAsisten() {
+      return isAuthenticated() && getUserData().peran == 'asisten';
+    }
+
+    function isPraktikan() {
+      return isAuthenticated() && getUserData().peran == 'praktikan';
+    }
+
+    // -------------------------------------------------------------------------
+    // 1. Koleksi: users (/users/{uid})
+    // -------------------------------------------------------------------------
+    match /users/{userId} {
+      // Siapapun yang login dapat membaca profil untuk keperluan identitas & roster
+      allow read: if isAuthenticated();
+      // Pengguna hanya dapat mendaftar dan menyunting profil miliknya sendiri
+      allow create, update: if isOwner(userId);
+      // Asisten dapat menghapus akun praktikan/asisten melalui Master Data
+      allow delete: if isAsisten() || isOwner(userId);
+    }
+
+    // -------------------------------------------------------------------------
+    // 2. Koleksi: sessions (/sessions/{sessionId})
+    // -------------------------------------------------------------------------
+    match /sessions/{sessionId} {
+      // Semua pengguna terautentikasi dapat melihat jadwal praktikum
+      allow read: if isAuthenticated();
+      // Hanya Asisten Laboratorium yang dapat menambah, membuka, menutup, atau menghapus sesi
+      allow create, update, delete: if isAsisten();
+    }
+
+    // -------------------------------------------------------------------------
+    // 3. Koleksi: attendances (/attendances/{attendanceId})
+    // Format ID: `${sessionId}_${studentId}`
+    // -------------------------------------------------------------------------
+    match /attendances/{attendanceId} {
+      // Praktikan dan Asisten dapat melihat rekap presensi
+      allow read: if isAuthenticated();
+      
+      // Praktikan hanya dapat mencatat presensi untuk dirinya sendiri (studentId == auth.uid)
+      // Asisten juga diizinkan jika melakukan presensi manual/override
+      allow create: if isAuthenticated() && (
+        (isPraktikan() && request.resource.data.studentId == request.auth.uid) || isAsisten()
+      );
+
+      // Tidak mengizinkan modifikasi presensi yang sudah tercatat (anti-tamper)
+      // kecuali asisten jika perlu revisi
+      allow update, delete: if isAsisten();
+    }
+
+    // -------------------------------------------------------------------------
+    // 4. Koleksi: leave_requests (/leave_requests/{requestId})
+    // -------------------------------------------------------------------------
+    match /leave_requests/{requestId} {
+      // Pengguna terautentikasi dapat membaca pengajuan izin
+      allow read: if isAuthenticated();
+
+      // Praktikan hanya dapat membuat pengajuan izin untuk dirinya sendiri
+      allow create: if isAuthenticated() && (
+        (isPraktikan() && request.resource.data.studentId == request.auth.uid) || isAsisten()
+      );
+
+      // Pembaruan keputusan status (disetujui/ditolak) hanya boleh dilakukan oleh Asisten
+      allow update: if isAsisten();
+      allow delete: if isAsisten();
+    }
+
+    // -------------------------------------------------------------------------
+    // 5. Koleksi Sistem / Health Check (untuk verifikasi koneksi)
+    // -------------------------------------------------------------------------
+    match /system_health/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}
+

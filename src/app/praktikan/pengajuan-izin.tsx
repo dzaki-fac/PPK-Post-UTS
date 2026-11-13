@@ -17,6 +17,7 @@ import { AICategoryBadge } from '@/components/ai-category-badge';
 import { useAuth } from '@/context/auth-context';
 import { usePraktikum } from '@/context/praktikum-context';
 import { AIAnalysisResult, analyzeLeaveReason } from '@/services/ai-service';
+import { checkStudentSessionAttendanceExists } from '@/services/attendance-service';
 import {
   checkExistingLeaveRequest,
   createLeaveRequest,
@@ -67,13 +68,23 @@ export default function PengajuanIzinScreen() {
   const [alasan, setAlasan] = useState<string>('');
   const [lampiranUrl, setLampiranUrl] = useState<string>('');
 
+  // Sinkronkan parameter sesi jika diarahkan dari detail sesi praktikum tanpa cascading render
+  const [prevParamSessionId, setPrevParamSessionId] = useState(params.sessionId);
+  if (params.sessionId !== prevParamSessionId) {
+    setPrevParamSessionId(params.sessionId);
+    if (params.sessionId) {
+      setSelectedSessionId(params.sessionId);
+    }
+  }
+
   // State Analisis AI Real-Time
   const [aiResult, setAiResult] = useState<AIAnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
 
-  // State Status Pengajuan
+  // State Status Pengajuan & Validasi Kehadiran
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isDuplicate, setIsDuplicate] = useState<boolean>(false);
+  const [isAlreadyAttended, setIsAlreadyAttended] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // State Modal Sukses
@@ -94,7 +105,7 @@ export default function PengajuanIzinScreen() {
   const activeSessionId =
     selectedSessionId || (availableSessions.length > 0 ? availableSessions[0].id : '');
 
-  // Cek duplikasi izin saat sesi berubah
+  // Cek duplikasi izin dan riwayat presensi saat sesi berubah
   useEffect(() => {
     if (!activeSessionId || !currentStudent) return;
 
@@ -102,16 +113,18 @@ export default function PengajuanIzinScreen() {
 
     (async () => {
       try {
-        const exists = await checkExistingLeaveRequest(
-          activeSessionId,
-          currentStudent.id
-        );
+        const [exists, attended] = await Promise.all([
+          checkExistingLeaveRequest(activeSessionId, currentStudent.id),
+          checkStudentSessionAttendanceExists(activeSessionId, currentStudent.id),
+        ]);
         if (isMounted) {
           setIsDuplicate(exists);
+          setIsAlreadyAttended(attended);
         }
       } catch {
         if (isMounted) {
           setIsDuplicate(false);
+          setIsAlreadyAttended(false);
         }
       }
     })();
@@ -163,6 +176,7 @@ export default function PengajuanIzinScreen() {
     alasan.trim().length >= 10 &&
     Boolean(activeSessionId) &&
     !isDuplicate &&
+    !isAlreadyAttended &&
     !isSubmitting;
 
   const handleSubmit = async () => {
@@ -239,62 +253,100 @@ export default function PengajuanIzinScreen() {
 
           {/* 4. Formulir Masukan */}
           <View style={styles.formCard}>
-            {/* Pilihan Sesi Praktikum */}
-            <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <Text style={styles.inputLabel}>
-                  Pilih Sesi Praktikum yang Berhalangan Hadir <Text style={styles.required}>*</Text>
-                </Text>
-                {availableSessions.length > 2 && (
-                  <Text style={styles.sessionCountTag}>
-                    {availableSessions.length} Sesi Tersedia
+            {/* Pilihan Sesi Praktikum: Langsung ke sesi terkait jika dibuka dari detail sesi */}
+            {params.sessionId && selectedSession ? (
+              <View style={styles.inputGroup}>
+                <View style={styles.labelRow}>
+                  <Text style={styles.inputLabel}>
+                    Sesi Praktikum yang Diajukan Izin <Text style={styles.required}>*</Text>
                   </Text>
-                )}
+                  <View style={styles.directTargetBadge}>
+                    <Text style={styles.directTargetBadgeText}>Sesi Terpilih</Text>
+                  </View>
+                </View>
+
+                <View style={[styles.sessionOption, styles.sessionOptionSelected]}>
+                  <View style={styles.sessionOptionHeader}>
+                    <Text
+                      style={[
+                        styles.sessionOptionTitle,
+                        styles.sessionOptionTitleSelected,
+                      ]}>
+                      {selectedSession.praktikum} ({selectedSession.kelas})
+                    </Text>
+                    <View style={[styles.radioDot, styles.radioDotSelected]} />
+                  </View>
+                  <Text style={styles.sessionOptionMateri}>
+                    {selectedSession.materi}
+                  </Text>
+                  <Text style={styles.sessionOptionSchedule}>
+                    {selectedSession.tanggal} • {selectedSession.waktuMulai} -{' '}
+                    {selectedSession.waktuSelesai} WIB
+                  </Text>
+                  {selectedSession.ruang ? (
+                    <Text style={styles.sessionOptionRoom}>
+                      Ruang: {selectedSession.ruang}
+                    </Text>
+                  ) : null}
+                </View>
               </View>
-              <View style={styles.sessionScrollContainer}>
-                <ScrollView
-                  nestedScrollEnabled={true}
-                  showsVerticalScrollIndicator={true}
-                  style={styles.sessionScrollView}
-                  contentContainerStyle={styles.sessionSelectWrap}>
-                  {availableSessions.map((sesi) => {
-                    const isSelected = sesi.id === activeSessionId;
-                    return (
-                      <Pressable
-                        key={sesi.id}
-                        accessibilityRole="button"
-                        onPress={() => setSelectedSessionId(sesi.id)}
-                        style={[
-                          styles.sessionOption,
-                          isSelected && styles.sessionOptionSelected,
-                        ]}>
-                        <View style={styles.sessionOptionHeader}>
-                          <Text
-                            style={[
-                              styles.sessionOptionTitle,
-                              isSelected && styles.sessionOptionTitleSelected,
-                            ]}>
-                            {sesi.praktikum} ({sesi.kelas})
+            ) : (
+              <View style={styles.inputGroup}>
+                <View style={styles.labelRow}>
+                  <Text style={styles.inputLabel}>
+                    Pilih Sesi Praktikum yang Berhalangan Hadir <Text style={styles.required}>*</Text>
+                  </Text>
+                  {availableSessions.length > 2 && (
+                    <Text style={styles.sessionCountTag}>
+                      {availableSessions.length} Sesi Tersedia
+                    </Text>
+                  )}
+                </View>
+                <View style={styles.sessionScrollContainer}>
+                  <ScrollView
+                    nestedScrollEnabled={true}
+                    showsVerticalScrollIndicator={true}
+                    style={styles.sessionScrollView}
+                    contentContainerStyle={styles.sessionSelectWrap}>
+                    {availableSessions.map((sesi) => {
+                      const isSelected = sesi.id === activeSessionId;
+                      return (
+                        <Pressable
+                          key={sesi.id}
+                          accessibilityRole="button"
+                          onPress={() => setSelectedSessionId(sesi.id)}
+                          style={[
+                            styles.sessionOption,
+                            isSelected && styles.sessionOptionSelected,
+                          ]}>
+                          <View style={styles.sessionOptionHeader}>
+                            <Text
+                              style={[
+                                styles.sessionOptionTitle,
+                                isSelected && styles.sessionOptionTitleSelected,
+                              ]}>
+                              {sesi.praktikum} ({sesi.kelas})
+                            </Text>
+                            <View
+                              style={[
+                                styles.radioDot,
+                                isSelected && styles.radioDotSelected,
+                              ]}
+                            />
+                          </View>
+                          <Text style={styles.sessionOptionMateri} numberOfLines={2}>
+                            {sesi.materi}
                           </Text>
-                          <View
-                            style={[
-                              styles.radioDot,
-                              isSelected && styles.radioDotSelected,
-                            ]}
-                          />
-                        </View>
-                        <Text style={styles.sessionOptionMateri} numberOfLines={2}>
-                          {sesi.materi}
-                        </Text>
-                        <Text style={styles.sessionOptionSchedule}>
-                          {sesi.tanggal} • {sesi.waktuMulai} - {sesi.waktuSelesai} WIB
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
+                          <Text style={styles.sessionOptionSchedule}>
+                            {sesi.tanggal} • {sesi.waktuMulai} - {sesi.waktuSelesai} WIB
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
               </View>
-            </View>
+            )}
 
             {/* Peringatan jika sudah pernah mengajukan */}
             {isDuplicate ? (
@@ -303,6 +355,16 @@ export default function PengajuanIzinScreen() {
                 <Text style={styles.warningText}>
                   Anda sudah pernah mengajukan permohonan izin untuk sesi praktikum ini.
                   Silakan periksa status peninjauan di tab Riwayat.
+                </Text>
+              </View>
+            ) : null}
+
+            {/* Peringatan jika mahasiswa sudah presensi (Issue 4) */}
+            {isAlreadyAttended ? (
+              <View style={[styles.warningBox, { backgroundColor: '#FEF2F2', borderColor: '#FCA5A5' }]}>
+                <Text style={[styles.warningTitle, { color: '#B91C1C' }]}>Presensi Telah Tercatat</Text>
+                <Text style={[styles.warningText, { color: '#991B1B' }]}>
+                  Anda sudah tercatat hadir pada sesi praktikum ini. Pengajuan izin ketidakhadiran tidak dapat dilakukan untuk sesi yang telah dihadiri.
                 </Text>
               </View>
             ) : null}
@@ -695,6 +757,24 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#64748B',
     marginTop: 2,
+  },
+  sessionOptionRoom: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#0F766E',
+    marginTop: 2,
+  },
+  directTargetBadge: {
+    backgroundColor: '#EA580C',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  directTargetBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   textArea: {
     backgroundColor: '#F8FAFC',

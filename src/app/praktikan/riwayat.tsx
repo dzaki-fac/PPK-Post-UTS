@@ -3,8 +3,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   Linking,
+  Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -35,6 +37,10 @@ export default function PraktikanRiwayatScreen() {
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequestDocument[]>([]);
   const [firestoreAttendances, setFirestoreAttendances] = useState<AttendanceDocument[]>([]);
   const [firestoreSessions, setFirestoreSessions] = useState<SessionDocument[]>([]);
+
+  // State Modal Detail Pop-up
+  const [selectedLeaveModal, setSelectedLeaveModal] = useState<LeaveRequestDocument | null>(null);
+  const [selectedPresensiModal, setSelectedPresensiModal] = useState<RiwayatItem | null>(null);
 
   // Subscribe ke pengajuan izin praktikan, riwayat presensi, dan data sesi secara real-time
   useEffect(() => {
@@ -129,14 +135,7 @@ export default function PraktikanRiwayatScreen() {
     return (
       <Pressable
         style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-        onPress={() => {
-          if (item.sesiId) {
-            router.push({
-              pathname: '/praktikan/detail-sesi/[id]',
-              params: { id: item.sesiId },
-            });
-          }
-        }}
+        onPress={() => setSelectedPresensiModal(item)}
         accessibilityRole="button"
         accessibilityLabel={`Riwayat presensi ${item.sesi?.praktikum ?? 'Praktikum'}`}>
         <View style={styles.cardHeader}>
@@ -188,7 +187,11 @@ export default function PraktikanRiwayatScreen() {
     const isRejected = item.status === 'ditolak';
 
     return (
-      <View style={styles.card}>
+      <Pressable
+        style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+        onPress={() => setSelectedLeaveModal(item)}
+        accessibilityRole="button"
+        accessibilityLabel={`Buka detail pengajuan izin ${item.sessionName}`}>
         <View style={styles.cardHeader}>
           <View style={styles.titleWrap}>
             <Text style={styles.praktikumTitle} numberOfLines={2}>
@@ -288,7 +291,7 @@ export default function PraktikanRiwayatScreen() {
             Diajukan: {formatDate(item.createdAt)} WIB
           </Text>
         </View>
-      </View>
+      </Pressable>
     );
   };
 
@@ -457,6 +460,234 @@ export default function PraktikanRiwayatScreen() {
           }
         />
       )}
+
+      {/* Modal Popup Detail Permohonan Izin (Issue 7) */}
+      <Modal
+        visible={Boolean(selectedLeaveModal)}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedLeaveModal(null)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeaderRow}>
+              <View style={styles.modalHeaderLeft}>
+                <View style={styles.modalBadge}>
+                  <Text style={styles.modalBadgeText}>DETAIL PERMOHONAN IZIN</Text>
+                </View>
+                <Text style={styles.modalTitle} numberOfLines={2}>
+                  {selectedLeaveModal?.sessionName}
+                </Text>
+                <Text style={styles.modalSub}>
+                  Kelas {selectedLeaveModal?.studentClass} • Diajukan {formatDate(selectedLeaveModal?.createdAt)} WIB
+                </Text>
+              </View>
+              <Pressable
+                style={styles.modalCloseBtn}
+                onPress={() => setSelectedLeaveModal(null)}
+                hitSlop={8}>
+                <Text style={styles.modalCloseText}>✕</Text>
+              </Pressable>
+            </View>
+
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              {/* Status Badge Box */}
+              <View style={styles.modalStatusBox}>
+                <Text style={styles.modalSectionLabel}>Status Pengajuan:</Text>
+                <View
+                  style={[
+                    styles.leaveStatusPill,
+                    selectedLeaveModal?.status === 'menunggu' && styles.leaveStatusPending,
+                    selectedLeaveModal?.status === 'disetujui' && styles.leaveStatusApproved,
+                    selectedLeaveModal?.status === 'ditolak' && styles.leaveStatusRejected,
+                  ]}>
+                  <Text
+                    style={[
+                      styles.leaveStatusText,
+                      selectedLeaveModal?.status === 'menunggu' && { color: '#B45309' },
+                      selectedLeaveModal?.status === 'disetujui' && { color: '#1E40AF' },
+                      selectedLeaveModal?.status === 'ditolak' && { color: '#B91C1C' },
+                    ]}>
+                    {selectedLeaveModal?.status === 'menunggu' && 'Menunggu Verifikasi Asisten'}
+                    {selectedLeaveModal?.status === 'disetujui' && 'Izin Telah Disetujui'}
+                    {selectedLeaveModal?.status === 'ditolak' && 'Izin Tidak Disetujui'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Alasan */}
+              <View style={styles.modalInfoBox}>
+                <Text style={styles.modalSectionLabel}>Alasan Ketidakhadiran:</Text>
+                <Text style={styles.modalReasonText}>
+                  {`"${selectedLeaveModal?.alasan}"`}
+                </Text>
+              </View>
+
+              {/* Rekomendasi AI */}
+              {selectedLeaveModal?.aiClassification ? (
+                <View style={styles.modalAiBox}>
+                  <Text style={styles.modalSectionLabel}>Hasil Analisis Model AI:</Text>
+                  <View style={styles.modalAiRow}>
+                    <AICategoryBadge
+                      category={selectedLeaveModal.aiClassification.category}
+                      confidence={selectedLeaveModal.aiClassification.confidence}
+                      size="small"
+                    />
+                    <Text style={styles.modalAiConfidence}>
+                      Keyakinan: {Math.round((selectedLeaveModal.aiClassification.confidence ?? 0) * 100)}%
+                    </Text>
+                  </View>
+                  {selectedLeaveModal.aiClassification.rawSummary ? (
+                    <Text style={styles.modalAiSummary}>
+                      {selectedLeaveModal.aiClassification.rawSummary}
+                    </Text>
+                  ) : null}
+                </View>
+              ) : null}
+
+              {/* Evaluasi Asisten jika bukan menunggu */}
+              {selectedLeaveModal && selectedLeaveModal.status !== 'menunggu' ? (
+                <View
+                  style={[
+                    styles.decisionBox,
+                    selectedLeaveModal.status === 'disetujui'
+                      ? styles.decisionBoxApproved
+                      : styles.decisionBoxRejected,
+                  ]}>
+                  <Text
+                    style={[
+                      styles.decisionTitle,
+                      selectedLeaveModal.status === 'disetujui'
+                        ? { color: '#15803D' }
+                        : { color: '#B91C1C' },
+                    ]}>
+                    Keputusan Asisten: {selectedLeaveModal.status === 'disetujui' ? 'DISETUJUI' : 'DITOLAK'}
+                  </Text>
+                  {selectedLeaveModal.reviewerName ? (
+                    <Text style={styles.decisionMeta}>
+                      Diverifikasi oleh: {selectedLeaveModal.reviewerName} • {formatDate(selectedLeaveModal.reviewedAt)} WIB
+                    </Text>
+                  ) : null}
+                  {selectedLeaveModal.reviewNotes ? (
+                    <Text style={styles.decisionNotes}>
+                      Catatan: {`"${selectedLeaveModal.reviewNotes}"`}
+                    </Text>
+                  ) : null}
+                </View>
+              ) : null}
+
+              {/* Lampiran */}
+              {selectedLeaveModal?.lampiranUrl ? (
+                <Pressable
+                  style={styles.modalAttachmentBtn}
+                  onPress={() => {
+                    if (selectedLeaveModal?.lampiranUrl) {
+                      Linking.openURL(selectedLeaveModal.lampiranUrl).catch(() => {});
+                    }
+                  }}>
+                  <Text style={styles.modalAttachmentText}>Buka Berkas / Surat Pendukung ↗</Text>
+                </Pressable>
+              ) : null}
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <Pressable
+                style={styles.modalPrimaryBtn}
+                onPress={() => setSelectedLeaveModal(null)}>
+                <Text style={styles.modalPrimaryBtnText}>Tutup</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal Popup Detail Presensi Kehadiran */}
+      <Modal
+        visible={Boolean(selectedPresensiModal)}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedPresensiModal(null)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeaderRow}>
+              <View style={styles.modalHeaderLeft}>
+                <View style={[styles.modalBadge, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
+                  <Text style={[styles.modalBadgeText, { color: '#16A34A' }]}>BUKTI KEHADIRAN PRESENSI</Text>
+                </View>
+                <Text style={styles.modalTitle} numberOfLines={2}>
+                  {selectedPresensiModal?.sesi?.praktikum ?? 'Praktikum PPK'}
+                </Text>
+                <Text style={styles.modalSub}>
+                  Kelas {selectedPresensiModal?.sesi?.kelas ?? '-'}
+                </Text>
+              </View>
+              <Pressable
+                style={styles.modalCloseBtn}
+                onPress={() => setSelectedPresensiModal(null)}
+                hitSlop={8}>
+                <Text style={styles.modalCloseText}>✕</Text>
+              </Pressable>
+            </View>
+
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <View style={styles.modalStatusBox}>
+                <Text style={styles.modalSectionLabel}>Status Presensi:</Text>
+                <StatusBadge status="hadir" size="small" />
+              </View>
+
+              <View style={styles.modalInfoBox}>
+                <Text style={styles.modalSectionLabel}>Waktu Kehadiran Tercatat:</Text>
+                <Text style={styles.modalReasonText}>
+                  {selectedPresensiModal?.waktuKehadiran}
+                </Text>
+              </View>
+
+              {selectedPresensiModal?.sesi?.materi ? (
+                <View style={styles.modalInfoBox}>
+                  <Text style={styles.modalSectionLabel}>Materi Praktikum:</Text>
+                  <Text style={styles.modalReasonText}>
+                    {selectedPresensiModal.sesi.materi}
+                  </Text>
+                </View>
+              ) : null}
+
+              <View style={styles.modalInfoBox}>
+                <Text style={styles.modalSectionLabel}>Jadwal & Ruangan:</Text>
+                <Text style={styles.modalSubText}>
+                  Tanggal: {selectedPresensiModal?.sesi?.tanggal}
+                </Text>
+                <Text style={styles.modalSubText}>
+                  Waktu: {selectedPresensiModal?.sesi?.waktuMulai} - {selectedPresensiModal?.sesi?.waktuSelesai} WIB
+                </Text>
+                <Text style={styles.modalSubText}>
+                  Ruangan: {selectedPresensiModal?.sesi?.ruang || 'Lab Komputasi'}
+                </Text>
+              </View>
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <Pressable
+                style={styles.modalSecondaryBtn}
+                onPress={() => {
+                  const sId = selectedPresensiModal?.sesiId;
+                  setSelectedPresensiModal(null);
+                  if (sId) {
+                    router.push({
+                      pathname: '/praktikan/detail-sesi/[id]',
+                      params: { id: sId },
+                    });
+                  }
+                }}>
+                <Text style={styles.modalSecondaryBtnText}>Lihat Detail Sesi →</Text>
+              </Pressable>
+              <Pressable
+                style={styles.modalPrimaryBtn}
+                onPress={() => setSelectedPresensiModal(null)}>
+                <Text style={styles.modalPrimaryBtnText}>Tutup</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -819,5 +1050,185 @@ const styles = StyleSheet.create({
   leaveMetaText: {
     fontSize: 11,
     color: '#94A3B8',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 480,
+    maxHeight: '85%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 20,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 14,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  modalHeaderLeft: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  modalBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    borderRadius: 20,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    marginBottom: 6,
+  },
+  modalBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#EA580C',
+    letterSpacing: 0.5,
+  },
+  modalTitle: {
+    fontSize: 16.5,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.2,
+  },
+  modalSub: {
+    fontSize: 11.5,
+    color: '#64748B',
+    marginTop: 3,
+  },
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCloseText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  modalBody: {
+    marginBottom: 14,
+  },
+  modalStatusBox: {
+    marginBottom: 12,
+    gap: 6,
+  },
+  modalSectionLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#334155',
+  },
+  modalInfoBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 12,
+    marginBottom: 10,
+    gap: 4,
+  },
+  modalReasonText: {
+    fontSize: 13,
+    color: '#1E293B',
+    lineHeight: 19,
+    fontStyle: 'italic',
+  },
+  modalSubText: {
+    fontSize: 12,
+    color: '#475569',
+    lineHeight: 18,
+  },
+  modalAiBox: {
+    backgroundColor: '#F0FDF4',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    padding: 12,
+    marginBottom: 10,
+    gap: 6,
+  },
+  modalAiRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  modalAiConfidence: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#16A34A',
+  },
+  modalAiSummary: {
+    fontSize: 11.5,
+    color: '#15803D',
+    lineHeight: 16,
+  },
+  modalAttachmentBtn: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  modalAttachmentText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#2563EB',
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  modalPrimaryBtn: {
+    backgroundColor: '#0F172A',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    alignItems: 'center',
+  },
+  modalPrimaryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  modalSecondaryBtn: {
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+  },
+  modalSecondaryBtnText: {
+    color: '#EA580C',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

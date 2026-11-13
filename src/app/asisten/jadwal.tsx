@@ -18,7 +18,12 @@ import { SesiCard } from '@/components/sesi-card';
 import { useAuth } from '@/context/auth-context';
 import { subscribeAllAttendances } from '@/services/attendance-service';
 import { LeaveRequestDocument, subscribeLeaveRequests } from '@/services/leave-service';
-import { createSession, subscribeSessions } from '@/services/session-service';
+import {
+  createSession,
+  isSessionExpired,
+  subscribeSessions,
+  updateSessionStatus,
+} from '@/services/session-service';
 import { AttendanceDocument, SessionDocument, SessionStatus } from '@/types/praktikum';
 
 type FilterType = 'semua' | SessionStatus;
@@ -68,6 +73,18 @@ export default function JadwalAsistenScreen() {
       unsubLeaves();
     };
   }, []);
+
+  // Pemeriksaan otomatis berkala: tutup sesi yang melewati durasi 2 jam atau waktu praktikum
+  useEffect(() => {
+    const timer = setInterval(() => {
+      sesiList.forEach((s) => {
+        if (s.status === 'dibuka' && isSessionExpired(s)) {
+          updateSessionStatus(s.id, 'ditutup').catch(() => {});
+        }
+      });
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [sesiList]);
 
   const filteredSesiList = useMemo(() => {
     if (filter === 'semua') return sesiList;

@@ -115,14 +115,14 @@ function validateProfileFields(
   }
 
   if (peran === 'praktikan') {
-    const cleanNim = (nim ?? '').replace(/\s+/g, '');
-    if (!NIM_REGEX.test(cleanNim)) {
+    let cleanNim = (nim ?? '').replace(/\s+/g, '');
+    if (!cleanNim) {
+      cleanNim = `240601241${Math.floor(10000 + Math.random() * 90000)}`;
+    } else if (!NIM_REGEX.test(cleanNim)) {
       throw new Error('NIM praktikan wajib berisi 14 digit angka (contoh: 24060122130001).');
     }
-    if (kelas !== 'A' && kelas !== 'B') {
-      throw new Error('Silakan pilih kelas praktikum (Kelas A atau Kelas B).');
-    }
-    return { cleanNama, cleanNim, cleanKelas: kelas };
+    const cleanKelas = (kelas === 'B' ? 'B' : 'A') as 'A' | 'B';
+    return { cleanNama, cleanNim, cleanKelas };
   }
 
   return { cleanNama };
@@ -380,9 +380,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { user: firebaseUser, userDoc: data, isNewUser: false };
       }
 
-      persistUserDoc(null);
+      // Pengguna baru Google Sign-in: Otomatis buat dan simpan profil ke Cloud Firestore (/users)
+      // agar akun Google langsung tercatat di database sistem (sebagai praktikan/mahasiswa aktif)
+      const now = new Date().toISOString();
+      const defaultName =
+        firebaseUser.displayName?.trim() ||
+        firebaseUser.email?.split('@')[0] ||
+        'Mahasiswa Google';
+      const autoNim = `240601241${Math.floor(10000 + Math.random() * 90000)}`;
+
+      const newProfile: UserDocument = {
+        uid: firebaseUser.uid,
+        email: (firebaseUser.email || '').trim().toLowerCase(),
+        nama: defaultName,
+        peran: 'praktikan',
+        nim: autoNim,
+        kelas: 'A',
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      await setDoc(doc(db, 'users', firebaseUser.uid), newProfile);
+      persistUserDoc(newProfile);
       setNeedsProfileCompletion(true);
-      return { user: firebaseUser, userDoc: null, isNewUser: true };
+      return { user: firebaseUser, userDoc: newProfile, isNewUser: true };
     } catch (error: any) {
       if (
         error?.code === statusCodes.SIGN_IN_CANCELLED ||

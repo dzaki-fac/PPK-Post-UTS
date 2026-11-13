@@ -22,7 +22,11 @@ import {
   LeaveRequestDocument,
   subscribeStudentLeaveRequests,
 } from '@/services/leave-service';
-import { subscribeSessions } from '@/services/session-service';
+import {
+  isSessionExpired,
+  subscribeSessions,
+  updateSessionStatus,
+} from '@/services/session-service';
 import { AttendanceDocument, SessionDocument, SessionStatus } from '@/types/praktikum';
 
 type FilterType = 'semua' | 'kelas-saya' | SessionStatus;
@@ -74,6 +78,18 @@ export default function PraktikanJadwalScreen() {
       }
     };
   }, [studentUid, userDoc?.nim]);
+
+  // Pemeriksaan otomatis berkala: tutup sesi yang melewati batas 2 jam atau jam praktikum
+  useEffect(() => {
+    const timer = setInterval(() => {
+      sesiList.forEach((s) => {
+        if (s.status === 'dibuka' && isSessionExpired(s)) {
+          updateSessionStatus(s.id, 'ditutup').catch(() => {});
+        }
+      });
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [sesiList]);
 
   const studentClass = normalizeClassCode(userDoc?.kelas);
 

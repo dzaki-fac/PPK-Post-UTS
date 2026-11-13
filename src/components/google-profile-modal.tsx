@@ -34,17 +34,25 @@ function GoogleProfileModalContent({
   onSuccess,
   onCancel,
 }: Omit<GoogleProfileModalProps, 'visible'>) {
-  const { user, completeGoogleProfile } = useAuth();
+  const { user, userDoc, completeGoogleProfile } = useAuth();
 
-  const [nama, setNama] = useState(user?.displayName ?? '');
-  const [peran, setPeran] = useState<UserRole>('praktikan');
-  const [nim, setNim] = useState('');
-  const [kelas, setKelas] = useState<'A' | 'B'>('A');
-  const [peranLab, setPeranLab] = useState('Pengampu Lab Komputasi');
+  const [nama, setNama] = useState(userDoc?.nama || user?.displayName || '');
+  const [peran, setPeran] = useState<UserRole>(userDoc?.peran || 'praktikan');
+  const [nim, setNim] = useState(userDoc?.nim || '');
+  const [kelas, setKelas] = useState<'A' | 'B'>((userDoc?.kelas as 'A' | 'B') || 'A');
+  const [peranLab, setPeranLab] = useState(userDoc?.peranLab || 'Pengampu Lab Komputasi');
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const isPraktikan = peran === 'praktikan';
+
+  const handleSkipOrCancel = () => {
+    if (userDoc) {
+      onSuccess(userDoc);
+    } else {
+      onCancel();
+    }
+  };
 
   const handleSubmit = async () => {
     setErrorMsg(null);
@@ -66,7 +74,7 @@ function GoogleProfileModalContent({
   };
 
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onCancel}>
+    <Modal visible transparent animationType="fade" onRequestClose={handleSkipOrCancel}>
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <View style={styles.header}>
@@ -75,7 +83,7 @@ function GoogleProfileModalContent({
             </View>
             <Text style={styles.title}>Konfirmasi Identitas Portal</Text>
             <Text style={styles.subtitle}>
-              Akun Google ({user?.email ?? '-'}) baru pertama kali masuk. Pilih peran dan lengkapi data akademik Anda.
+              Akun Google ({user?.email ?? '-'}) terhubung. Silakan sesuaikan peran dan informasi akademik Anda.
             </Text>
           </View>
 
@@ -195,9 +203,9 @@ function GoogleProfileModalContent({
           <View style={styles.footer}>
             <Pressable
               style={({ pressed }) => [styles.cancelBtn, pressed && styles.pressed]}
-              onPress={onCancel}
+              onPress={handleSkipOrCancel}
               disabled={submitting}>
-              <Text style={styles.cancelBtnText}>Batal</Text>
+              <Text style={styles.cancelBtnText}>{userDoc ? 'Lewati' : 'Batal'}</Text>
             </Pressable>
             <Pressable
               style={({ pressed }) => [

@@ -15,9 +15,13 @@ import { ConfirmationModal } from '@/components/confirmation-modal';
 import { EmptyState } from '@/components/empty-state';
 import { usePraktikum } from '@/context/praktikum-context';
 import {
+  createAsistenUser,
   createPraktikanUser,
+  deleteAsistenUser,
   deletePraktikanUser,
+  subscribeAsistenUsers,
   subscribePraktikanUsers,
+  updateAsistenUser,
   updatePraktikanUser,
 } from '@/services/attendance-service';
 import { Asisten, Praktikan, UserDocument } from '@/types/praktikum';
@@ -80,14 +84,21 @@ export default function AsistenMahasiswaScreen() {
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const [feedbackVisible, setFeedbackVisible] = useState(false);
 
-  // Subscribe ke data mahasiswa di Cloud Firestore /users
+  // Subscribe ke data mahasiswa & asisten di Cloud Firestore /users
   const [firestoreStudents, setFirestoreStudents] = useState<UserDocument[]>([]);
+  const [firestoreAsisten, setFirestoreAsisten] = useState<UserDocument[]>([]);
 
   useEffect(() => {
-    const unsub = subscribePraktikanUsers((items) => {
+    const unsubStudents = subscribePraktikanUsers((items) => {
       setFirestoreStudents(items);
     });
-    return () => unsub();
+    const unsubAsisten = subscribeAsistenUsers((items) => {
+      setFirestoreAsisten(items);
+    });
+    return () => {
+      unsubStudents();
+      unsubAsisten();
+    };
   }, []);
 
   // Gabungkan data praktikan dari Firestore dan lokal
@@ -105,6 +116,20 @@ export default function AsistenMahasiswaScreen() {
     return Array.from(map.values()).sort((a, b) => a.nama.localeCompare(b.nama));
   }, [daftarPraktikan, firestoreStudents]);
 
+  // Gabungkan data asisten dari Firestore dan lokal
+  const allAsisten = useMemo(() => {
+    const map = new Map<string, Asisten>();
+    daftarAsisten.forEach((a) => map.set(a.id, a));
+    firestoreAsisten.forEach((fa) => {
+      map.set(fa.uid, {
+        id: fa.uid,
+        nama: fa.nama,
+        peranLab: fa.peranLab || 'Pengampu Lab Komputasi',
+      });
+    });
+    return Array.from(map.values()).sort((a, b) => a.nama.localeCompare(b.nama));
+  }, [daftarAsisten, firestoreAsisten]);
+
   // Metrik ringkasan Praktikan
   const totalMahasiswa = allPraktikan.length;
   const totalKelasA = allPraktikan.filter((p) => p.kelas === 'A').length;
@@ -112,7 +137,7 @@ export default function AsistenMahasiswaScreen() {
   const totalPresensiMasuk = presensiList.length;
 
   // Metrik ringkasan Asisten
-  const totalAsisten = daftarAsisten.length;
+  const totalAsisten = allAsisten.length;
   const totalSesiAktif = sesiList.length;
 
   // Filter & Search List Praktikan
@@ -128,10 +153,13 @@ export default function AsistenMahasiswaScreen() {
 
   // Filter & Search List Asisten
   const filteredAsistenList = useMemo(() => {
-    return daftarAsisten.filter((a) => {
-      return a.nama.toLowerCase().includes(searchQuery.toLowerCase());
+    return allAsisten.filter((a) => {
+      return (
+        a.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (a.peranLab && a.peranLab.toLowerCase().includes(searchQuery.toLowerCase()))
+      );
     });
-  }, [daftarAsisten, searchQuery]);
+  }, [allAsisten, searchQuery]);
 
   const getInitials = (name: string) => {
     return name
@@ -257,7 +285,7 @@ export default function AsistenMahasiswaScreen() {
     setModalTambahAsistenVisible(true);
   };
 
-  const handleSimpanTambahAsisten = () => {
+  const handleSimpanTambahAsisten = async () => {
     if (!namaAsistenBaru.trim()) {
       alert('Nama asisten wajib diisi.');
       return;
@@ -267,6 +295,15 @@ export default function AsistenMahasiswaScreen() {
       nama: namaAsistenBaru.trim(),
       peranLab: peranLabBaru.trim() || 'Pengampu Laboratorium Komputasi',
     });
+
+    try {
+      await createAsistenUser({
+        nama: namaAsistenBaru.trim(),
+        peranLab: peranLabBaru.trim() || 'Pengampu Laboratorium Komputasi',
+      });
+    } catch (err) {
+      console.warn('Gagal menyimpan asisten ke Firestore:', err);
+    }
 
     setModalTambahAsistenVisible(false);
     setFeedbackTitle('Asisten Berhasil Ditambahkan');
@@ -283,7 +320,7 @@ export default function AsistenMahasiswaScreen() {
     setModalEditAsistenVisible(true);
   };
 
-  const handleSimpanEditAsisten = () => {
+  const handleSimpanEditAsisten = async () => {
     if (!selectedAsisten) return;
     if (!editNamaAsisten.trim()) {
       alert('Nama asisten wajib diisi.');
@@ -295,6 +332,15 @@ export default function AsistenMahasiswaScreen() {
       peranLab: editPeranLab.trim(),
     });
 
+    try {
+      await updateAsistenUser(selectedAsisten.id, {
+        nama: editNamaAsisten.trim(),
+        peranLab: editPeranLab.trim(),
+      });
+    } catch (err) {
+      console.warn('Gagal memperbarui asisten di Firestore:', err);
+    }
+
     setModalEditAsistenVisible(false);
     setFeedbackTitle('Data Asisten Diperbarui');
     setFeedbackMessage(
@@ -304,7 +350,7 @@ export default function AsistenMahasiswaScreen() {
   };
 
   const handleOpenHapusAsisten = (item: Asisten) => {
-    if (daftarAsisten.length <= 1) {
+    if (allAsisten.length <= 1) {
       alert('Tidak dapat menghapus asisten terakhir. Sistem membutuhkan minimal 1 akun asisten aktif.');
       return;
     }
@@ -312,10 +358,17 @@ export default function AsistenMahasiswaScreen() {
     setModalHapusAsistenVisible(true);
   };
 
-  const handleConfirmHapusAsisten = () => {
+  const handleConfirmHapusAsisten = async () => {
     if (!asistenToDelete) return;
     const deletedName = asistenToDelete.nama;
     hapusAsisten(asistenToDelete.id);
+
+    try {
+      await deleteAsistenUser(asistenToDelete.id);
+    } catch (err) {
+      console.warn('Gagal menghapus asisten di Firestore:', err);
+    }
+
     setModalHapusAsistenVisible(false);
     setAsistenToDelete(null);
 

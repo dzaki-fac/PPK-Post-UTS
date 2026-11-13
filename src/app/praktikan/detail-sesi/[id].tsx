@@ -51,6 +51,15 @@ export default function PraktikanDetailSesiScreen() {
   const [catatan, setCatatan] = useState('');
   const [agreementChecked, setAgreementChecked] = useState(true);
 
+  // Pola resmi React untuk mereset state saat parameter sesi berubah tanpa efek kaskade
+  const [prevSessionId, setPrevSessionId] = useState(sessionId);
+  if (sessionId !== prevSessionId) {
+    setPrevSessionId(sessionId);
+    setKodeInput('');
+    setCatatan('');
+    setErrorMessage(null);
+  }
+
   useEffect(() => {
     if (!sessionId) {
       return;
@@ -139,6 +148,9 @@ export default function PraktikanDetailSesiScreen() {
 
   const alreadyPresensi = Boolean(attendanceRecord);
   const leaveRecord = studentLeaves.find((l) => l.sessionId === sessionId);
+  const hasActiveLeave = Boolean(
+    leaveRecord && (leaveRecord.status === 'disetujui' || leaveRecord.status === 'menunggu')
+  );
   const studentClass = normalizeClassCode(userDoc?.kelas);
   const sessionClass = normalizeClassCode(sesi.kelas);
 
@@ -150,7 +162,8 @@ export default function PraktikanDetailSesiScreen() {
     !agreementChecked ||
     !userDoc ||
     Boolean(sesi.kodeSesi && kodeInput.trim().length !== 4) ||
-    isClassMismatch;
+    isClassMismatch ||
+    hasActiveLeave;
 
   const handleOpenPresensiModal = () => {
     setIsConfirmModalVisible(true);
@@ -373,6 +386,43 @@ export default function PraktikanDetailSesiScreen() {
                 disabled>
                 <Text style={styles.actionBtnTextDisabled}>
                   Presensi Telah Lengkap
+                </Text>
+              </Pressable>
+            </View>
+          ) : hasActiveLeave ? (
+            /* Case 1B: Izin Aktif - Tidak Dapat Melakukan Presensi */
+            <View style={styles.alreadyBox}>
+              <View
+                style={[
+                  styles.successIconCircle,
+                  { backgroundColor: '#FEF3C7', borderColor: '#FCD34D' },
+                ]}>
+                <Text style={[styles.successIconText, { color: '#D97706' }]}>!</Text>
+              </View>
+              <Text style={styles.alreadyTitle}>Pengajuan Izin Aktif</Text>
+              <Text style={styles.alreadySubtitle}>
+                {leaveRecord?.status === 'disetujui'
+                  ? 'Permohonan izin Anda telah disetujui oleh asisten laboratorium.'
+                  : 'Permohonan izin Anda telah terkirim dan sedang menunggu verifikasi asisten.'}
+              </Text>
+              <View style={styles.timestampBadge}>
+                <Text style={[styles.timestampText, { color: '#92400E' }]}>
+                  {leaveRecord?.status === 'disetujui'
+                    ? 'Status: Disetujui'
+                    : 'Status: Menunggu Verifikasi'}
+                </Text>
+              </View>
+              <Text style={styles.alreadyNotice}>
+                Praktikan yang telah mengajukan izin ketidakhadiran tidak dapat mengisi kode dan melakukan presensi kehadiran pada sesi praktikum ini.
+              </Text>
+
+              <Pressable
+                style={[styles.actionBtn, styles.actionBtnDisabled]}
+                disabled>
+                <Text style={styles.actionBtnTextDisabled}>
+                  {leaveRecord?.status === 'disetujui'
+                    ? 'Izin Praktikum Disetujui'
+                    : 'Menunggu Keputusan Asisten'}
                 </Text>
               </Pressable>
             </View>

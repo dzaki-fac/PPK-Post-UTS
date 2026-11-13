@@ -88,7 +88,11 @@ export default function LoginScreen() {
   };
 
   const handleCancelProfile = async () => {
-    await logout();
+    if (userDoc) {
+      navigateByProfile(userDoc);
+    } else {
+      await logout();
+    }
   };
 
   const firebaseReady = isFirebaseConfigured();

@@ -1,4 +1,4 @@
-# PPK LabPortal — Sistem Presensi, Manajemen Sesi & Moderasi Izin Praktikum
+# LabPortal — Sistem Presensi, Manajemen Sesi & Moderasi Izin Praktikum
 
 > **Praktikum Pengembangan Platform Khusus (PPK)**  
 > **Departemen Informatika, Fakultas Sains dan Matematika, Universitas Diponegoro (UNDIP)**  
@@ -173,8 +173,8 @@ npx eas-cli build -p android --profile preview
 ```
 
 #### 📥 Tautan Unduhan Build APK Terbaru (Rilis Preview):
-- **Tautan Unduhan Langsung APK:** [Download PPK LabPortal (uF6HrnVw... .apk)](https://expo.dev/artifacts/eas/uF6HrnVw4SzKl5FhOOKpyDYBcolLiR7qHYgH7R_67u8.apk)
-- **Halaman Riwayat Build EAS:** [expo.dev/accounts/gregoriusseptiano/projects/PPK-Post-UTS/builds/416f223e-d116-4472-8155-4140ea9a7abe](https://expo.dev/accounts/gregoriusseptiano/projects/PPK-Post-UTS/builds/416f223e-d116-4472-8155-4140ea9a7abe)
+- **Tautan Unduhan Langsung APK:** [Download LabPortal (hF7sndkK... .apk)](https://expo.dev/artifacts/eas/hF7sndkKiJmhZlC85IaqFewwE1jCoOG3leTkLp8m8o0.apk)
+- **Halaman Riwayat Build EAS:** [expo.dev/accounts/gregoriusseptiano/projects/PPK-Post-UTS/builds/a8647e14-6310-4791-a69e-4ee206b919df](https://expo.dev/accounts/gregoriusseptiano/projects/PPK-Post-UTS/builds/a8647e14-6310-4791-a69e-4ee206b919df)
 
 > [!TIP]
 > **Registrasi SHA-1 Fingerprint untuk Google Sign-In:**  

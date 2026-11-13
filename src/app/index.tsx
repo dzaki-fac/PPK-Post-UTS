@@ -14,7 +14,7 @@ export default function IndexScreen() {
           <Text style={styles.logoBadgeText}>PPK</Text>
         </View>
         <ActivityIndicator size="large" color="#EA580C" />
-        <Text style={styles.loadingText}>Memuat sesi PPK LabPortal...</Text>
+        <Text style={styles.loadingText}>Memuat sesi LabPortal...</Text>
       </View>
     );
   }

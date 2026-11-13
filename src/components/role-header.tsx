@@ -63,7 +63,7 @@ export function RoleHeader() {
             <Text style={styles.logoBadgeText}>PPK</Text>
           </View>
           <View>
-            <Text style={styles.brandTitle}>PPK LabPortal</Text>
+            <Text style={styles.brandTitle}>LabPortal</Text>
             {Platform.OS === 'web' && (
               <Text style={styles.brandSubtitle}>Presensi & Manajemen Sesi</Text>
             )}

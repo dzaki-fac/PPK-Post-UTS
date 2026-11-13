@@ -241,45 +241,58 @@ export default function PengajuanIzinScreen() {
           <View style={styles.formCard}>
             {/* Pilihan Sesi Praktikum */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>
-                Pilih Sesi Praktikum yang Berhalangan Hadir <Text style={styles.required}>*</Text>
-              </Text>
-              <View style={styles.sessionSelectWrap}>
-                {availableSessions.map((sesi) => {
-                  const isSelected = sesi.id === activeSessionId;
-                  return (
-                    <Pressable
-                      key={sesi.id}
-                      accessibilityRole="button"
-                      onPress={() => setSelectedSessionId(sesi.id)}
-                      style={[
-                        styles.sessionOption,
-                        isSelected && styles.sessionOptionSelected,
-                      ]}>
-                      <View style={styles.sessionOptionHeader}>
-                        <Text
-                          style={[
-                            styles.sessionOptionTitle,
-                            isSelected && styles.sessionOptionTitleSelected,
-                          ]}>
-                          {sesi.praktikum} ({sesi.kelas})
+              <View style={styles.labelRow}>
+                <Text style={styles.inputLabel}>
+                  Pilih Sesi Praktikum yang Berhalangan Hadir <Text style={styles.required}>*</Text>
+                </Text>
+                {availableSessions.length > 2 && (
+                  <Text style={styles.sessionCountTag}>
+                    {availableSessions.length} Sesi Tersedia
+                  </Text>
+                )}
+              </View>
+              <View style={styles.sessionScrollContainer}>
+                <ScrollView
+                  nestedScrollEnabled={true}
+                  showsVerticalScrollIndicator={true}
+                  style={styles.sessionScrollView}
+                  contentContainerStyle={styles.sessionSelectWrap}>
+                  {availableSessions.map((sesi) => {
+                    const isSelected = sesi.id === activeSessionId;
+                    return (
+                      <Pressable
+                        key={sesi.id}
+                        accessibilityRole="button"
+                        onPress={() => setSelectedSessionId(sesi.id)}
+                        style={[
+                          styles.sessionOption,
+                          isSelected && styles.sessionOptionSelected,
+                        ]}>
+                        <View style={styles.sessionOptionHeader}>
+                          <Text
+                            style={[
+                              styles.sessionOptionTitle,
+                              isSelected && styles.sessionOptionTitleSelected,
+                            ]}>
+                            {sesi.praktikum} ({sesi.kelas})
+                          </Text>
+                          <View
+                            style={[
+                              styles.radioDot,
+                              isSelected && styles.radioDotSelected,
+                            ]}
+                          />
+                        </View>
+                        <Text style={styles.sessionOptionMateri} numberOfLines={2}>
+                          {sesi.materi}
                         </Text>
-                        <View
-                          style={[
-                            styles.radioDot,
-                            isSelected && styles.radioDotSelected,
-                          ]}
-                        />
-                      </View>
-                      <Text style={styles.sessionOptionMateri} numberOfLines={2}>
-                        {sesi.materi}
-                      </Text>
-                      <Text style={styles.sessionOptionSchedule}>
-                        {sesi.tanggal} • {sesi.waktuMulai} - {sesi.waktuSelesai} WIB
-                      </Text>
-                    </Pressable>
-                  );
-                })}
+                        <Text style={styles.sessionOptionSchedule}>
+                          {sesi.tanggal} • {sesi.waktuMulai} - {sesi.waktuSelesai} WIB
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
               </View>
             </View>
 
@@ -611,6 +624,28 @@ const styles = StyleSheet.create({
   },
   counterTextValid: {
     color: '#16A34A',
+  },
+  sessionCountTag: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#EA580C',
+    backgroundColor: '#FFF7ED',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+  },
+  sessionScrollContainer: {
+    maxHeight: 230,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+    padding: 8,
+  },
+  sessionScrollView: {
+    maxHeight: 214,
   },
   sessionSelectWrap: {
     gap: 8,

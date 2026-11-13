@@ -512,7 +512,10 @@ export default function DetailSesiAsistenScreen() {
             )}
 
             {/* Filter Tabs for Roster */}
-            <View style={styles.filterTabsRow}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterTabsRow}>
               <Pressable
                 style={[
                   styles.filterTab,
@@ -572,7 +575,7 @@ export default function DetailSesiAsistenScreen() {
                   Belum Hadir ({Math.max(0, totalMahasiswa - totalHadir - totalIzin)})
                 </Text>
               </Pressable>
-            </View>
+            </ScrollView>
 
             {/* Student List */}
             {filteredDaftar.length === 0 ? (
@@ -1156,14 +1159,14 @@ const styles = StyleSheet.create({
   },
   filterTabsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
+    alignItems: 'center',
+    gap: 5,
     marginBottom: 12,
   },
   filterTab: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 4.5,
+    borderRadius: 14,
     backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#E2E8F0',
@@ -1173,8 +1176,8 @@ const styles = StyleSheet.create({
     borderColor: '#EA580C',
   },
   filterTabText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
     color: '#475569',
   },
   filterTabTextActive: {

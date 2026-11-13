@@ -166,7 +166,7 @@ export default function RegisterScreen() {
 
                 <Text style={styles.cardTitle}>Buat Akun Baru</Text>
                 <Text style={styles.cardSubtitle}>
-                  Daftarkan akun pribadi Anda untuk mulai menggunakan sistem presensi cloud PPK LabPortal.
+                  Daftarkan akun pribadi Anda untuk mulai menggunakan sistem presensi cloud LabPortal.
                 </Text>
 
                 {errorMsg ? (

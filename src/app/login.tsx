@@ -111,7 +111,7 @@ export default function LoginScreen() {
                     <Text style={styles.logoBadgeText}>PPK</Text>
                   </View>
                   <View>
-                    <Text style={styles.brandTitle}>PPK LabPortal</Text>
+                    <Text style={styles.brandTitle}>LabPortal</Text>
                     <Text style={styles.brandSub}>
                       Informatika FSM Universitas Diponegoro
                     </Text>

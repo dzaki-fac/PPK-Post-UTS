@@ -173,8 +173,8 @@ npx eas-cli build -p android --profile preview
 ```
 
 #### 📥 Tautan Unduhan Build APK Terbaru (Rilis Preview):
-- **Tautan Unduhan Langsung APK:** [Download PPK LabPortal (XiidMU8f... .apk)](https://expo.dev/artifacts/eas/XiidMU8fOGDfIu1Pe2rXwg4QeEix2RMpxqfyyWGfg6E.apk)
-- **Halaman Riwayat Build EAS:** [expo.dev/accounts/gregoriusseptiano/projects/PPK-Post-UTS/builds/2bc258be-bdb2-44a7-876e-e3864b2b8295](https://expo.dev/accounts/gregoriusseptiano/projects/PPK-Post-UTS/builds/2bc258be-bdb2-44a7-876e-e3864b2b8295)
+- **Tautan Unduhan Langsung APK:** [Download PPK LabPortal (uF6HrnVw... .apk)](https://expo.dev/artifacts/eas/uF6HrnVw4SzKl5FhOOKpyDYBcolLiR7qHYgH7R_67u8.apk)
+- **Halaman Riwayat Build EAS:** [expo.dev/accounts/gregoriusseptiano/projects/PPK-Post-UTS/builds/416f223e-d116-4472-8155-4140ea9a7abe](https://expo.dev/accounts/gregoriusseptiano/projects/PPK-Post-UTS/builds/416f223e-d116-4472-8155-4140ea9a7abe)
 
 > [!TIP]
 > **Registrasi SHA-1 Fingerprint untuk Google Sign-In:**  

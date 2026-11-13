@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     maxWidth: 960,
     width: '100%',
     alignSelf: 'center',
-    paddingHorizontal: Platform.OS === 'web' ? 20 : 8,
+    paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

@@ -4,6 +4,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -483,7 +484,10 @@ export default function AsistenMahasiswaScreen() {
       {activeTab === 'praktikan' ? (
         <View style={styles.filterSection}>
           <Text style={styles.filterTitle}>Filter Berdasarkan Kelas:</Text>
-          <View style={styles.filterRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterRow}>
             <FilterChip
               label="Semua"
               count={totalMahasiswa}
@@ -502,7 +506,7 @@ export default function AsistenMahasiswaScreen() {
               active={filterKelas === 'B'}
               onPress={() => setFilterKelas('B')}
             />
-          </View>
+          </ScrollView>
         </View>
       ) : null}
     </View>
@@ -1285,15 +1289,16 @@ const styles = StyleSheet.create({
   },
   filterRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 2,
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5.5,
+    borderRadius: 16,
     borderWidth: 1,
   },
   chipInactive: {
@@ -1305,7 +1310,7 @@ const styles = StyleSheet.create({
     borderColor: '#0D9488',
   },
   chipText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
   },
   chipTextInactive: {

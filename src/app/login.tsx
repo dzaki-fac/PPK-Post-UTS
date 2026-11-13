@@ -281,15 +281,18 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: Platform.OS === 'web' ? 20 : 14,
-    paddingVertical: 28,
+    justifyContent: 'space-between',
+    paddingHorizontal: Platform.OS === 'web' ? 20 : 16,
+    paddingTop: Platform.OS === 'web' ? 28 : 20,
+    paddingBottom: Platform.OS === 'web' ? 28 : 20,
   },
   centerContainer: {
     width: '100%',
     maxWidth: 440,
+    flex: 1,
     alignSelf: 'center',
-    gap: 18,
+    justifyContent: 'space-between',
+    gap: 14,
   },
   brandBlock: {
     gap: 12,
@@ -515,6 +518,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 12,
+    marginTop: 8,
+    paddingBottom: 4,
   },
   legendItem: {
     paddingHorizontal: 10,

@@ -253,7 +253,10 @@ export default function JadwalAsistenScreen() {
       {/* Filter Section */}
       <View style={styles.filterSection}>
         <Text style={styles.filterTitle}>Filter Berdasarkan Status Sesi:</Text>
-        <View style={styles.filterRow}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterRow}>
           <FilterChip
             label="Semua"
             active={filter === 'semua'}
@@ -281,7 +284,7 @@ export default function JadwalAsistenScreen() {
             variant="ditutup"
             onPress={() => setFilter('ditutup')}
           />
-        </View>
+        </ScrollView>
       </View>
     </View>
   );
@@ -698,15 +701,16 @@ const styles = StyleSheet.create({
   },
   filterRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 2,
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5.5,
+    borderRadius: 16,
     borderWidth: 1,
   },
   chipInactive: {
@@ -721,7 +725,7 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
   chipText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
   },
   chipTextInactive: {

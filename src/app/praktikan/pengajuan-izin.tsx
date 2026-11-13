@@ -357,11 +357,11 @@ export default function PengajuanIzinScreen() {
                   <Text style={styles.aiSummaryText}>{aiResult.ringkasan}</Text>
                   <View style={styles.aiMetaInfo}>
                     <Text style={styles.aiMetaItem}>
-                      Sentimen Teks: <Text style={styles.bold}>{aiResult.sentimen}</Text>
+                      Sentimen: <Text style={styles.bold}>{aiResult.sentimen}</Text>
                     </Text>
                     <Text style={styles.aiMetaSeparator}>•</Text>
                     <Text style={styles.aiMetaItem}>
-                      Pemrosesan: <Text style={styles.bold}>JavaScript On-Device (Offline)</Text>
+                      Engine: <Text style={styles.bold}>Model EDOM On-Device</Text>
                     </Text>
                   </View>
                 </View>
@@ -767,12 +767,14 @@ const styles = StyleSheet.create({
   aiMetaInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 6,
-    marginTop: 2,
+    marginTop: 4,
   },
   aiMetaItem: {
     fontSize: 11,
     color: '#0D9488',
+    flexShrink: 1,
   },
   aiMetaSeparator: {
     fontSize: 11,

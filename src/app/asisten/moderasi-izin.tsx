@@ -3,6 +3,7 @@ import {
   FlatList,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -187,7 +188,10 @@ export default function ModerasiIzinScreen() {
       </View>
 
       {/* Filter Chips */}
-      <View style={styles.filterRow}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filterRow}>
         {(
           [
             { key: 'semua', label: `Semua (${stats.total})` },
@@ -216,7 +220,7 @@ export default function ModerasiIzinScreen() {
             </Pressable>
           );
         })}
-      </View>
+      </ScrollView>
     </View>
   );
 
@@ -446,14 +450,15 @@ const styles = StyleSheet.create({
   },
   filterRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    alignItems: 'center',
+    gap: 6,
     marginTop: 4,
+    paddingVertical: 2,
   },
   filterChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 16,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#CBD5E1',
@@ -463,7 +468,7 @@ const styles = StyleSheet.create({
     borderColor: '#0D9488',
   },
   filterChipText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
     color: '#475569',
   },

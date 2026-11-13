@@ -67,12 +67,14 @@ export default function AsistenMahasiswaScreen() {
   // Modal Tambah Asisten
   const [modalTambahAsistenVisible, setModalTambahAsistenVisible] = useState(false);
   const [namaAsistenBaru, setNamaAsistenBaru] = useState('');
+  const [nimAsistenBaru, setNimAsistenBaru] = useState('');
   const [peranLabBaru, setPeranLabBaru] = useState('');
 
   // Modal Edit Asisten
   const [modalEditAsistenVisible, setModalEditAsistenVisible] = useState(false);
   const [selectedAsisten, setSelectedAsisten] = useState<Asisten | null>(null);
   const [editNamaAsisten, setEditNamaAsisten] = useState('');
+  const [editNimAsisten, setEditNimAsisten] = useState('');
   const [editPeranLab, setEditPeranLab] = useState('');
 
   // Modal Hapus Asisten
@@ -124,6 +126,7 @@ export default function AsistenMahasiswaScreen() {
       map.set(fa.uid, {
         id: fa.uid,
         nama: fa.nama,
+        nim: fa.nim,
         peranLab: fa.peranLab || 'Pengampu Lab Komputasi',
       });
     });
@@ -154,9 +157,11 @@ export default function AsistenMahasiswaScreen() {
   // Filter & Search List Asisten
   const filteredAsistenList = useMemo(() => {
     return allAsisten.filter((a) => {
+      const q = searchQuery.toLowerCase();
       return (
-        a.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (a.peranLab && a.peranLab.toLowerCase().includes(searchQuery.toLowerCase()))
+        a.nama.toLowerCase().includes(q) ||
+        (a.nim && a.nim.toLowerCase().includes(q)) ||
+        (a.peranLab && a.peranLab.toLowerCase().includes(q))
       );
     });
   }, [allAsisten, searchQuery]);
@@ -281,6 +286,8 @@ export default function AsistenMahasiswaScreen() {
   // --- Handlers: Asisten ---
   const handleOpenTambahAsisten = () => {
     setNamaAsistenBaru('');
+    const nextSeq = String(allAsisten.length + 1).padStart(4, '0');
+    setNimAsistenBaru(`2406012114${nextSeq}`);
     setPeranLabBaru('Pengampu Laboratorium Komputasi');
     setModalTambahAsistenVisible(true);
   };
@@ -290,15 +297,18 @@ export default function AsistenMahasiswaScreen() {
       alert('Nama asisten wajib diisi.');
       return;
     }
+    const cleanNim = nimAsistenBaru.trim();
 
     tambahAsisten({
       nama: namaAsistenBaru.trim(),
+      nim: cleanNim || undefined,
       peranLab: peranLabBaru.trim() || 'Pengampu Laboratorium Komputasi',
     });
 
     try {
       await createAsistenUser({
         nama: namaAsistenBaru.trim(),
+        nim: cleanNim || undefined,
         peranLab: peranLabBaru.trim() || 'Pengampu Laboratorium Komputasi',
       });
     } catch (err) {
@@ -308,7 +318,7 @@ export default function AsistenMahasiswaScreen() {
     setModalTambahAsistenVisible(false);
     setFeedbackTitle('Asisten Berhasil Ditambahkan');
     setFeedbackMessage(
-      `Asisten ${namaAsistenBaru.trim()} telah terdaftar sebagai pengampu dan dapat masuk untuk mengelola sesi laboratorium.`
+      `Asisten ${namaAsistenBaru.trim()} (NIM: ${cleanNim || '-'}) telah terdaftar sebagai pengampu dan dapat masuk untuk mengelola sesi laboratorium.`
     );
     setFeedbackVisible(true);
   };
@@ -316,6 +326,7 @@ export default function AsistenMahasiswaScreen() {
   const handleOpenEditAsisten = (item: Asisten) => {
     setSelectedAsisten(item);
     setEditNamaAsisten(item.nama);
+    setEditNimAsisten(item.nim || '');
     setEditPeranLab(item.peranLab || 'Pengampu Laboratorium Komputasi');
     setModalEditAsistenVisible(true);
   };
@@ -326,15 +337,18 @@ export default function AsistenMahasiswaScreen() {
       alert('Nama asisten wajib diisi.');
       return;
     }
+    const cleanNim = editNimAsisten.trim();
 
     editAsisten(selectedAsisten.id, {
       nama: editNamaAsisten.trim(),
+      nim: cleanNim || undefined,
       peranLab: editPeranLab.trim(),
     });
 
     try {
       await updateAsistenUser(selectedAsisten.id, {
         nama: editNamaAsisten.trim(),
+        nim: cleanNim || undefined,
         peranLab: editPeranLab.trim(),
       });
     } catch (err) {
@@ -655,6 +669,8 @@ export default function AsistenMahasiswaScreen() {
                 </View>
               </View>
 
+              <Text style={styles.userMeta}>NIM: {item.nim || '-'}</Text>
+
               <Text style={styles.userMeta}>
                 {item.peranLab || 'Pengampu Laboratorium Komputasi'}
               </Text>
@@ -974,6 +990,19 @@ export default function AsistenMahasiswaScreen() {
               </View>
 
               <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>NIM Asisten (14 Digit)</Text>
+                <TextInput
+                  style={styles.formInput}
+                  placeholder="Mis. 24060121140003"
+                  placeholderTextColor="#94A3B8"
+                  value={nimAsistenBaru}
+                  onChangeText={setNimAsistenBaru}
+                  keyboardType="numeric"
+                  maxLength={14}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Tugas / Penugasan Lab</Text>
                 <TextInput
                   style={styles.formInput}
@@ -1030,6 +1059,19 @@ export default function AsistenMahasiswaScreen() {
                   style={styles.formInput}
                   value={editNamaAsisten}
                   onChangeText={setEditNamaAsisten}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>NIM Asisten (14 Digit)</Text>
+                <TextInput
+                  style={styles.formInput}
+                  placeholder="Mis. 24060121140003"
+                  placeholderTextColor="#94A3B8"
+                  value={editNimAsisten}
+                  onChangeText={setEditNimAsisten}
+                  keyboardType="numeric"
+                  maxLength={14}
                 />
               </View>
 

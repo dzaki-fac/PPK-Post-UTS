@@ -251,15 +251,22 @@ export function subscribeAsistenUsers(
  */
 export async function createAsistenUser(data: {
   nama: string;
+  nim?: string;
   peranLab?: string;
   email?: string;
 }): Promise<string> {
-  const customId = `ast-${Date.now()}`;
+  const cleanNim =
+    (data.nim ?? '').trim() ||
+    `240601211${Math.floor(10000 + Math.random() * 90000)}`;
+  const customId = `ast-${cleanNim}`;
   const now = new Date().toISOString();
   const userDoc: UserDocument = {
     uid: customId,
-    email: data.email || `${data.nama.toLowerCase().replace(/[^a-z0-9]/g, '')}@lab.undip.ac.id`,
+    email:
+      data.email ||
+      `${cleanNim}@alumni.undip.ac.id`,
     nama: data.nama.trim(),
+    nim: cleanNim,
     peran: 'asisten',
     peranLab: data.peranLab?.trim() || 'Pengampu Lab Komputasi',
     createdAt: now,
@@ -274,7 +281,7 @@ export async function createAsistenUser(data: {
  */
 export async function updateAsistenUser(
   uid: string,
-  data: Partial<Pick<UserDocument, 'nama' | 'peranLab'>>
+  data: Partial<Pick<UserDocument, 'nama' | 'peranLab' | 'nim'>>
 ): Promise<void> {
   await updateDoc(doc(db, USERS_COLLECTION, uid), {
     ...data,

@@ -76,8 +76,8 @@ export default function RegisterScreen() {
       return;
     }
 
-    if (isPraktikan && !/^\d{14}$/.test(nim)) {
-      setErrorMsg('NIM praktikan wajib 14 digit angka (contoh: 24060122130001).');
+    if (nim && !/^\d{14}$/.test(nim)) {
+      setErrorMsg('NIM wajib 14 digit angka format Undip (contoh: 24060122130001).');
       return;
     }
 
@@ -88,7 +88,7 @@ export default function RegisterScreen() {
         password,
         nama,
         peran,
-        isPraktikan ? nim : undefined,
+        nim || undefined,
         isPraktikan ? kelas : undefined,
         !isPraktikan ? peranLab : undefined
       );
@@ -242,52 +242,51 @@ export default function RegisterScreen() {
                   />
                 </View>
 
-                {isPraktikan ? (
-                  <>
-                    <View style={styles.formGroup}>
-                      <View style={styles.labelRow}>
-                        <Text style={styles.label}>NIM (14 Digit UNDIP)</Text>
-                        <Text style={styles.counterText}>{nim.length}/14 digit</Text>
-                      </View>
-                      <TextInput
-                        style={styles.input}
-                        value={nim}
-                        onChangeText={(t) => setNim(t.replace(/[^0-9]/g, '').slice(0, 14))}
-                        placeholder="24060122130001"
-                        placeholderTextColor="#94A3B8"
-                        keyboardType="number-pad"
-                        maxLength={14}
-                        editable={!submitting && !googleSubmitting}
-                      />
-                    </View>
+                {/* Field NIM: Untuk Praktikan maupun Asisten Lab */}
+                <View style={styles.formGroup}>
+                  <View style={styles.labelRow}>
+                    <Text style={styles.label}>NIM (14 Digit UNDIP)</Text>
+                    <Text style={styles.counterText}>{nim.length}/14 digit</Text>
+                  </View>
+                  <TextInput
+                    style={styles.input}
+                    value={nim}
+                    onChangeText={(t) => setNim(t.replace(/[^0-9]/g, '').slice(0, 14))}
+                    placeholder={isPraktikan ? '24060124120026' : '24060121120001'}
+                    placeholderTextColor="#94A3B8"
+                    keyboardType="number-pad"
+                    maxLength={14}
+                    editable={!submitting && !googleSubmitting}
+                  />
+                </View>
 
-                    <View style={styles.formGroup}>
-                      <Text style={styles.label}>Kelas Praktikum</Text>
-                      <View style={styles.optionRow}>
-                        {(['A', 'B'] as const).map((k) => {
-                          const active = kelas === k;
-                          return (
-                            <Pressable
-                              key={k}
-                              style={({ pressed }) => [
-                                styles.kelasBtn,
-                                active && styles.kelasBtnActive,
-                                pressed && styles.pressed,
-                              ]}
-                              onPress={() => setKelas(k)}>
-                              <Text
-                                style={[
-                                  styles.kelasBtnText,
-                                  active && styles.textPraktikan,
-                                ]}>
-                                Kelas {k}
-                              </Text>
-                            </Pressable>
-                          );
-                        })}
-                      </View>
+                {isPraktikan ? (
+                  <View style={styles.formGroup}>
+                    <Text style={styles.label}>Kelas Praktikum</Text>
+                    <View style={styles.optionRow}>
+                      {(['A', 'B'] as const).map((k) => {
+                        const active = kelas === k;
+                        return (
+                          <Pressable
+                            key={k}
+                            style={({ pressed }) => [
+                              styles.kelasBtn,
+                              active && styles.kelasBtnActive,
+                              pressed && styles.pressed,
+                            ]}
+                            onPress={() => setKelas(k)}>
+                            <Text
+                              style={[
+                                styles.kelasBtnText,
+                                active && styles.textPraktikan,
+                              ]}>
+                              Kelas {k}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
                     </View>
-                  </>
+                  </View>
                 ) : (
                   <View style={styles.formGroup}>
                     <Text style={styles.label}>Peran Laboratorium (Opsional)</Text>

@@ -114,18 +114,21 @@ function validateProfileFields(
     throw new Error('Nama lengkap wajib diisi minimal 2 karakter.');
   }
 
+  // Baik praktikan maupun asisten keduanya memiliki NIM mahasiswa
+  let cleanNim = (nim ?? '').replace(/\s+/g, '');
+  if (!cleanNim) {
+    const prefix = peran === 'asisten' ? '240601211' : '240601241';
+    cleanNim = `${prefix}${Math.floor(10000 + Math.random() * 90000)}`;
+  } else if (!NIM_REGEX.test(cleanNim)) {
+    throw new Error('NIM wajib berisi 14 digit angka format Undip (contoh: 24060122130001).');
+  }
+
   if (peran === 'praktikan') {
-    let cleanNim = (nim ?? '').replace(/\s+/g, '');
-    if (!cleanNim) {
-      cleanNim = `240601241${Math.floor(10000 + Math.random() * 90000)}`;
-    } else if (!NIM_REGEX.test(cleanNim)) {
-      throw new Error('NIM praktikan wajib berisi 14 digit angka (contoh: 24060122130001).');
-    }
     const cleanKelas = (kelas === 'B' ? 'B' : 'A') as 'A' | 'B';
     return { cleanNama, cleanNim, cleanKelas };
   }
 
-  return { cleanNama };
+  return { cleanNama, cleanNim };
 }
 
 function buildUserDocument(
@@ -143,12 +146,12 @@ function buildUserDocument(
     email: email.trim().toLowerCase(),
     nama: nama.trim(),
     peran,
+    nim, // Disimpan untuk semua peran (praktikan & asisten)
     createdAt: now,
     updatedAt: now,
   };
 
   if (peran === 'praktikan') {
-    base.nim = nim;
     base.kelas = kelas;
   } else {
     base.peranLab = peranLab?.trim() || 'Pengampu Lab Komputasi';

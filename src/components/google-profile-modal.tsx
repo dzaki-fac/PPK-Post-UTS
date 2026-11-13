@@ -61,7 +61,7 @@ function GoogleProfileModalContent({
       const profile = await completeGoogleProfile(
         nama,
         peran,
-        isPraktikan ? nim : undefined,
+        nim,
         isPraktikan ? kelas : undefined,
         !isPraktikan ? peranLab : undefined
       );
@@ -141,51 +141,50 @@ function GoogleProfileModalContent({
               />
             </View>
 
-            {isPraktikan ? (
-              <>
-                <View style={styles.fieldGroup}>
-                  <View style={styles.labelRow}>
-                    <Text style={styles.label}>NIM (14 Digit UNDIP)</Text>
-                    <Text style={styles.counterText}>{nim.length}/14 digit</Text>
-                  </View>
-                  <TextInput
-                    style={styles.input}
-                    value={nim}
-                    onChangeText={(t) => setNim(t.replace(/[^0-9]/g, '').slice(0, 14))}
-                    placeholder="24060122130001"
-                    placeholderTextColor="#94A3B8"
-                    keyboardType="number-pad"
-                    maxLength={14}
-                  />
-                </View>
+            {/* Field NIM: Berlaku untuk Praktikan maupun Asisten Lab */}
+            <View style={styles.fieldGroup}>
+              <View style={styles.labelRow}>
+                <Text style={styles.label}>NIM (14 Digit UNDIP)</Text>
+                <Text style={styles.counterText}>{nim.length}/14 digit</Text>
+              </View>
+              <TextInput
+                style={styles.input}
+                value={nim}
+                onChangeText={(t) => setNim(t.replace(/[^0-9]/g, '').slice(0, 14))}
+                placeholder={isPraktikan ? '24060124120026' : '24060121120001'}
+                placeholderTextColor="#94A3B8"
+                keyboardType="number-pad"
+                maxLength={14}
+              />
+            </View>
 
-                <View style={styles.fieldGroup}>
-                  <Text style={styles.label}>Kelas Praktikum</Text>
-                  <View style={styles.roleRow}>
-                    {(['A', 'B'] as const).map((k) => {
-                      const active = kelas === k;
-                      return (
-                        <Pressable
-                          key={k}
-                          style={({ pressed }) => [
-                            styles.kelasBtn,
-                            active && styles.kelasBtnActive,
-                            pressed && styles.pressed,
-                          ]}
-                          onPress={() => setKelas(k)}>
-                          <Text
-                            style={[
-                              styles.kelasBtnText,
-                              active && styles.kelasBtnTextActive,
-                            ]}>
-                            Kelas {k}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
+            {isPraktikan ? (
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Kelas Praktikum</Text>
+                <View style={styles.roleRow}>
+                  {(['A', 'B'] as const).map((k) => {
+                    const active = kelas === k;
+                    return (
+                      <Pressable
+                        key={k}
+                        style={({ pressed }) => [
+                          styles.kelasBtn,
+                          active && styles.kelasBtnActive,
+                          pressed && styles.pressed,
+                        ]}
+                        onPress={() => setKelas(k)}>
+                        <Text
+                          style={[
+                            styles.kelasBtnText,
+                            active && styles.kelasBtnTextActive,
+                          ]}>
+                          Kelas {k}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
                 </View>
-              </>
+              </View>
             ) : (
               <View style={styles.fieldGroup}>
                 <Text style={styles.label}>Peran Laboratorium (Opsional)</Text>

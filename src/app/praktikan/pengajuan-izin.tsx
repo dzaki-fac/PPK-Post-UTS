@@ -201,22 +201,7 @@ export default function PengajuanIzinScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
         <View style={styles.container}>
-          {/* 1. Breadcrumb Navigasi Sesuai DESIGN.md */}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Kembali ke Jadwal Praktikum"
-            onPress={() => {
-              if (router.canGoBack()) {
-                router.back();
-              } else {
-                router.replace('/praktikan/jadwal');
-              }
-            }}
-            style={({ pressed }) => [styles.breadcrumbPill, pressed && styles.pressed]}>
-            <Text style={styles.breadcrumbText}>← Kembali ke Jadwal Praktikum</Text>
-          </Pressable>
-
-          {/* 2. Header Layar */}
+          {/* Header Layar */}
           <View style={styles.header}>
             <View style={styles.eyebrowRow}>
               <View style={styles.eyebrowBadge}>
@@ -480,20 +465,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Platform.OS === 'web' ? 20 : 14,
     paddingTop: 16,
     gap: 16,
-  },
-  breadcrumbPill: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-  },
-  breadcrumbText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#334155',
   },
   header: {
     gap: 8,

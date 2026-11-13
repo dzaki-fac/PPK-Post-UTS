@@ -199,15 +199,6 @@ export default function PraktikanDetailSesiScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.contentWrap}>
-          {/* Breadcrumb Back Button */}
-          <Pressable
-            style={({ pressed }) => [styles.backBreadcrumb, pressed && styles.btnPressed]}
-            onPress={handleBack}
-            accessibilityRole="button"
-            accessibilityLabel="Kembali ke Jadwal Praktikum">
-            <Text style={styles.backBreadcrumbText}>← Kembali ke Jadwal Praktikum</Text>
-          </Pressable>
-
           {/* Page Heading */}
           <View style={styles.pageHeader}>
             <Text style={styles.pageTitle}>Detail Sesi Praktikum</Text>
@@ -698,23 +689,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingVertical: 20,
     paddingBottom: 48,
-  },
-  backBreadcrumb: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 4,
-  },
-  backBreadcrumbText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#334155',
   },
   btnPressed: {
     opacity: 0.82,

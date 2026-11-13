@@ -32,8 +32,8 @@ export default function PraktikanLayout() {
     return <Redirect href={'/asisten/jadwal' as Href} />;
   }
 
-  const bottomPadding = Platform.OS === 'web' ? 8 : Math.max(insets.bottom, 12);
-  const tabHeight = Platform.OS === 'web' ? 58 : 58 + bottomPadding;
+  const bottomPadding = Platform.OS === 'web' ? 8 : Math.max(insets.bottom, 14) + 8;
+  const tabHeight = Platform.OS === 'web' ? 58 : 56 + bottomPadding;
 
   return (
     <View style={styles.container}>
@@ -48,19 +48,21 @@ export default function PraktikanLayout() {
             {
               height: tabHeight,
               paddingBottom: bottomPadding,
-              paddingTop: 8,
+              paddingTop: 6,
             },
             Platform.OS === 'web' && styles.tabBarWeb,
           ],
           tabBarItemStyle: {
             justifyContent: 'center',
             alignItems: 'center',
-            paddingVertical: 4,
+            paddingTop: 3,
+            paddingBottom: 2,
           },
           tabBarLabelStyle: {
-            fontSize: 11.5,
+            fontSize: 10.5,
             fontWeight: '700',
-            marginTop: 3,
+            marginTop: 1.5,
+            marginBottom: Platform.OS === 'android' ? 2 : 0,
           },
         }}>
         <Tabs.Screen

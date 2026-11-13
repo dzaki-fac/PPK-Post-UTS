@@ -303,15 +303,6 @@ export default function DetailSesiAsistenScreen() {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.contentWrap}>
-          {/* Breadcrumb Back Button */}
-          <Pressable
-            style={({ pressed }) => [styles.backBreadcrumb, pressed && styles.btnPressed]}
-            onPress={handleBack}
-            accessibilityRole="button"
-            accessibilityLabel="Kembali ke Jadwal Praktikum">
-            <Text style={styles.backBreadcrumbText}>← Kembali ke Jadwal Praktikum</Text>
-          </Pressable>
-
           {/* Page Heading */}
           <View style={styles.pageHeader}>
             <Text style={styles.pageTitle}>Kelola Sesi Praktikum</Text>
@@ -844,23 +835,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
-  backBreadcrumb: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 4,
-  },
-  backBreadcrumbText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#334155',
-  },
   btnPressed: {
     opacity: 0.82,
     transform: [{ scale: 0.98 }],
@@ -1182,13 +1156,14 @@ const styles = StyleSheet.create({
   },
   filterTabsRow: {
     flexDirection: 'row',
-    gap: 8,
+    flexWrap: 'wrap',
+    gap: 6,
     marginBottom: 12,
   },
   filterTab: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
     backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#E2E8F0',

@@ -298,14 +298,15 @@ export async function createPraktikanUser(data: {
   kelas: 'A' | 'B';
   email?: string;
 }): Promise<string> {
-  const customId = `prak-${Date.now()}`;
+  const cleanNim = data.nim.trim();
+  const customId = `prak-${cleanNim}`;
   const now = new Date().toISOString();
   const userDoc: UserDocument = {
     uid: customId,
-    email: data.email || `${data.nim}@alumni.undip.ac.id`,
+    email: data.email || `${cleanNim}@alumni.undip.ac.id`,
     nama: data.nama.trim(),
     peran: 'praktikan',
-    nim: data.nim.trim(),
+    nim: cleanNim,
     kelas: data.kelas,
     createdAt: now,
     updatedAt: now,

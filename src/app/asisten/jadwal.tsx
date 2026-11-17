@@ -17,7 +17,13 @@ import { EmptyState } from '@/components/empty-state';
 import { SesiCard } from '@/components/sesi-card';
 import { useAuth } from '@/context/auth-context';
 import { subscribeAllAttendances } from '@/services/attendance-service';
-import { createSession, subscribeSessions } from '@/services/session-service';
+import { LeaveRequestDocument, subscribeLeaveRequests } from '@/services/leave-service';
+import {
+  createSession,
+  isSessionExpired,
+  subscribeSessions,
+  updateSessionStatus,
+} from '@/services/session-service';
 import { AttendanceDocument, SessionDocument, SessionStatus } from '@/types/praktikum';
 
 type FilterType = 'semua' | SessionStatus;
@@ -26,6 +32,7 @@ export default function JadwalAsistenScreen() {
   const { userDoc } = useAuth();
   const [sesiList, setSesiList] = useState<SessionDocument[]>([]);
   const [attendances, setAttendances] = useState<AttendanceDocument[]>([]);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequestDocument[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [filter, setFilter] = useState<FilterType>('semua');
 
@@ -56,11 +63,28 @@ export default function JadwalAsistenScreen() {
       setAttendances(items);
     });
 
+    const unsubLeaves = subscribeLeaveRequests((items) => {
+      setLeaveRequests(items);
+    });
+
     return () => {
       unsubSessions();
       unsubAttendances();
+      unsubLeaves();
     };
   }, []);
+
+  // Pemeriksaan otomatis berkala: tutup sesi yang melewati durasi 2 jam atau waktu praktikum
+  useEffect(() => {
+    const timer = setInterval(() => {
+      sesiList.forEach((s) => {
+        if (s.status === 'dibuka' && isSessionExpired(s)) {
+          updateSessionStatus(s.id, 'ditutup').catch(() => {});
+        }
+      });
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [sesiList]);
 
   const filteredSesiList = useMemo(() => {
     if (filter === 'semua') return sesiList;
@@ -71,6 +95,10 @@ export default function JadwalAsistenScreen() {
   const totalDibuka = sesiList.filter((s) => s.status === 'dibuka').length;
   const totalPresensiMasuk = attendances.length;
   const totalDitutup = sesiList.filter((s) => s.status === 'ditutup').length;
+  const pendingLeaves = useMemo(
+    () => leaveRequests.filter((r) => r.status === 'menunggu').length,
+    [leaveRequests]
+  );
 
   const handleCardPress = (sesi: SessionDocument) => {
     router.push({
@@ -120,12 +148,16 @@ export default function JadwalAsistenScreen() {
 
   const renderItem = ({ item }: { item: SessionDocument }) => {
     const totalHadir = attendances.filter((p) => p.sessionId === item.id).length;
+    const totalIzin = leaveRequests.filter(
+      (l) => l.sessionId === item.id && (l.status === 'disetujui' || l.status === 'menunggu')
+    ).length;
 
     return (
       <SesiCard
         sesi={item}
         role="asisten"
         totalHadir={totalHadir}
+        totalIzin={totalIzin}
         onPress={() => handleCardPress(item)}
       />
     );
@@ -139,7 +171,6 @@ export default function JadwalAsistenScreen() {
           <Text style={styles.eyebrowText}>ASISTEN LABORATORIUM</Text>
         </View>
         <View style={styles.liveTag}>
-          <View style={styles.liveDot} />
           <Text style={styles.liveTagText}>Kontrol Real-Time</Text>
         </View>
       </View>
@@ -178,6 +209,28 @@ export default function JadwalAsistenScreen() {
           <Text style={styles.metricDesc}>Mahasiswa Hadir</Text>
         </View>
 
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Buka Panel Moderasi Izin"
+          onPress={() => router.push('/asisten/moderasi-izin')}
+          style={({ pressed }) => [
+            styles.metricCard,
+            pendingLeaves > 0 && styles.metricCardIzin,
+            pressed && styles.chipPressed,
+          ]}>
+          <Text
+            style={[
+              styles.metricVal,
+              { color: pendingLeaves > 0 ? '#D97706' : '#64748B' },
+            ]}>
+            {pendingLeaves}
+          </Text>
+          <Text style={styles.metricLbl}>Izin Menunggu</Text>
+          <Text style={styles.metricDesc}>
+            {pendingLeaves > 0 ? 'Perlu Diverifikasi →' : 'Semua Ditinjau'}
+          </Text>
+        </Pressable>
+
         <View style={styles.metricCard}>
           <Text style={[styles.metricVal, { color: '#64748B' }]}>{totalDitutup}</Text>
           <Text style={styles.metricLbl}>Sesi Ditutup</Text>
@@ -185,10 +238,42 @@ export default function JadwalAsistenScreen() {
         </View>
       </View>
 
+      {/* Banner Permohonan Izin Menunggu Keputusan */}
+      {pendingLeaves > 0 ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Buka Panel Moderasi Izin Praktikum"
+          onPress={() => router.push('/asisten/moderasi-izin')}
+          style={({ pressed }) => [
+            styles.pendingLeaveBanner,
+            pressed && styles.chipPressed,
+          ]}>
+          <View style={styles.pendingLeaveBadge}>
+            <Text style={styles.pendingLeaveBadgeText}>
+              MODERASI IZIN ({pendingLeaves})
+            </Text>
+          </View>
+          <View style={styles.pendingLeaveContent}>
+            <Text style={styles.pendingLeaveTitle}>
+              Terdapat {pendingLeaves} pengajuan izin praktikan menunggu keputusan Anda
+            </Text>
+            <Text style={styles.pendingLeaveSubtitle}>
+              Rekomendasi kategori dari Model AI Pengajar telah tersedia. Klik untuk menyetujui atau menolak.
+            </Text>
+          </View>
+          <View style={styles.pendingLeaveActionBtn}>
+            <Text style={styles.pendingLeaveActionText}>Tinjau Sekarang →</Text>
+          </View>
+        </Pressable>
+      ) : null}
+
       {/* Filter Section */}
       <View style={styles.filterSection}>
         <Text style={styles.filterTitle}>Filter Berdasarkan Status Sesi:</Text>
-        <View style={styles.filterRow}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterRow}>
           <FilterChip
             label="Semua"
             active={filter === 'semua'}
@@ -216,7 +301,7 @@ export default function JadwalAsistenScreen() {
             variant="ditutup"
             onPress={() => setFilter('ditutup')}
           />
-        </View>
+        </ScrollView>
       </View>
     </View>
   );
@@ -421,7 +506,6 @@ function FilterChip({
   label,
   active,
   count,
-  variant,
   onPress,
 }: {
   label: string;
@@ -440,21 +524,6 @@ function FilterChip({
     return styles.chipTextInactive;
   };
 
-  const getDotColor = () => {
-    switch (variant) {
-      case 'dibuka':
-        return '#16A34A';
-      case 'belum-dibuka':
-        return '#EAB308';
-      case 'ditutup':
-        return '#DC2626';
-      default:
-        return undefined;
-    }
-  };
-
-  const dotColor = getDotColor();
-
   return (
     <Pressable
       style={({ pressed }) => [
@@ -463,9 +532,6 @@ function FilterChip({
         pressed && styles.chipPressed,
       ]}
       onPress={onPress}>
-      {dotColor ? (
-        <View style={[styles.chipDot, { backgroundColor: dotColor }]} />
-      ) : null}
       <Text style={[styles.chipText, getTextStyle()]}>{label}</Text>
       {count !== undefined ? (
         <View style={[styles.countBadge, active && styles.countBadgeActive]}>
@@ -526,12 +592,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 16,
   },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#16A34A',
-  },
   liveTagText: {
     fontSize: 11,
     fontWeight: '700',
@@ -577,6 +637,61 @@ const styles = StyleSheet.create({
     borderColor: '#99F6E4',
     backgroundColor: '#F0FDFA',
   },
+  metricCardIzin: {
+    borderColor: '#FDE68A',
+    backgroundColor: '#FFFBEB',
+  },
+  pendingLeaveBanner: {
+    backgroundColor: '#FFFBEB',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    padding: 14,
+    gap: 8,
+    marginVertical: 4,
+  },
+  pendingLeaveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 6,
+  },
+  pendingLeaveBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#B45309',
+    letterSpacing: 0.3,
+  },
+  pendingLeaveContent: {
+    gap: 2,
+  },
+  pendingLeaveTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#92400E',
+  },
+  pendingLeaveSubtitle: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#78350F',
+  },
+  pendingLeaveActionBtn: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  pendingLeaveActionText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
   metricVal: {
     fontSize: 24,
     fontWeight: '900',
@@ -603,15 +718,16 @@ const styles = StyleSheet.create({
   },
   filterRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 2,
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5.5,
+    borderRadius: 16,
     borderWidth: 1,
   },
   chipInactive: {
@@ -625,14 +741,8 @@ const styles = StyleSheet.create({
   chipPressed: {
     opacity: 0.85,
   },
-  chipDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 6,
-  },
   chipText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
   },
   chipTextInactive: {

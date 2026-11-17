@@ -18,7 +18,7 @@ export function EmptyState({
   return (
     <View style={styles.container}>
       <View style={styles.indicatorBox}>
-        <View style={styles.indicatorInnerDot} />
+        <Text style={styles.indicatorText}>Ø</Text>
       </View>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.message}>{message}</Text>
@@ -52,11 +52,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#CBD5E1',
   },
-  indicatorInnerDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#94A3B8',
+  indicatorText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#94A3B8',
   },
   title: {
     fontSize: 17,

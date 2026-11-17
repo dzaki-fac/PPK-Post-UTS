@@ -14,8 +14,8 @@ export const DUMMY_PRAKTIKAN: Praktikan[] = [
 ];
 
 export const DUMMY_ASISTEN: Asisten[] = [
-  { id: 'ast-1', nama: 'Kak Dzaki M.' },
-  { id: 'ast-2', nama: 'Kak Akmal R.' },
+  { id: 'ast-1', nama: 'Kak Dzaki M.', nim: '24060121120001' },
+  { id: 'ast-2', nama: 'Kak Akmal R.', nim: '24060121120002' },
 ];
 
 export const DUMMY_SESI: Sesi[] = [

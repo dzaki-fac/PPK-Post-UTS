@@ -45,6 +45,70 @@ export function generateSessionCode(): string {
   return String(Math.floor(1000 + Math.random() * 9000));
 }
 
+/**
+ * Memeriksa apakah sesi praktikum yang berstatus 'dibuka' telah melewati batas waktu 2 jam atau
+ * jam praktikum telah usai sehingga harus ditutup secara otomatis.
+ */
+export function isSessionExpired(session: {
+  status?: string;
+  openedAt?: string;
+  tanggal?: string;
+  waktuMulai?: string;
+  waktuSelesai?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}): boolean {
+  if (session.status !== 'dibuka') {
+    return false;
+  }
+
+  const now = Date.now();
+  const TWO_HOURS_MS = 2 * 60 * 60 * 1000; // 2 jam praktikum = 7.200.000 ms
+
+  // 1. Cek durasi sejak sesi dibuka (openedAt)
+  if (session.openedAt) {
+    const openedTime = new Date(session.openedAt).getTime();
+    if (!isNaN(openedTime) && now - openedTime >= TWO_HOURS_MS) {
+      return true;
+    }
+  }
+
+  // 2. Cek apakah jam selesai praktikum (waktuSelesai) telah terlampaui
+  if (session.waktuSelesai) {
+    try {
+      const cleanTime = session.waktuSelesai.replace('.', ':').trim();
+      const parts = cleanTime.split(':');
+      if (parts.length >= 2) {
+        const endHour = parseInt(parts[0], 10);
+        const endMin = parseInt(parts[1], 10);
+
+        if (!isNaN(endHour) && !isNaN(endMin)) {
+          if (session.tanggal) {
+            const parsedDate = new Date(session.tanggal);
+            if (!isNaN(parsedDate.getTime())) {
+              parsedDate.setHours(endHour, endMin, 0, 0);
+              if (now >= parsedDate.getTime()) {
+                return true;
+              }
+            }
+          }
+        }
+      }
+    } catch {}
+  }
+
+  // 3. Fallback jika dibuka tanpa openedAt: periksa updatedAt/createdAt
+  const refTime = session.openedAt || session.updatedAt || session.createdAt;
+  if (refTime) {
+    const t = new Date(refTime).getTime();
+    if (!isNaN(t) && now - t >= TWO_HOURS_MS) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function mapSessionSnapshot(id: string, raw: Record<string, unknown>): SessionDocument {
   return {
     id,
@@ -68,6 +132,7 @@ function mapSessionSnapshot(id: string, raw: Record<string, unknown>): SessionDo
 
 /**
  * Listener real-time seluruh dokumen pada koleksi /sessions.
+ * Otomatis menutup sesi yang telah berjalan lebih dari 2 jam.
  */
 export function subscribeSessions(
   onData: (sessions: SessionDocument[]) => void,
@@ -78,9 +143,15 @@ export function subscribeSessions(
   return onSnapshot(
     sessionsRef,
     (snapshot) => {
-      const items = snapshot.docs.map((d) =>
-        mapSessionSnapshot(d.id, d.data() as Record<string, unknown>)
-      );
+      const items = snapshot.docs.map((d) => {
+        const item = mapSessionSnapshot(d.id, d.data() as Record<string, unknown>);
+        if (item.status === 'dibuka' && isSessionExpired(item)) {
+          // Tutup sesi otomatis di Cloud Firestore
+          updateSessionStatus(item.id, 'ditutup').catch(() => {});
+          item.status = 'ditutup';
+        }
+        return item;
+      });
       items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
       onData(items);
     },
@@ -92,6 +163,7 @@ export function subscribeSessions(
 
 /**
  * Listener real-time untuk satu dokumen sesi pada /sessions/{sessionId}.
+ * Otomatis menutup sesi jika telah berjalan lebih dari 2 jam.
  */
 export function subscribeSessionById(
   sessionId: string,
@@ -107,7 +179,12 @@ export function subscribeSessionById(
         onData(null);
         return;
       }
-      onData(mapSessionSnapshot(snapshot.id, snapshot.data() as Record<string, unknown>));
+      const item = mapSessionSnapshot(snapshot.id, snapshot.data() as Record<string, unknown>);
+      if (item.status === 'dibuka' && isSessionExpired(item)) {
+        updateSessionStatus(item.id, 'ditutup').catch(() => {});
+        item.status = 'ditutup';
+      }
+      onData(item);
     },
     (err) => {
       if (onError) onError(err);

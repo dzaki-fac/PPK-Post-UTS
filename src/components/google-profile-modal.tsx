@@ -34,17 +34,25 @@ function GoogleProfileModalContent({
   onSuccess,
   onCancel,
 }: Omit<GoogleProfileModalProps, 'visible'>) {
-  const { user, completeGoogleProfile } = useAuth();
+  const { user, userDoc, completeGoogleProfile } = useAuth();
 
-  const [nama, setNama] = useState(user?.displayName ?? '');
-  const [peran, setPeran] = useState<UserRole>('praktikan');
-  const [nim, setNim] = useState('');
-  const [kelas, setKelas] = useState<'A' | 'B'>('A');
-  const [peranLab, setPeranLab] = useState('Pengampu Lab Komputasi');
+  const [nama, setNama] = useState(userDoc?.nama || user?.displayName || '');
+  const [peran, setPeran] = useState<UserRole>(userDoc?.peran || 'praktikan');
+  const [nim, setNim] = useState(userDoc?.nim || '');
+  const [kelas, setKelas] = useState<'A' | 'B'>((userDoc?.kelas as 'A' | 'B') || 'A');
+  const [peranLab, setPeranLab] = useState(userDoc?.peranLab || 'Pengampu Lab Komputasi');
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const isPraktikan = peran === 'praktikan';
+
+  const handleSkipOrCancel = () => {
+    if (userDoc) {
+      onSuccess(userDoc);
+    } else {
+      onCancel();
+    }
+  };
 
   const handleSubmit = async () => {
     setErrorMsg(null);
@@ -53,7 +61,7 @@ function GoogleProfileModalContent({
       const profile = await completeGoogleProfile(
         nama,
         peran,
-        isPraktikan ? nim : undefined,
+        nim,
         isPraktikan ? kelas : undefined,
         !isPraktikan ? peranLab : undefined
       );
@@ -66,16 +74,16 @@ function GoogleProfileModalContent({
   };
 
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onCancel}>
+    <Modal visible transparent animationType="fade" onRequestClose={handleSkipOrCancel}>
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <View style={styles.header}>
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>● LENGKAPI PROFIL</Text>
+              <Text style={styles.badgeText}>LENGKAPI PROFIL</Text>
             </View>
             <Text style={styles.title}>Konfirmasi Identitas Portal</Text>
             <Text style={styles.subtitle}>
-              Akun Google ({user?.email ?? '-'}) baru pertama kali masuk. Pilih peran dan lengkapi data akademik Anda.
+              Akun Google ({user?.email ?? '-'}) terhubung. Silakan sesuaikan peran dan informasi akademik Anda.
             </Text>
           </View>
 
@@ -101,7 +109,7 @@ function GoogleProfileModalContent({
                       styles.roleBtnText,
                       isPraktikan && styles.roleBtnTextPraktikan,
                     ]}>
-                    ● Praktikan
+                    Praktikan
                   </Text>
                 </Pressable>
                 <Pressable
@@ -116,7 +124,7 @@ function GoogleProfileModalContent({
                       styles.roleBtnText,
                       !isPraktikan && styles.roleBtnTextAsisten,
                     ]}>
-                    ● Asisten Lab
+                    Asisten Lab
                   </Text>
                 </Pressable>
               </View>
@@ -133,51 +141,50 @@ function GoogleProfileModalContent({
               />
             </View>
 
-            {isPraktikan ? (
-              <>
-                <View style={styles.fieldGroup}>
-                  <View style={styles.labelRow}>
-                    <Text style={styles.label}>NIM (14 Digit UNDIP)</Text>
-                    <Text style={styles.counterText}>{nim.length}/14 digit</Text>
-                  </View>
-                  <TextInput
-                    style={styles.input}
-                    value={nim}
-                    onChangeText={(t) => setNim(t.replace(/[^0-9]/g, '').slice(0, 14))}
-                    placeholder="24060122130001"
-                    placeholderTextColor="#94A3B8"
-                    keyboardType="number-pad"
-                    maxLength={14}
-                  />
-                </View>
+            {/* Field NIM: Berlaku untuk Praktikan maupun Asisten Lab */}
+            <View style={styles.fieldGroup}>
+              <View style={styles.labelRow}>
+                <Text style={styles.label}>NIM (14 Digit UNDIP)</Text>
+                <Text style={styles.counterText}>{nim.length}/14 digit</Text>
+              </View>
+              <TextInput
+                style={styles.input}
+                value={nim}
+                onChangeText={(t) => setNim(t.replace(/[^0-9]/g, '').slice(0, 14))}
+                placeholder={isPraktikan ? '24060124120026' : '24060121120001'}
+                placeholderTextColor="#94A3B8"
+                keyboardType="number-pad"
+                maxLength={14}
+              />
+            </View>
 
-                <View style={styles.fieldGroup}>
-                  <Text style={styles.label}>Kelas Praktikum</Text>
-                  <View style={styles.roleRow}>
-                    {(['A', 'B'] as const).map((k) => {
-                      const active = kelas === k;
-                      return (
-                        <Pressable
-                          key={k}
-                          style={({ pressed }) => [
-                            styles.kelasBtn,
-                            active && styles.kelasBtnActive,
-                            pressed && styles.pressed,
-                          ]}
-                          onPress={() => setKelas(k)}>
-                          <Text
-                            style={[
-                              styles.kelasBtnText,
-                              active && styles.kelasBtnTextActive,
-                            ]}>
-                            Kelas {k}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
+            {isPraktikan ? (
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Kelas Praktikum</Text>
+                <View style={styles.roleRow}>
+                  {(['A', 'B'] as const).map((k) => {
+                    const active = kelas === k;
+                    return (
+                      <Pressable
+                        key={k}
+                        style={({ pressed }) => [
+                          styles.kelasBtn,
+                          active && styles.kelasBtnActive,
+                          pressed && styles.pressed,
+                        ]}
+                        onPress={() => setKelas(k)}>
+                        <Text
+                          style={[
+                            styles.kelasBtnText,
+                            active && styles.kelasBtnTextActive,
+                          ]}>
+                          Kelas {k}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
                 </View>
-              </>
+              </View>
             ) : (
               <View style={styles.fieldGroup}>
                 <Text style={styles.label}>Peran Laboratorium (Opsional)</Text>
@@ -195,9 +202,9 @@ function GoogleProfileModalContent({
           <View style={styles.footer}>
             <Pressable
               style={({ pressed }) => [styles.cancelBtn, pressed && styles.pressed]}
-              onPress={onCancel}
+              onPress={handleSkipOrCancel}
               disabled={submitting}>
-              <Text style={styles.cancelBtnText}>Batal</Text>
+              <Text style={styles.cancelBtnText}>{userDoc ? 'Lewati' : 'Batal'}</Text>
             </Pressable>
             <Pressable
               style={({ pressed }) => [

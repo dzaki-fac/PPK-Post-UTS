@@ -12,30 +12,26 @@ export interface AICategoryBadgeProps {
 
 const CATEGORY_THEMES: Record<
   string,
-  { bg: string; text: string; dot: string; border: string }
+  { bg: string; text: string; border: string }
 > = {
   Sakit: {
     bg: '#FEE2E2',
     text: '#DC2626',
-    dot: '#DC2626',
     border: '#FECACA',
   },
   Akademik: {
     bg: '#DBEAFE',
     text: '#2563EB',
-    dot: '#2563EB',
     border: '#BFDBFE',
   },
   Keluarga: {
     bg: '#F3E8FF',
     text: '#7C3AED',
-    dot: '#7C3AED',
     border: '#E9D5FF',
   },
   Lainnya: {
     bg: '#F1F5F9',
     text: '#475569',
-    dot: '#64748B',
     border: '#E2E8F0',
   },
 };
@@ -70,17 +66,6 @@ export function AICategoryBadge({
       ]}
       accessibilityRole="text"
       accessibilityLabel={`Rekomendasi AI: Kategori ${normalizedCategory}, keyakinan ${percent} persen`}>
-      <View
-        style={[
-          styles.dot,
-          {
-            backgroundColor: theme.dot,
-            width: isSmall ? 5 : 6,
-            height: isSmall ? 5 : 6,
-            borderRadius: isSmall ? 2.5 : 3,
-          },
-        ]}
-      />
       <Text
         style={[
           styles.text,
@@ -103,9 +88,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 6,
     alignSelf: 'flex-start',
-  },
-  dot: {
-    // Bulat geometris rapi tanpa emoji
   },
   text: {
     fontWeight: '800',

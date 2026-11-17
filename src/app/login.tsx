@@ -88,7 +88,11 @@ export default function LoginScreen() {
   };
 
   const handleCancelProfile = async () => {
-    await logout();
+    if (userDoc) {
+      navigateByProfile(userDoc);
+    } else {
+      await logout();
+    }
   };
 
   const firebaseReady = isFirebaseConfigured();
@@ -111,7 +115,7 @@ export default function LoginScreen() {
                     <Text style={styles.logoBadgeText}>PPK</Text>
                   </View>
                   <View>
-                    <Text style={styles.brandTitle}>PPK LabPortal</Text>
+                    <Text style={styles.brandTitle}>LabPortal</Text>
                     <Text style={styles.brandSub}>
                       Informatika FSM Universitas Diponegoro
                     </Text>
@@ -119,7 +123,6 @@ export default function LoginScreen() {
                 </View>
 
                 <View style={styles.statusPill}>
-                  <View style={styles.statusDot} />
                   <Text style={styles.statusPillText}>
                     Firebase Authentication & Cloud Firestore
                   </Text>
@@ -136,7 +139,7 @@ export default function LoginScreen() {
                 {!firebaseReady ? (
                   <View style={styles.configWarning}>
                     <Text style={styles.configWarningTitle}>
-                      ● Konfigurasi Firebase Belum Lengkap
+                      Konfigurasi Firebase Belum Lengkap
                     </Text>
                     <Text style={styles.configWarningText}>
                       Salin .env.example menjadi .env dan isi kredensial Firebase Console Anda sebelum login.
@@ -248,13 +251,11 @@ export default function LoginScreen() {
 
               {/* Role Accent Hint */}
               <View style={styles.roleLegend}>
-                <View style={styles.legendItem}>
-                  <View style={[styles.legendDot, { backgroundColor: '#EA580C' }]} />
-                  <Text style={styles.legendText}>Portal Praktikan</Text>
+                <View style={[styles.legendItem, styles.legendPraktikan]}>
+                  <Text style={[styles.legendText, styles.legendPraktikanText]}>Portal Praktikan</Text>
                 </View>
-                <View style={styles.legendItem}>
-                  <View style={[styles.legendDot, { backgroundColor: '#0D9488' }]} />
-                  <Text style={styles.legendText}>Portal Asisten Lab</Text>
+                <View style={[styles.legendItem, styles.legendAsisten]}>
+                  <Text style={[styles.legendText, styles.legendAsistenText]}>Portal Asisten Lab</Text>
                 </View>
               </View>
             </View>
@@ -284,15 +285,18 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: Platform.OS === 'web' ? 20 : 14,
-    paddingVertical: 28,
+    justifyContent: 'space-between',
+    paddingHorizontal: Platform.OS === 'web' ? 20 : 16,
+    paddingTop: Platform.OS === 'web' ? 28 : 20,
+    paddingBottom: Platform.OS === 'web' ? 28 : 20,
   },
   centerContainer: {
     width: '100%',
     maxWidth: 440,
+    flex: 1,
     alignSelf: 'center',
-    gap: 18,
+    justifyContent: 'space-between',
+    gap: 14,
   },
   brandBlock: {
     gap: 12,
@@ -341,12 +345,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 5,
-  },
-  statusDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: '#16A34A',
   },
   statusPillText: {
     fontSize: 11,
@@ -523,22 +521,33 @@ const styles = StyleSheet.create({
   roleLegend: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 20,
+    gap: 12,
+    marginTop: 8,
+    paddingBottom: 4,
   },
   legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
   },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  legendPraktikan: {
+    backgroundColor: '#FFF7ED',
+    borderColor: '#FED7AA',
+  },
+  legendAsisten: {
+    backgroundColor: '#F0FDFA',
+    borderColor: '#99F6E4',
   },
   legendText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#64748B',
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
+  legendPraktikanText: {
+    color: '#C2410C',
+  },
+  legendAsistenText: {
+    color: '#0D9488',
   },
   pressed: {
     opacity: 0.85,

@@ -22,6 +22,10 @@ import {
   submitAttendance,
   subscribeStudentSessionAttendance,
 } from '@/services/attendance-service';
+import {
+  LeaveRequestDocument,
+  subscribeStudentLeaveRequests,
+} from '@/services/leave-service';
 import { subscribeSessionById } from '@/services/session-service';
 import { AttendanceDocument, SessionDocument } from '@/types/praktikum';
 
@@ -29,11 +33,14 @@ export default function PraktikanDetailSesiScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const sessionId = Array.isArray(id) ? id[0] : id;
-  const { userDoc } = useAuth();
+  const { user, userDoc } = useAuth();
+
+  const studentUid = userDoc?.uid || user?.uid;
 
   const [sesi, setSesi] = useState<SessionDocument | null>(null);
   const [loadingSession, setLoadingSession] = useState(Boolean(sessionId));
   const [attendanceRecord, setAttendanceRecord] = useState<AttendanceDocument | null>(null);
+  const [studentLeaves, setStudentLeaves] = useState<LeaveRequestDocument[]>([]);
 
   const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false);
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
@@ -43,6 +50,15 @@ export default function PraktikanDetailSesiScreen() {
   const [kodeInput, setKodeInput] = useState('');
   const [catatan, setCatatan] = useState('');
   const [agreementChecked, setAgreementChecked] = useState(true);
+
+  // Pola resmi React untuk mereset state saat parameter sesi berubah tanpa efek kaskade
+  const [prevSessionId, setPrevSessionId] = useState(sessionId);
+  if (sessionId !== prevSessionId) {
+    setPrevSessionId(sessionId);
+    setKodeInput('');
+    setCatatan('');
+    setErrorMessage(null);
+  }
 
   useEffect(() => {
     if (!sessionId) {
@@ -61,13 +77,23 @@ export default function PraktikanDetailSesiScreen() {
     );
 
     let unsubAttendance: (() => void) | null = null;
-    if (userDoc?.uid) {
+    let unsubLeaves: (() => void) | null = null;
+
+    if (studentUid) {
       unsubAttendance = subscribeStudentSessionAttendance(
         sessionId,
-        userDoc.uid,
+        studentUid,
         (record) => {
           setAttendanceRecord(record);
         }
+      );
+
+      unsubLeaves = subscribeStudentLeaveRequests(
+        studentUid,
+        (leaves) => {
+          setStudentLeaves(leaves);
+        },
+        userDoc?.nim
       );
     }
 
@@ -76,8 +102,11 @@ export default function PraktikanDetailSesiScreen() {
       if (unsubAttendance) {
         unsubAttendance();
       }
+      if (unsubLeaves) {
+        unsubLeaves();
+      }
     };
-  }, [sessionId, userDoc?.uid]);
+  }, [sessionId, studentUid, userDoc?.nim]);
 
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -118,6 +147,10 @@ export default function PraktikanDetailSesiScreen() {
   }
 
   const alreadyPresensi = Boolean(attendanceRecord);
+  const leaveRecord = studentLeaves.find((l) => l.sessionId === sessionId);
+  const hasActiveLeave = Boolean(
+    leaveRecord && (leaveRecord.status === 'disetujui' || leaveRecord.status === 'menunggu')
+  );
   const studentClass = normalizeClassCode(userDoc?.kelas);
   const sessionClass = normalizeClassCode(sesi.kelas);
 
@@ -129,7 +162,8 @@ export default function PraktikanDetailSesiScreen() {
     !agreementChecked ||
     !userDoc ||
     Boolean(sesi.kodeSesi && kodeInput.trim().length !== 4) ||
-    isClassMismatch;
+    isClassMismatch ||
+    hasActiveLeave;
 
   const handleOpenPresensiModal = () => {
     setIsConfirmModalVisible(true);
@@ -178,15 +212,6 @@ export default function PraktikanDetailSesiScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.contentWrap}>
-          {/* Breadcrumb Back Button */}
-          <Pressable
-            style={({ pressed }) => [styles.backBreadcrumb, pressed && styles.btnPressed]}
-            onPress={handleBack}
-            accessibilityRole="button"
-            accessibilityLabel="Kembali ke Jadwal Praktikum">
-            <Text style={styles.backBreadcrumbText}>← Kembali ke Jadwal Praktikum</Text>
-          </Pressable>
-
           {/* Page Heading */}
           <View style={styles.pageHeader}>
             <Text style={styles.pageTitle}>Detail Sesi Praktikum</Text>
@@ -277,11 +302,69 @@ export default function PraktikanDetailSesiScreen() {
         <View style={styles.card}>
           <Text style={styles.sectionHeader}>Status & Formulir Presensi</Text>
 
+          {/* Banner Permohonan Izin jika ada */}
+          {leaveRecord ? (
+            <View
+              style={[
+                styles.leaveStatusBox,
+                leaveRecord.status === 'disetujui' && styles.leaveStatusBoxApproved,
+                leaveRecord.status === 'menunggu' && styles.leaveStatusBoxPending,
+                leaveRecord.status === 'ditolak' && styles.leaveStatusBoxRejected,
+              ]}>
+              <View style={styles.leaveStatusHeader}>
+                <Text
+                  style={[
+                    styles.leaveStatusBadgeText,
+                    leaveRecord.status === 'disetujui' && { color: '#16A34A' },
+                    leaveRecord.status === 'menunggu' && { color: '#D97706' },
+                    leaveRecord.status === 'ditolak' && { color: '#DC2626' },
+                  ]}>
+                  {leaveRecord.status === 'disetujui'
+                    ? 'IZIN DISETUJUI ASISTEN'
+                    : leaveRecord.status === 'menunggu'
+                    ? 'MENUNGGU VERIFIKASI ASISTEN'
+                    : 'PERMOHONAN IZIN DITOLAK'}
+                </Text>
+                {leaveRecord.aiClassification?.category ? (
+                  <View style={styles.leaveAiBadge}>
+                    <Text style={styles.leaveAiBadgeText}>
+                      AI: {leaveRecord.aiClassification.category}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+
+              <Text style={styles.leaveStatusTitle}>
+                {leaveRecord.status === 'disetujui'
+                  ? 'Anda Telah Memperoleh Izin pada Sesi Ini'
+                  : leaveRecord.status === 'menunggu'
+                  ? 'Pengajuan Izin Sedang Diperiksa'
+                  : 'Pengajuan Izin Tidak Disetujui'}
+              </Text>
+              <Text style={styles.leaveStatusAlasan}>
+                {`Alasan: "${leaveRecord.alasan}"`}
+              </Text>
+
+              {leaveRecord.reviewNotes ? (
+                <View style={styles.reviewNotesBox}>
+                  <Text style={styles.reviewNotesLabel}>Catatan Evaluasi Asisten:</Text>
+                  <Text style={styles.reviewNotesText}>{leaveRecord.reviewNotes}</Text>
+                </View>
+              ) : null}
+
+              <Pressable
+                onPress={() => router.push('/praktikan/riwayat')}
+                style={styles.viewHistoryBtn}>
+                <Text style={styles.viewHistoryBtnText}>Lihat Riwayat Lengkap →</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
           {/* Case 1: Sudah Presensi (FR-4.4) */}
           {alreadyPresensi ? (
             <View style={styles.alreadyBox}>
               <View style={styles.successIconCircle}>
-                <View style={styles.successIconDot} />
+                <Text style={styles.successIconText}>✓</Text>
               </View>
               <Text style={styles.alreadyTitle}>Anda Sudah Presensi</Text>
               <Text style={styles.alreadySubtitle}>
@@ -306,10 +389,46 @@ export default function PraktikanDetailSesiScreen() {
                 </Text>
               </Pressable>
             </View>
+          ) : hasActiveLeave ? (
+            /* Case 1B: Izin Aktif - Tidak Dapat Melakukan Presensi */
+            <View style={styles.alreadyBox}>
+              <View
+                style={[
+                  styles.successIconCircle,
+                  { backgroundColor: '#FEF3C7', borderColor: '#FCD34D' },
+                ]}>
+                <Text style={[styles.successIconText, { color: '#D97706' }]}>!</Text>
+              </View>
+              <Text style={styles.alreadyTitle}>Pengajuan Izin Aktif</Text>
+              <Text style={styles.alreadySubtitle}>
+                {leaveRecord?.status === 'disetujui'
+                  ? 'Permohonan izin Anda telah disetujui oleh asisten laboratorium.'
+                  : 'Permohonan izin Anda telah terkirim dan sedang menunggu verifikasi asisten.'}
+              </Text>
+              <View style={styles.timestampBadge}>
+                <Text style={[styles.timestampText, { color: '#92400E' }]}>
+                  {leaveRecord?.status === 'disetujui'
+                    ? 'Status: Disetujui'
+                    : 'Status: Menunggu Verifikasi'}
+                </Text>
+              </View>
+              <Text style={styles.alreadyNotice}>
+                Praktikan yang telah mengajukan izin ketidakhadiran tidak dapat mengisi kode dan melakukan presensi kehadiran pada sesi praktikum ini.
+              </Text>
+
+              <Pressable
+                style={[styles.actionBtn, styles.actionBtnDisabled]}
+                disabled>
+                <Text style={styles.actionBtnTextDisabled}>
+                  {leaveRecord?.status === 'disetujui'
+                    ? 'Izin Praktikum Disetujui'
+                    : 'Menunggu Keputusan Asisten'}
+                </Text>
+              </Pressable>
+            </View>
           ) : sesi.status === 'belum-dibuka' ? (
             /* Case 2: Sesi Belum Dibuka (FR-4.1) */
             <View style={styles.warningBox}>
-              <View style={styles.warningDot} />
               <Text style={styles.warningTitle}>Sesi Belum Dibuka</Text>
               <Text style={styles.warningMessage}>
                 Asisten praktikum belum membuka sesi ini. Tombol presensi akan
@@ -341,7 +460,6 @@ export default function PraktikanDetailSesiScreen() {
           ) : sesi.status === 'ditutup' ? (
             /* Case 3: Sesi Ditutup (FR-4.1, FR-3.4) */
             <View style={styles.dangerBox}>
-              <View style={styles.dangerDot} />
               <Text style={styles.dangerTitle}>Sesi Telah Ditutup</Text>
               <Text style={styles.dangerMessage}>
                 Waktu sesi praktikum ini telah berakhir dan ditutup oleh
@@ -360,7 +478,6 @@ export default function PraktikanDetailSesiScreen() {
             /* Case 4: Sesi Dibuka & Belum Presensi (FR-4.1, FR-4.5) */
             <View style={styles.formContainer}>
               <View style={styles.openNoticeBox}>
-                <View style={styles.openNoticeDot} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.openNoticeTitle}>Sesi Sedang Berlangsung</Text>
                   <Text style={styles.openNoticeDesc}>
@@ -372,7 +489,6 @@ export default function PraktikanDetailSesiScreen() {
               {/* Class Mismatch Notice */}
               {isClassMismatch ? (
                 <View style={styles.classMismatchNotice}>
-                  <View style={styles.classMismatchDot} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.classMismatchTitle}>Perhatian: Kelas Tidak Sesuai</Text>
                     <Text style={styles.classMismatchDesc}>
@@ -624,23 +740,6 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     paddingBottom: 48,
   },
-  backBreadcrumb: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 4,
-  },
-  backBreadcrumbText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#334155',
-  },
   btnPressed: {
     opacity: 0.82,
     transform: [{ scale: 0.98 }],
@@ -804,11 +903,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#86EFAC',
   },
-  successIconDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#16A34A',
+  successIconText: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#15803D',
   },
   alreadyTitle: {
     fontSize: 17,
@@ -850,13 +948,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FDE68A',
   },
-  warningDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#EAB308',
-    marginBottom: 8,
-  },
   warningTitle: {
     fontSize: 15,
     fontWeight: '700',
@@ -877,13 +968,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#FECACA',
-  },
-  dangerDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#DC2626',
-    marginBottom: 8,
   },
   dangerTitle: {
     fontSize: 15,
@@ -910,12 +994,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#CCFBF1',
-  },
-  openNoticeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#0D9488',
   },
   openNoticeTitle: {
     fontSize: 13,
@@ -1041,13 +1119,6 @@ const styles = StyleSheet.create({
     gap: 10,
     alignItems: 'flex-start',
   },
-  classMismatchDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#EF4444',
-    marginTop: 5,
-  },
   classMismatchTitle: {
     fontSize: 13,
     fontWeight: '700',
@@ -1150,5 +1221,93 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#EA580C',
+  },
+  leaveStatusBox: {
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 8,
+    marginBottom: 14,
+  },
+  leaveStatusBoxApproved: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
+  },
+  leaveStatusBoxPending: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
+  },
+  leaveStatusBoxRejected: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+  },
+  leaveStatusHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  leaveStatusBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  leaveAiBadge: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  leaveAiBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  leaveStatusTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  leaveStatusAlasan: {
+    fontSize: 12,
+    color: '#475569',
+    lineHeight: 18,
+    fontStyle: 'italic',
+  },
+  reviewNotesBox: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    padding: 10,
+    gap: 2,
+  },
+  reviewNotesLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  reviewNotesText: {
+    fontSize: 12,
+    color: '#334155',
+    lineHeight: 17,
+  },
+  viewHistoryBtn: {
+    alignSelf: 'flex-start',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 6,
+    marginTop: 2,
+  },
+  viewHistoryBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#475569',
   },
 });

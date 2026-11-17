@@ -1,12 +1,20 @@
 import { Redirect, Tabs, type Href } from 'expo-router';
 import React from 'react';
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { RoleHeader } from '@/components/role-header';
+import {
+  TabCalendarIcon,
+  TabChartIcon,
+  TabModerationIcon,
+  TabUsersIcon,
+} from '@/components/tab-icons';
 import { useAuth } from '@/context/auth-context';
 
 export default function AsistenLayout() {
   const { user, userDoc, loading, role } = useAuth();
+  const insets = useSafeAreaInsets();
 
   if (loading) {
     return (
@@ -25,6 +33,9 @@ export default function AsistenLayout() {
     return <Redirect href={'/praktikan/jadwal' as Href} />;
   }
 
+  const bottomPadding = Platform.OS === 'web' ? 8 : Math.max(insets.bottom, 14) + 8;
+  const tabHeight = Platform.OS === 'web' ? 58 : 56 + bottomPadding;
+
   return (
     <View style={styles.container}>
       <RoleHeader />
@@ -35,15 +46,24 @@ export default function AsistenLayout() {
           tabBarInactiveTintColor: '#64748B',
           tabBarStyle: [
             styles.tabBar,
+            {
+              height: tabHeight,
+              paddingBottom: bottomPadding,
+              paddingTop: 6,
+            },
             Platform.OS === 'web' && styles.tabBarWeb,
           ],
           tabBarItemStyle: {
             justifyContent: 'center',
             alignItems: 'center',
+            paddingTop: 3,
+            paddingBottom: 2,
           },
           tabBarLabelStyle: {
-            fontSize: 13,
+            fontSize: 10.5,
             fontWeight: '700',
+            marginTop: 1.5,
+            marginBottom: Platform.OS === 'android' ? 2 : 0,
           },
         }}>
         <Tabs.Screen
@@ -51,6 +71,9 @@ export default function AsistenLayout() {
           options={{
             title: 'Jadwal Praktikum',
             tabBarLabel: 'Kelola Sesi',
+            tabBarIcon: ({ color, focused }) => (
+              <TabCalendarIcon color={color} focused={focused} />
+            ),
           }}
         />
         <Tabs.Screen
@@ -58,6 +81,9 @@ export default function AsistenLayout() {
           options={{
             title: 'Moderasi Izin',
             tabBarLabel: 'Moderasi Izin',
+            tabBarIcon: ({ color, focused }) => (
+              <TabModerationIcon color={color} focused={focused} />
+            ),
           }}
         />
         <Tabs.Screen
@@ -65,6 +91,9 @@ export default function AsistenLayout() {
           options={{
             title: 'Rekap Presensi',
             tabBarLabel: 'Rekap Kelas',
+            tabBarIcon: ({ color, focused }) => (
+              <TabChartIcon color={color} focused={focused} />
+            ),
           }}
         />
         <Tabs.Screen
@@ -72,6 +101,9 @@ export default function AsistenLayout() {
           options={{
             title: 'Kelola Pengguna',
             tabBarLabel: 'Pengguna',
+            tabBarIcon: ({ color, focused }) => (
+              <TabUsersIcon color={color} focused={focused} />
+            ),
           }}
         />
         <Tabs.Screen
@@ -107,9 +139,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopColor: '#E2E8F0',
     borderTopWidth: 1,
-    height: 60,
-    paddingBottom: 8,
-    paddingTop: 6,
   },
   tabBarWeb: {
     maxWidth: 580,

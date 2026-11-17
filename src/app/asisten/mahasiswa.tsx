@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -13,7 +14,17 @@ import {
 import { ConfirmationModal } from '@/components/confirmation-modal';
 import { EmptyState } from '@/components/empty-state';
 import { usePraktikum } from '@/context/praktikum-context';
-import { Asisten, Praktikan } from '@/types/praktikum';
+import {
+  createAsistenUser,
+  createPraktikanUser,
+  deleteAsistenUser,
+  deletePraktikanUser,
+  subscribeAsistenUsers,
+  subscribePraktikanUsers,
+  updateAsistenUser,
+  updatePraktikanUser,
+} from '@/services/attendance-service';
+import { Asisten, Praktikan, UserDocument } from '@/types/praktikum';
 
 type UserTab = 'praktikan' | 'asisten';
 type FilterKelas = 'semua' | 'A' | 'B';
@@ -56,12 +67,14 @@ export default function AsistenMahasiswaScreen() {
   // Modal Tambah Asisten
   const [modalTambahAsistenVisible, setModalTambahAsistenVisible] = useState(false);
   const [namaAsistenBaru, setNamaAsistenBaru] = useState('');
+  const [nimAsistenBaru, setNimAsistenBaru] = useState('');
   const [peranLabBaru, setPeranLabBaru] = useState('');
 
   // Modal Edit Asisten
   const [modalEditAsistenVisible, setModalEditAsistenVisible] = useState(false);
   const [selectedAsisten, setSelectedAsisten] = useState<Asisten | null>(null);
   const [editNamaAsisten, setEditNamaAsisten] = useState('');
+  const [editNimAsisten, setEditNimAsisten] = useState('');
   const [editPeranLab, setEditPeranLab] = useState('');
 
   // Modal Hapus Asisten
@@ -73,33 +86,85 @@ export default function AsistenMahasiswaScreen() {
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const [feedbackVisible, setFeedbackVisible] = useState(false);
 
+  // Subscribe ke data mahasiswa & asisten di Cloud Firestore /users
+  const [firestoreStudents, setFirestoreStudents] = useState<UserDocument[]>([]);
+  const [firestoreAsisten, setFirestoreAsisten] = useState<UserDocument[]>([]);
+
+  useEffect(() => {
+    const unsubStudents = subscribePraktikanUsers((items) => {
+      setFirestoreStudents(items);
+    });
+    const unsubAsisten = subscribeAsistenUsers((items) => {
+      setFirestoreAsisten(items);
+    });
+    return () => {
+      unsubStudents();
+      unsubAsisten();
+    };
+  }, []);
+
+  // Gabungkan data praktikan dari Firestore dan lokal
+  const allPraktikan = useMemo(() => {
+    const map = new Map<string, Praktikan>();
+    daftarPraktikan.forEach((p) => map.set(p.nim, p));
+    firestoreStudents.forEach((fs) => {
+      map.set(fs.nim || fs.uid, {
+        id: fs.uid,
+        nama: fs.nama,
+        nim: fs.nim || '-',
+        kelas: (fs.kelas || 'A') as 'A' | 'B',
+      });
+    });
+    return Array.from(map.values()).sort((a, b) => a.nama.localeCompare(b.nama));
+  }, [daftarPraktikan, firestoreStudents]);
+
+  // Gabungkan data asisten dari Firestore dan lokal
+  const allAsisten = useMemo(() => {
+    const map = new Map<string, Asisten>();
+    daftarAsisten.forEach((a) => map.set(a.id, a));
+    firestoreAsisten.forEach((fa) => {
+      map.set(fa.uid, {
+        id: fa.uid,
+        nama: fa.nama,
+        nim: fa.nim,
+        peranLab: fa.peranLab || 'Pengampu Lab Komputasi',
+      });
+    });
+    return Array.from(map.values()).sort((a, b) => a.nama.localeCompare(b.nama));
+  }, [daftarAsisten, firestoreAsisten]);
+
   // Metrik ringkasan Praktikan
-  const totalMahasiswa = daftarPraktikan.length;
-  const totalKelasA = daftarPraktikan.filter((p) => p.kelas === 'A').length;
-  const totalKelasB = daftarPraktikan.filter((p) => p.kelas === 'B').length;
+  const totalMahasiswa = allPraktikan.length;
+  const totalKelasA = allPraktikan.filter((p) => p.kelas === 'A').length;
+  const totalKelasB = allPraktikan.filter((p) => p.kelas === 'B').length;
   const totalPresensiMasuk = presensiList.length;
 
   // Metrik ringkasan Asisten
-  const totalAsisten = daftarAsisten.length;
+  const totalAsisten = allAsisten.length;
   const totalSesiAktif = sesiList.length;
 
   // Filter & Search List Praktikan
   const filteredPraktikanList = useMemo(() => {
-    return daftarPraktikan.filter((p) => {
+    return allPraktikan.filter((p) => {
       const matchKelas = filterKelas === 'semua' || p.kelas === filterKelas;
       const matchSearch =
         p.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.nim.toLowerCase().includes(searchQuery.toLowerCase());
       return matchKelas && matchSearch;
     });
-  }, [daftarPraktikan, filterKelas, searchQuery]);
+  }, [allPraktikan, filterKelas, searchQuery]);
 
   // Filter & Search List Asisten
   const filteredAsistenList = useMemo(() => {
-    return daftarAsisten.filter((a) => {
-      return a.nama.toLowerCase().includes(searchQuery.toLowerCase());
+    return allAsisten.filter((a) => {
+      const q = searchQuery.toLowerCase();
+      return (
+        a.nama.toLowerCase().includes(q) ||
+        (a.nim && a.nim.toLowerCase().includes(q)) ||
+        (a.peranLab && a.peranLab.toLowerCase().includes(q))
+      );
     });
-  }, [daftarAsisten, searchQuery]);
+  }, [allAsisten, searchQuery]);
 
   const getInitials = (name: string) => {
     return name
@@ -119,7 +184,7 @@ export default function AsistenMahasiswaScreen() {
     setModalTambahVisible(true);
   };
 
-  const handleSimpanTambahPraktikan = () => {
+  const handleSimpanTambahPraktikan = async () => {
     if (!namaBaru.trim()) {
       alert('Nama mahasiswa wajib diisi.');
       return;
@@ -134,6 +199,16 @@ export default function AsistenMahasiswaScreen() {
       nim: nimBaru.trim(),
       kelas: kelasBaru,
     });
+
+    try {
+      await createPraktikanUser({
+        nama: namaBaru.trim(),
+        nim: nimBaru.trim(),
+        kelas: kelasBaru,
+      });
+    } catch (err) {
+      console.warn('Gagal menyimpan praktikan ke Firestore:', err);
+    }
 
     setModalTambahVisible(false);
     setFeedbackTitle('Praktikan Berhasil Ditambahkan');
@@ -151,7 +226,7 @@ export default function AsistenMahasiswaScreen() {
     setModalEditVisible(true);
   };
 
-  const handleSimpanEditPraktikan = () => {
+  const handleSimpanEditPraktikan = async () => {
     if (!selectedPraktikan) return;
     if (!editNama.trim() || !editNim.trim()) {
       alert('Nama dan NIM mahasiswa wajib diisi.');
@@ -163,6 +238,16 @@ export default function AsistenMahasiswaScreen() {
       nim: editNim.trim(),
       kelas: editKelas,
     });
+
+    try {
+      await updatePraktikanUser(selectedPraktikan.id, {
+        nama: editNama.trim(),
+        nim: editNim.trim(),
+        kelas: editKelas,
+      });
+    } catch (err) {
+      console.warn('Gagal memperbarui praktikan di Firestore:', err);
+    }
 
     setModalEditVisible(false);
     setFeedbackTitle('Data Praktikan Diperbarui');
@@ -177,10 +262,17 @@ export default function AsistenMahasiswaScreen() {
     setModalHapusVisible(true);
   };
 
-  const handleConfirmHapusPraktikan = () => {
+  const handleConfirmHapusPraktikan = async () => {
     if (!praktikanToDelete) return;
     const deletedName = praktikanToDelete.nama;
     hapusPraktikan(praktikanToDelete.id);
+
+    try {
+      await deletePraktikanUser(praktikanToDelete.id);
+    } catch (err) {
+      console.warn('Gagal menghapus praktikan di Firestore:', err);
+    }
+
     setModalHapusVisible(false);
     setPraktikanToDelete(null);
 
@@ -194,25 +286,39 @@ export default function AsistenMahasiswaScreen() {
   // --- Handlers: Asisten ---
   const handleOpenTambahAsisten = () => {
     setNamaAsistenBaru('');
+    const nextSeq = String(allAsisten.length + 1).padStart(4, '0');
+    setNimAsistenBaru(`2406012114${nextSeq}`);
     setPeranLabBaru('Pengampu Laboratorium Komputasi');
     setModalTambahAsistenVisible(true);
   };
 
-  const handleSimpanTambahAsisten = () => {
+  const handleSimpanTambahAsisten = async () => {
     if (!namaAsistenBaru.trim()) {
       alert('Nama asisten wajib diisi.');
       return;
     }
+    const cleanNim = nimAsistenBaru.trim();
 
     tambahAsisten({
       nama: namaAsistenBaru.trim(),
+      nim: cleanNim || undefined,
       peranLab: peranLabBaru.trim() || 'Pengampu Laboratorium Komputasi',
     });
+
+    try {
+      await createAsistenUser({
+        nama: namaAsistenBaru.trim(),
+        nim: cleanNim || undefined,
+        peranLab: peranLabBaru.trim() || 'Pengampu Laboratorium Komputasi',
+      });
+    } catch (err) {
+      console.warn('Gagal menyimpan asisten ke Firestore:', err);
+    }
 
     setModalTambahAsistenVisible(false);
     setFeedbackTitle('Asisten Berhasil Ditambahkan');
     setFeedbackMessage(
-      `Asisten ${namaAsistenBaru.trim()} telah terdaftar sebagai pengampu dan dapat masuk untuk mengelola sesi laboratorium.`
+      `Asisten ${namaAsistenBaru.trim()} (NIM: ${cleanNim || '-'}) telah terdaftar sebagai pengampu dan dapat masuk untuk mengelola sesi laboratorium.`
     );
     setFeedbackVisible(true);
   };
@@ -220,21 +326,34 @@ export default function AsistenMahasiswaScreen() {
   const handleOpenEditAsisten = (item: Asisten) => {
     setSelectedAsisten(item);
     setEditNamaAsisten(item.nama);
+    setEditNimAsisten(item.nim || '');
     setEditPeranLab(item.peranLab || 'Pengampu Laboratorium Komputasi');
     setModalEditAsistenVisible(true);
   };
 
-  const handleSimpanEditAsisten = () => {
+  const handleSimpanEditAsisten = async () => {
     if (!selectedAsisten) return;
     if (!editNamaAsisten.trim()) {
       alert('Nama asisten wajib diisi.');
       return;
     }
+    const cleanNim = editNimAsisten.trim();
 
     editAsisten(selectedAsisten.id, {
       nama: editNamaAsisten.trim(),
+      nim: cleanNim || undefined,
       peranLab: editPeranLab.trim(),
     });
+
+    try {
+      await updateAsistenUser(selectedAsisten.id, {
+        nama: editNamaAsisten.trim(),
+        nim: cleanNim || undefined,
+        peranLab: editPeranLab.trim(),
+      });
+    } catch (err) {
+      console.warn('Gagal memperbarui asisten di Firestore:', err);
+    }
 
     setModalEditAsistenVisible(false);
     setFeedbackTitle('Data Asisten Diperbarui');
@@ -245,7 +364,7 @@ export default function AsistenMahasiswaScreen() {
   };
 
   const handleOpenHapusAsisten = (item: Asisten) => {
-    if (daftarAsisten.length <= 1) {
+    if (allAsisten.length <= 1) {
       alert('Tidak dapat menghapus asisten terakhir. Sistem membutuhkan minimal 1 akun asisten aktif.');
       return;
     }
@@ -253,10 +372,17 @@ export default function AsistenMahasiswaScreen() {
     setModalHapusAsistenVisible(true);
   };
 
-  const handleConfirmHapusAsisten = () => {
+  const handleConfirmHapusAsisten = async () => {
     if (!asistenToDelete) return;
     const deletedName = asistenToDelete.nama;
     hapusAsisten(asistenToDelete.id);
+
+    try {
+      await deleteAsistenUser(asistenToDelete.id);
+    } catch (err) {
+      console.warn('Gagal menghapus asisten di Firestore:', err);
+    }
+
     setModalHapusAsistenVisible(false);
     setAsistenToDelete(null);
 
@@ -273,7 +399,6 @@ export default function AsistenMahasiswaScreen() {
           <Text style={styles.eyebrowText}>ASISTEN LABORATORIUM</Text>
         </View>
         <View style={styles.liveTag}>
-          <View style={styles.liveDot} />
           <Text style={styles.liveTagText}>Master Data Pengguna</Text>
         </View>
       </View>
@@ -426,7 +551,10 @@ export default function AsistenMahasiswaScreen() {
       {activeTab === 'praktikan' ? (
         <View style={styles.filterSection}>
           <Text style={styles.filterTitle}>Filter Berdasarkan Kelas:</Text>
-          <View style={styles.filterRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterRow}>
             <FilterChip
               label="Semua"
               count={totalMahasiswa}
@@ -445,7 +573,7 @@ export default function AsistenMahasiswaScreen() {
               active={filterKelas === 'B'}
               onPress={() => setFilterKelas('B')}
             />
-          </View>
+          </ScrollView>
         </View>
       ) : null}
     </View>
@@ -488,7 +616,6 @@ export default function AsistenMahasiswaScreen() {
 
               <View style={styles.metaRow}>
                 <View style={styles.kehadiranBadge}>
-                  <View style={styles.miniDotGreen} />
                   <Text style={styles.kehadiranBadgeText}>
                     {kehadiranCount > 0 ? `${kehadiranCount} Sesi Hadir` : 'Belum Ada Presensi'}
                   </Text>
@@ -542,13 +669,14 @@ export default function AsistenMahasiswaScreen() {
                 </View>
               </View>
 
+              <Text style={styles.userMeta}>NIM: {item.nim || '-'}</Text>
+
               <Text style={styles.userMeta}>
                 {item.peranLab || 'Pengampu Laboratorium Komputasi'}
               </Text>
 
               <View style={styles.metaRow}>
                 <View style={styles.asistenStatusTag}>
-                  <View style={styles.miniDotTeal} />
                   <Text style={styles.asistenStatusText}>Hak Akses Pengampu Aktif</Text>
                 </View>
               </View>
@@ -862,6 +990,19 @@ export default function AsistenMahasiswaScreen() {
               </View>
 
               <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>NIM Asisten (14 Digit)</Text>
+                <TextInput
+                  style={styles.formInput}
+                  placeholder="Mis. 24060121140003"
+                  placeholderTextColor="#94A3B8"
+                  value={nimAsistenBaru}
+                  onChangeText={setNimAsistenBaru}
+                  keyboardType="numeric"
+                  maxLength={14}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Tugas / Penugasan Lab</Text>
                 <TextInput
                   style={styles.formInput}
@@ -918,6 +1059,19 @@ export default function AsistenMahasiswaScreen() {
                   style={styles.formInput}
                   value={editNamaAsisten}
                   onChangeText={setEditNamaAsisten}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>NIM Asisten (14 Digit)</Text>
+                <TextInput
+                  style={styles.formInput}
+                  placeholder="Mis. 24060121140003"
+                  placeholderTextColor="#94A3B8"
+                  value={editNimAsisten}
+                  onChangeText={setEditNimAsisten}
+                  keyboardType="numeric"
+                  maxLength={14}
                 />
               </View>
 
@@ -1081,12 +1235,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#0D9488',
-  },
   liveTagText: {
     fontSize: 11,
     fontWeight: '700',
@@ -1236,15 +1384,16 @@ const styles = StyleSheet.create({
   },
   filterRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 2,
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5.5,
+    borderRadius: 16,
     borderWidth: 1,
   },
   chipInactive: {
@@ -1256,7 +1405,7 @@ const styles = StyleSheet.create({
     borderColor: '#0D9488',
   },
   chipText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
   },
   chipTextInactive: {
@@ -1413,18 +1562,6 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     borderWidth: 1,
     borderColor: '#CCFBF1',
-  },
-  miniDotGreen: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#16A34A',
-  },
-  miniDotTeal: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#0D9488',
   },
   kehadiranBadgeText: {
     fontSize: 11,

@@ -56,6 +56,7 @@ export type Praktikan = {
 export type Asisten = {
   id: string;
   nama: string;
+  nim?: string;
   peranLab?: string;
 };
 

@@ -173,8 +173,8 @@ npx eas-cli build -p android --profile preview
 ```
 
 #### 📥 Tautan Unduhan Build APK Terbaru (Rilis Preview):
-- **Halaman Pantau & Unduh Build EAS Terbaru:** [expo.dev/.../builds/a5487eb6-5e34-4600-9602-911456660a35](https://expo.dev/accounts/gregoriusseptiano/projects/PPK-Post-UTS/builds/a5487eb6-5e34-4600-9602-911456660a35)
-- **Tautan Unduhan Langsung APK Terkini:** [Download LabPortal (ddeD0p1t... .apk)](https://expo.dev/artifacts/eas/ddeD0p1tas14hvC8CHc2xWckgF-vO70odMF3idXUGbM.apk)
+- **Halaman Pantau & Unduh Build EAS Terbaru:** [expo.dev/.../builds/0d43a98c-5c5c-41bb-b8c4-c7fb6590e4ed](https://expo.dev/accounts/gregoriusseptiano/projects/PPK-Post-UTS/builds/0d43a98c-5c5c-41bb-b8c4-c7fb6590e4ed)
+- **Tautan Unduhan Langsung APK Terkini:** [Download LabPortal (VTqfg5Ga... .apk)](https://expo.dev/artifacts/eas/VTqfg5GasAFfrn_enAcfNcLQAGsUJkjpZXWkmU6wwrA.apk)
 
 > [!TIP]
 > **Registrasi SHA-1 Fingerprint untuk Google Sign-In:**  
@@ -209,15 +209,15 @@ Seluruh modul Sprint 2 telah selesai dikembangkan, diintegrasikan, dan diuji pen
 | 1 | **Autentikasi Multi-Metode** | Programmer 1 | **Selesai (100%)** | Email/Password & Native Google Sign-In aktif dengan role router guard. |
 | 2 | **Master Sesi Firestore (CRUD)** | Programmer 1 | **Selesai (100%)** | Tambah, buka/tutup sesi real-time, generate 4 digit kode sesi unik. |
 | 3 | **Presensi & Roster Real-Time** | Programmer 1 | **Selesai (100%)** | Validasi kelas, anti-duplikasi `${sessionId}_${studentId}`, live roster asisten. |
-| 4 | **On-Device AI Engine (EDOM)** | Programmer 2 | **Selesai (100%)** | Klasifikasi sentimen & kategori alasan murni lokal (< 20ms, offline resilience). |
-| 5 | **Formulir Pengajuan Izin** | Programmer 2 | **Selesai (100%)** | Terhubung live Firestore `/leave_requests` dengan metadata AI terlampir. |
-| 6 | **Badge Rekomendasi AI** | Programmer 2 | **Selesai (100%)** | Tampilan label visual rapi sesuai token palet warna `DESIGN.md`. |
-| 7 | **Panel Moderasi Izin Asisten** | Programmer 2 | **Selesai (100%)** | Review izin live dengan rekomendasi AI dan aksi Setujui / Tolak izin. |
-| 8 | **Rekapitulasi Presensi & Izin** | Programmer 2 | **Selesai (100%)** | Mahasiswa izin berstatus disetujui tercatat resmi izin (bukan alpa). |
-| 9 | **Bottom Bar Safe Area & Vektor** | Tim Gabungan | **Selesai (100%)** | Mengatasi missing icon `☒` & kompatibel dengan gesture navigation Android. |
-| 10 | **Persistensi Sesi & Token AsyncStorage** | Tim Gabungan | **Selesai (100%)** | Token auth & profil user tersimpan permanen di perangkat, bebas re-login saat restart. |
-| 11 | **Header Navbar Single-Row & Preservasi Izin** | Tim Gabungan | **Selesai (100%)** | Layout RoleHeader sejajar rapi satu baris horizontal & sinkronisasi izin lama-baru. |
-| 12 | **Penyempurnaan Layout Android & Eliminasi LED Dots** | Tim Gabungan | **Selesai (100%)** | Menghilangkan seluruh dot warna/LED status, mencegah pemotongan teks nama header, dan card footer anti-clipping. |
+| 4 | **Persistensi Sesi & Token AsyncStorage** | Programmer 1 | **Selesai (100%)** | Token auth & profil user tersimpan permanen di perangkat, bebas re-login saat restart. |
+| 5 | **Bottom Bar Safe Area & Vektor** | Programmer 1 | **Selesai (100%)** | Mengatasi missing icon `☒` & kompatibel dengan gesture navigation Android. |
+| 6 | **Dukungan NIM Universal & Identitas Unik** | Programmer 1 | **Selesai (100%)** | NIM 14-digit divalidasi dan tersimpan untuk praktikan maupun asisten di Google Sign-In & Firestore. |
+| 7 | **On-Device AI Engine (EDOM)** | Programmer 2 | **Selesai (100%)** | Klasifikasi sentimen & kategori alasan murni lokal (< 20ms, offline resilience). |
+| 8 | **Formulir Pengajuan Izin & Layout Anti-Potong** | Programmer 2 | **Selesai (100%)** | Terhubung live Firestore `/leave_requests` dengan badge kuota sesi dan metadata AI terlampir rapi. |
+| 9 | **Badge Rekomendasi AI** | Programmer 2 | **Selesai (100%)** | Tampilan label visual rapi sesuai token palet warna `DESIGN.md`. |
+| 10 | **Panel Moderasi Izin Asisten** | Programmer 2 | **Selesai (100%)** | Review izin live dengan rekomendasi AI dan aksi Setujui / Tolak izin. |
+| 11 | **Rekapitulasi Presensi & Izin** | Programmer 2 | **Selesai (100%)** | Mahasiswa izin berstatus disetujui tercatat resmi izin (bukan alpa). |
+| 12 | **Proteksi Saling Kunci & Auto-Close Sesi 2 Jam** | Programmer 2 | **Selesai (100%)** | Sesi otomatis ditutup setelah 2 jam, serta isolasi dan pencegahan tumpang tindih izin & presensi. |
 
 ---
 

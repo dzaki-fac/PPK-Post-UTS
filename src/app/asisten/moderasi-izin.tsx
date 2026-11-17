@@ -1,9 +1,9 @@
-import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -13,6 +13,7 @@ import {
 import { ConfirmationModal } from '@/components/confirmation-modal';
 import { EmptyState } from '@/components/empty-state';
 import { LeaveCard } from '@/components/leave-card';
+import { useAuth } from '@/context/auth-context';
 import { usePraktikum } from '@/context/praktikum-context';
 import {
   LeaveRequestDocument,
@@ -24,10 +25,14 @@ import {
 type FilterType = 'semua' | LeaveStatus;
 
 export default function ModerasiIzinScreen() {
+  const { userDoc } = useAuth();
   const { currentAsisten } = usePraktikum();
 
+  const reviewerUid = userDoc?.uid || currentAsisten?.id || 'asisten-lab';
+  const reviewerName = userDoc?.nama || currentAsisten?.nama || 'Asisten Laboratorium';
+
   const [requests, setRequests] = useState<LeaveRequestDocument[]>([]);
-  const [activeFilter, setActiveFilter] = useState<FilterType>('menunggu');
+  const [activeFilter, setActiveFilter] = useState<FilterType>('semua');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
   // State Modal Konfirmasi Persetujuan
@@ -74,8 +79,8 @@ export default function ModerasiIzinScreen() {
         approveTarget.id,
         'disetujui',
         'Izin telah disetujui oleh asisten laboratorium.',
-        currentAsisten?.id || 'asisten-lab',
-        currentAsisten?.nama || 'Asisten Laboratorium'
+        reviewerUid,
+        reviewerName
       );
       setApproveTarget(null);
     } catch (err) {
@@ -102,8 +107,8 @@ export default function ModerasiIzinScreen() {
         rejectTarget.id,
         'ditolak',
         rejectNotes.trim(),
-        currentAsisten?.id || 'asisten-lab',
-        currentAsisten?.nama || 'Asisten Laboratorium'
+        reviewerUid,
+        reviewerName
       );
       setRejectTarget(null);
       setRejectNotes('');
@@ -116,27 +121,11 @@ export default function ModerasiIzinScreen() {
 
   const renderHeader = () => (
     <View style={styles.header}>
-      {/* Breadcrumb Navigasi */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Kembali ke Kelola Sesi"
-        onPress={() => {
-          if (router.canGoBack()) {
-            router.back();
-          } else {
-            router.replace('/asisten/jadwal');
-          }
-        }}
-        style={({ pressed }) => [styles.breadcrumbPill, pressed && styles.pressed]}>
-        <Text style={styles.breadcrumbText}>← Kembali ke Kelola Sesi</Text>
-      </Pressable>
-
       <View style={styles.eyebrowRow}>
         <View style={styles.eyebrowBadge}>
           <Text style={styles.eyebrowText}>PANEL ASISTEN LABORATORIUM</Text>
         </View>
         <View style={styles.liveTag}>
-          <View style={styles.liveDot} />
           <Text style={styles.liveTagText}>Sinkronisasi Real-Time</Text>
         </View>
       </View>
@@ -199,11 +188,14 @@ export default function ModerasiIzinScreen() {
       </View>
 
       {/* Filter Chips */}
-      <View style={styles.filterRow}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filterRow}>
         {(
           [
-            { key: 'menunggu', label: `Menunggu (${stats.menunggu})` },
             { key: 'semua', label: `Semua (${stats.total})` },
+            { key: 'menunggu', label: `Menunggu (${stats.menunggu})` },
             { key: 'disetujui', label: `Disetujui (${stats.disetujui})` },
             { key: 'ditolak', label: `Ditolak (${stats.ditolak})` },
           ] as const
@@ -228,7 +220,7 @@ export default function ModerasiIzinScreen() {
             </Pressable>
           );
         })}
-      </View>
+      </ScrollView>
     </View>
   );
 
@@ -331,20 +323,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     gap: 14,
   },
-  breadcrumbPill: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-  },
-  breadcrumbText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#334155',
-  },
   eyebrowRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -376,12 +354,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 16,
-  },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#16A34A',
   },
   liveTagText: {
     fontSize: 11,
@@ -478,14 +450,15 @@ const styles = StyleSheet.create({
   },
   filterRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    alignItems: 'center',
+    gap: 6,
     marginTop: 4,
+    paddingVertical: 2,
   },
   filterChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 16,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#CBD5E1',
@@ -495,7 +468,7 @@ const styles = StyleSheet.create({
     borderColor: '#0D9488',
   },
   filterChipText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
     color: '#475569',
   },

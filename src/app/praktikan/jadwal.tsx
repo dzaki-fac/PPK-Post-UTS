@@ -5,6 +5,7 @@ import {
   FlatList,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -17,17 +18,28 @@ import {
   normalizeClassCode,
   subscribeStudentAttendances,
 } from '@/services/attendance-service';
-import { subscribeSessions } from '@/services/session-service';
+import {
+  LeaveRequestDocument,
+  subscribeStudentLeaveRequests,
+} from '@/services/leave-service';
+import {
+  isSessionExpired,
+  subscribeSessions,
+  updateSessionStatus,
+} from '@/services/session-service';
 import { AttendanceDocument, SessionDocument, SessionStatus } from '@/types/praktikum';
 
 type FilterType = 'semua' | 'kelas-saya' | SessionStatus;
 
 export default function PraktikanJadwalScreen() {
-  const { userDoc } = useAuth();
+  const { user, userDoc } = useAuth();
   const [sesiList, setSesiList] = useState<SessionDocument[]>([]);
   const [myAttendances, setMyAttendances] = useState<AttendanceDocument[]>([]);
+  const [myLeaves, setMyLeaves] = useState<LeaveRequestDocument[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [filter, setFilter] = useState<FilterType>('semua');
+
+  const studentUid = userDoc?.uid || user?.uid;
 
   useEffect(() => {
     const unsubSessions = subscribeSessions(
@@ -41,10 +53,19 @@ export default function PraktikanJadwalScreen() {
     );
 
     let unsubAttendances: (() => void) | null = null;
-    if (userDoc?.uid) {
-      unsubAttendances = subscribeStudentAttendances(userDoc.uid, (items) => {
+    let unsubLeaves: (() => void) | null = null;
+
+    if (studentUid) {
+      unsubAttendances = subscribeStudentAttendances(studentUid, (items) => {
         setMyAttendances(items);
       });
+      unsubLeaves = subscribeStudentLeaveRequests(
+        studentUid,
+        (items) => {
+          setMyLeaves(items);
+        },
+        userDoc?.nim
+      );
     }
 
     return () => {
@@ -52,8 +73,23 @@ export default function PraktikanJadwalScreen() {
       if (unsubAttendances) {
         unsubAttendances();
       }
+      if (unsubLeaves) {
+        unsubLeaves();
+      }
     };
-  }, [userDoc?.uid]);
+  }, [studentUid, userDoc?.nim]);
+
+  // Pemeriksaan otomatis berkala: tutup sesi yang melewati batas 2 jam atau jam praktikum
+  useEffect(() => {
+    const timer = setInterval(() => {
+      sesiList.forEach((s) => {
+        if (s.status === 'dibuka' && isSessionExpired(s)) {
+          updateSessionStatus(s.id, 'ditutup').catch(() => {});
+        }
+      });
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [sesiList]);
 
   const studentClass = normalizeClassCode(userDoc?.kelas);
 
@@ -70,6 +106,8 @@ export default function PraktikanJadwalScreen() {
   const totalDibuka = sesiList.filter((s) => s.status === 'dibuka').length;
   const totalSudahHadir = myAttendances.length;
   const totalBelumBuka = sesiList.filter((s) => s.status === 'belum-dibuka').length;
+  const totalIzinDisetujui = myLeaves.filter((l) => l.status === 'disetujui').length;
+  const totalIzinMenunggu = myLeaves.filter((l) => l.status === 'menunggu').length;
 
   const handleCardPress = (sesi: SessionDocument) => {
     router.push({
@@ -80,6 +118,7 @@ export default function PraktikanJadwalScreen() {
 
   const renderItem = ({ item }: { item: SessionDocument }) => {
     const presensiItem = myAttendances.find((p) => p.sessionId === item.id);
+    const leaveItem = myLeaves.find((l) => l.sessionId === item.id);
     const isHadir = Boolean(presensiItem);
 
     return (
@@ -88,6 +127,8 @@ export default function PraktikanJadwalScreen() {
         role="praktikan"
         isHadir={isHadir}
         waktuHadir={presensiItem?.waktuKehadiran}
+        leaveStatus={leaveItem?.status}
+        leaveCategory={leaveItem?.aiClassification?.category}
         onPress={() => handleCardPress(item)}
       />
     );
@@ -101,7 +142,6 @@ export default function PraktikanJadwalScreen() {
           <Text style={styles.eyebrowText}>PORTAL MAHASISWA</Text>
         </View>
         <View style={styles.liveTag}>
-          <View style={styles.liveDot} />
           <Text style={styles.liveTagText}>Sesi Real-Time</Text>
         </View>
       </View>
@@ -128,6 +168,25 @@ export default function PraktikanJadwalScreen() {
         </View>
       </Pressable>
 
+      {/* Notice jika ada izin yang sedang menunggu keputusan */}
+      {totalIzinMenunggu > 0 && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Pantau Status Izin Menunggu"
+          onPress={() => router.push('/praktikan/riwayat')}
+          style={({ pressed }) => [styles.pendingStudentNotice, pressed && styles.cardPressed]}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.pendingStudentTitle}>
+              {totalIzinMenunggu} Pengajuan Izin Menunggu Verifikasi Asisten
+            </Text>
+            <Text style={styles.pendingStudentSub}>
+              Rekomendasi AI telah disematkan. Klik untuk memantau status persetujuan.
+            </Text>
+          </View>
+          <Text style={styles.pendingStudentAction}>Cek Status →</Text>
+        </Pressable>
+      )}
+
       {/* Metrics Overview Cards (Matching Halaman 1 style) */}
       <View style={styles.metricsGrid}>
         <View style={styles.metricCard}>
@@ -148,6 +207,24 @@ export default function PraktikanJadwalScreen() {
           <Text style={styles.metricDesc}>Tercatat Sistem</Text>
         </View>
 
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Lihat Riwayat Izin"
+          onPress={() => router.push('/praktikan/riwayat')}
+          style={({ pressed }) => [
+            styles.metricCard,
+            styles.metricCardIzin,
+            pressed && styles.cardPressed,
+          ]}>
+          <Text style={[styles.metricVal, { color: '#2563EB' }]}>
+            {totalIzinDisetujui}
+          </Text>
+          <Text style={styles.metricLbl}>Izin Disetujui</Text>
+          <Text style={styles.metricDesc}>
+            {totalIzinMenunggu > 0 ? `${totalIzinMenunggu} Menunggu →` : 'Riwayat Izin'}
+          </Text>
+        </Pressable>
+
         <View style={styles.metricCard}>
           <Text style={[styles.metricVal, { color: '#64748B' }]}>{totalBelumBuka}</Text>
           <Text style={styles.metricLbl}>Belum Buka</Text>
@@ -158,7 +235,10 @@ export default function PraktikanJadwalScreen() {
       {/* Filter Section */}
       <View style={styles.filterSection}>
         <Text style={styles.filterTitle}>Filter Berdasarkan Status & Kelas:</Text>
-        <View style={styles.filterRow}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterRow}>
           <FilterChip
             label="Semua"
             active={filter === 'semua'}
@@ -194,7 +274,7 @@ export default function PraktikanJadwalScreen() {
             variant="ditutup"
             onPress={() => setFilter('ditutup')}
           />
-        </View>
+        </ScrollView>
       </View>
     </View>
   );
@@ -240,7 +320,6 @@ function FilterChip({
   label,
   active,
   count,
-  variant,
   onPress,
 }: {
   label: string;
@@ -259,21 +338,6 @@ function FilterChip({
     return styles.chipTextInactive;
   };
 
-  const getDotColor = () => {
-    switch (variant) {
-      case 'dibuka':
-        return '#16A34A';
-      case 'belum-dibuka':
-        return '#EAB308';
-      case 'ditutup':
-        return '#DC2626';
-      default:
-        return undefined;
-    }
-  };
-
-  const dotColor = getDotColor();
-
   return (
     <Pressable
       style={({ pressed }) => [
@@ -282,9 +346,6 @@ function FilterChip({
         pressed && styles.chipPressed,
       ]}
       onPress={onPress}>
-      {dotColor ? (
-        <View style={[styles.chipDot, { backgroundColor: dotColor }]} />
-      ) : null}
       <Text style={[styles.chipText, getTextStyle()]}>{label}</Text>
       {count !== undefined ? (
         <View style={[styles.countBadge, active && styles.countBadgeActive]}>
@@ -345,12 +406,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 16,
   },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#16A34A',
-  },
   liveTagText: {
     fontSize: 11,
     fontWeight: '700',
@@ -396,6 +451,36 @@ const styles = StyleSheet.create({
     borderColor: '#FED7AA',
     backgroundColor: '#FFF7ED',
   },
+  metricCardIzin: {
+    borderColor: '#BFDBFE',
+    backgroundColor: '#EFF6FF',
+  },
+  pendingStudentNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 12,
+    padding: 12,
+    gap: 10,
+    marginTop: 6,
+  },
+  pendingStudentTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#92400E',
+  },
+  pendingStudentSub: {
+    fontSize: 11,
+    color: '#B45309',
+    marginTop: 1,
+  },
+  pendingStudentAction: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#B45309',
+  },
   metricVal: {
     fontSize: 24,
     fontWeight: '900',
@@ -422,15 +507,16 @@ const styles = StyleSheet.create({
   },
   filterRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 2,
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5.5,
+    borderRadius: 16,
     borderWidth: 1,
   },
   chipInactive: {
@@ -444,14 +530,8 @@ const styles = StyleSheet.create({
   chipPressed: {
     opacity: 0.85,
   },
-  chipDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 6,
-  },
   chipText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
   },
   chipTextInactive: {

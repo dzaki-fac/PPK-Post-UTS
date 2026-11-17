@@ -10,10 +10,8 @@ import {
   collection,
   doc,
   setDoc,
-  updateDoc,
   query,
   where,
-  orderBy,
   onSnapshot,
   getDocs,
   Unsubscribe,
@@ -67,8 +65,8 @@ export interface CreateLeaveRequestInput {
   lampiranUrl?: string;
 }
 
-// In-Memory Storage Fallback (untuk ketahanan saat Firestore offline / dev mode)
-const inMemoryStore: LeaveRequestDocument[] = [
+// Template Permohonan Izin Standar (Data Lama / Referensi Praktikum)
+export const DEFAULT_DEMO_LEAVES: LeaveRequestDocument[] = [
   {
     id: 'leave-demo-1',
     sessionId: 'sesi-2',
@@ -112,7 +110,61 @@ const inMemoryStore: LeaveRequestDocument[] = [
     createdAt: new Date(Date.now() - 7200000).toISOString(),
     updatedAt: new Date(Date.now() - 7200000).toISOString(),
   },
+  {
+    id: 'leave-demo-3',
+    sessionId: 'sesi-4',
+    sessionName: 'Modul 4: Replikasi & Sharding Basis Data MongoDB',
+    studentId: 'prak-4',
+    studentName: 'Dimas Prasetyo',
+    studentNim: '24060122140004',
+    studentClass: 'Kelas B',
+    alasan: 'Bertugas sebagai panitia inti seminar nasional Dies Natalis Fakultas FSM.',
+    status: 'disetujui',
+    aiClassification: {
+      category: 'Akademik',
+      confidence: 0.89,
+      sentiment: 'netral',
+      rawSummary: 'Terdeteksi penugasan kegiatan akademik universitas/fakultas (sentimen: netral).',
+      processedAt: new Date(Date.now() - 86400000).toISOString(),
+      isFallback: false,
+    },
+    reviewedBy: 'ast-1',
+    reviewerName: 'Kak Dzaki M.',
+    reviewNotes: 'Disetujui. Surat dispensasi akademik kepanitiaan telah diverifikasi lengkap.',
+    reviewedAt: new Date(Date.now() - 80000000).toISOString(),
+    createdAt: new Date(Date.now() - 86400000).toISOString(),
+    updatedAt: new Date(Date.now() - 80000000).toISOString(),
+  },
+  {
+    id: 'leave-demo-4',
+    sessionId: 'sesi-1',
+    sessionName: 'Modul 1: Arsitektur Platform Khusus & Pengenalan Expo',
+    studentId: 'prak-7',
+    studentName: 'Gita Permata',
+    studentNim: '24060122140007',
+    studentClass: 'Kelas B',
+    alasan: 'Izin rawat inap rumah sakit karena demam berdarah (DBD).',
+    lampiranUrl: 'https://undip.ac.id/surat-rs-gita.pdf',
+    status: 'disetujui',
+    aiClassification: {
+      category: 'Sakit',
+      confidence: 0.96,
+      sentiment: 'negatif',
+      rawSummary: 'Terdeteksi kondisi rawat inap medis (sentimen: negatif).',
+      processedAt: new Date(Date.now() - 172800000).toISOString(),
+      isFallback: false,
+    },
+    reviewedBy: 'ast-2',
+    reviewerName: 'Kak Akmal R.',
+    reviewNotes: 'Disetujui. Surat rawat inap valid, lekas sembuh.',
+    reviewedAt: new Date(Date.now() - 160000000).toISOString(),
+    createdAt: new Date(Date.now() - 172800000).toISOString(),
+    updatedAt: new Date(Date.now() - 160000000).toISOString(),
+  },
 ];
+
+// In-Memory Storage Fallback (untuk ketahanan saat Firestore offline / dev mode)
+const inMemoryStore: LeaveRequestDocument[] = [...DEFAULT_DEMO_LEAVES];
 
 const listeners = new Set<() => void>();
 
@@ -148,11 +200,11 @@ export async function createLeaveRequest(
   const newDoc: LeaveRequestDocument = {
     id: docId,
     sessionId: input.sessionId,
-    sessionName: input.sessionName,
+    sessionName: input.sessionName || 'Sesi Praktikum',
     studentId: input.studentId,
-    studentName: input.studentName,
-    studentNim: input.studentNim,
-    studentClass: input.studentClass,
+    studentName: input.studentName || 'Mahasiswa',
+    studentNim: input.studentNim || '-',
+    studentClass: input.studentClass || 'A',
     alasan: cleanAlasan,
     lampiranUrl: input.lampiranUrl?.trim() || undefined,
     status: 'menunggu',
@@ -172,12 +224,38 @@ export async function createLeaveRequest(
   inMemoryStore.unshift(newDoc);
   notifyLocalListeners();
 
-  // Simpan ke Firestore jika tersedia
+  // Simpan ke Firestore jika tersedia (tanpa menyertakan field undefined)
   try {
     const docRef = doc(db, 'leave_requests', docId);
-    await setDoc(docRef, newDoc);
+    const firestoreData: Record<string, unknown> = {
+      id: docId,
+      sessionId: input.sessionId,
+      sessionName: input.sessionName || 'Sesi Praktikum',
+      studentId: input.studentId,
+      studentName: input.studentName || 'Mahasiswa',
+      studentNim: input.studentNim || '-',
+      studentClass: input.studentClass || 'A',
+      alasan: cleanAlasan,
+      status: 'menunggu',
+      aiClassification: {
+        category: aiResult.kategori,
+        confidence: aiResult.confidence,
+        sentiment: aiResult.sentimen,
+        rawSummary: aiResult.ringkasan,
+        processedAt: aiResult.processedAt,
+        isFallback: aiResult.isFallback,
+      },
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    if (input.lampiranUrl?.trim()) {
+      firestoreData.lampiranUrl = input.lampiranUrl.trim();
+    }
+
+    await setDoc(docRef, firestoreData);
   } catch (error) {
-    console.warn('Peringatan: Gagal menyimpan izin ke Firestore, menggunakan penyimpanan lokal:', error);
+    console.error('Gagal menyimpan izin ke Firestore, menggunakan penyimpanan lokal:', error);
   }
 
   return newDoc;
@@ -216,9 +294,11 @@ export function subscribeLeaveRequests(
 
   try {
     const colRef = collection(db, 'leave_requests');
+    // Tidak menggabungkan where dan orderBy pada field berbeda di query Firestore
+    // agar tidak mewajibkan pembuatan composite index manual di Firebase Console.
     const q = statusFilter
-      ? query(colRef, where('status', '==', statusFilter), orderBy('createdAt', 'desc'))
-      : query(colRef, orderBy('createdAt', 'desc'));
+      ? query(colRef, where('status', '==', statusFilter))
+      : query(colRef);
 
     unsubscribeFirestore = onSnapshot(
       q,
@@ -229,8 +309,20 @@ export function subscribeLeaveRequests(
           docs.push({ id: snapDoc.id, ...snapDoc.data() } as LeaveRequestDocument);
         });
 
-        // Sinkronisasi memori lokal dengan dokumen Firestore
-        docs.forEach((docItem) => {
+        // Sinkronisasi memori lokal dengan dokumen Firestore & sertakan demo awal jika belum ada
+        const mergedDocs = [...docs];
+        DEFAULT_DEMO_LEAVES.forEach((demo) => {
+          if (!mergedDocs.some((d) => d.id === demo.id)) {
+            if (!statusFilter || demo.status === statusFilter) {
+              mergedDocs.push(demo);
+            }
+          }
+        });
+
+        // Urutkan dokumen terbaru di atas secara in-memory (0ms)
+        mergedDocs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+        mergedDocs.forEach((docItem) => {
           const idx = inMemoryStore.findIndex((x) => x.id === docItem.id);
           if (idx >= 0) {
             inMemoryStore[idx] = docItem;
@@ -239,7 +331,7 @@ export function subscribeLeaveRequests(
           }
         });
 
-        callback(docs);
+        callback(mergedDocs);
       },
       (error) => {
         console.warn('Firestore onSnapshot error (subscribeLeaveRequests), menggunakan fallback memori:', error);
@@ -262,13 +354,14 @@ export function subscribeLeaveRequests(
  */
 export function subscribeStudentLeaveRequests(
   studentId: string,
-  callback: (requests: LeaveRequestDocument[]) => void
+  callback: (requests: LeaveRequestDocument[]) => void,
+  studentNim?: string
 ): Unsubscribe {
   let isFirestoreActive = false;
 
   const emitLocal = () => {
     const studentRequests = inMemoryStore
-      .filter((r) => r.studentId === studentId)
+      .filter((r) => r.studentId === studentId || (studentNim && r.studentNim === studentNim))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     callback(studentRequests);
   };
@@ -286,20 +379,31 @@ export function subscribeStudentLeaveRequests(
 
   try {
     const colRef = collection(db, 'leave_requests');
-    const q = query(
-      colRef,
-      where('studentId', '==', studentId),
-      orderBy('createdAt', 'desc')
-    );
 
     unsubscribeFirestore = onSnapshot(
-      q,
+      colRef,
       (snapshot) => {
         isFirestoreActive = true;
         const docs: LeaveRequestDocument[] = [];
         snapshot.forEach((snapDoc) => {
-          docs.push({ id: snapDoc.id, ...snapDoc.data() } as LeaveRequestDocument);
+          const item = { id: snapDoc.id, ...snapDoc.data() } as LeaveRequestDocument;
+          if (item.studentId === studentId || (studentNim && item.studentNim === studentNim)) {
+            docs.push(item);
+          }
         });
+
+        // Sertakan pengajuan lokal atau demo yang cocok dengan studentId atau studentNim
+        inMemoryStore
+          .filter(
+            (r) =>
+              (r.studentId === studentId || (studentNim && r.studentNim === studentNim)) &&
+              !docs.some((d) => d.id === r.id)
+          )
+          .forEach((localItem) => {
+            docs.push(localItem);
+          });
+
+        docs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         callback(docs);
       },
       (error) => {
@@ -334,8 +438,9 @@ export async function reviewLeaveRequest(
 
   // 1. Perbarui state memori lokal
   const targetIndex = inMemoryStore.findIndex((r) => r.id === requestId);
+  let updatedDoc: LeaveRequestDocument | undefined;
   if (targetIndex >= 0) {
-    inMemoryStore[targetIndex] = {
+    updatedDoc = {
       ...inMemoryStore[targetIndex],
       status: decision,
       reviewNotes: notes?.trim() || '',
@@ -344,20 +449,39 @@ export async function reviewLeaveRequest(
       reviewedAt: now,
       updatedAt: now,
     };
+    inMemoryStore[targetIndex] = updatedDoc;
     notifyLocalListeners();
   }
 
-  // 2. Perbarui dokumen di Cloud Firestore
+  // 2. Perbarui dokumen di Cloud Firestore (menggunakan setDoc merge untuk menjamin tersimpan)
   try {
     const docRef = doc(db, 'leave_requests', requestId);
-    await updateDoc(docRef, {
+    const firestorePayload: Record<string, unknown> = {
       status: decision,
       reviewNotes: notes?.trim() || '',
       reviewedBy: reviewerUid || '',
       reviewerName: reviewerName || '',
       reviewedAt: now,
       updatedAt: now,
-    });
+    };
+
+    if (updatedDoc) {
+      firestorePayload.id = updatedDoc.id;
+      firestorePayload.sessionId = updatedDoc.sessionId;
+      firestorePayload.sessionName = updatedDoc.sessionName;
+      firestorePayload.studentId = updatedDoc.studentId;
+      firestorePayload.studentName = updatedDoc.studentName;
+      firestorePayload.studentNim = updatedDoc.studentNim;
+      firestorePayload.studentClass = updatedDoc.studentClass;
+      firestorePayload.alasan = updatedDoc.alasan;
+      firestorePayload.aiClassification = updatedDoc.aiClassification;
+      firestorePayload.createdAt = updatedDoc.createdAt;
+      if (updatedDoc.lampiranUrl) {
+        firestorePayload.lampiranUrl = updatedDoc.lampiranUrl;
+      }
+    }
+
+    await setDoc(docRef, firestorePayload, { merge: true });
     return true;
   } catch (error) {
     console.warn('Peringatan: Gagal memperbarui izin di Firestore, tersimpan di lokal:', error);
@@ -398,9 +522,13 @@ export async function checkExistingLeaveRequest(
  */
 export function getApprovedLeaveForSession(
   sessionId: string,
-  studentId: string
+  studentId: string,
+  studentNim?: string
 ): LeaveRequestDocument | undefined {
   return inMemoryStore.find(
-    (r) => r.sessionId === sessionId && r.studentId === studentId && r.status === 'disetujui'
+    (r) =>
+      r.sessionId === sessionId &&
+      (r.studentId === studentId || (studentNim && r.studentNim === studentNim)) &&
+      r.status === 'disetujui'
   );
 }

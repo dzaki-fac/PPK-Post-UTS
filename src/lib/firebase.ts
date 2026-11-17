@@ -1,5 +1,12 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FirebaseApp, getApp, getApps, initializeApp } from 'firebase/app';
-import { Auth, getAuth } from 'firebase/auth';
+import {
+  Auth,
+  getAuth,
+  // @ts-expect-error - getReactNativePersistence is exported in the React Native runtime of @firebase/auth
+  getReactNativePersistence,
+  initializeAuth,
+} from 'firebase/auth';
 import {
   Firestore,
   getFirestore,
@@ -27,6 +34,10 @@ export const firebaseConfig = {
   measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
+export const GOOGLE_WEB_CLIENT_ID =
+  process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
+  '451443064627-5tgabgh2hienk8i6thm3tuh14qhs0dk6.apps.googleusercontent.com';
+
 export function isFirebaseConfigured(): boolean {
   const apiKey = firebaseConfig.apiKey?.trim();
   const projectId = firebaseConfig.projectId?.trim();
@@ -46,8 +57,21 @@ export function isFirebaseConfigured(): boolean {
 // Inisialisasi aplikasi Firebase tunggal (Singleton pattern untuk mencegah inisialisasi ganda)
 const app: FirebaseApp = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-// Inisialisasi Firebase Authentication (di Web otomatis persistensi lokal via IndexedDB)
-export const auth: Auth = getAuth(app);
+// Inisialisasi Firebase Authentication (Persistensi AsyncStorage di Mobile, IndexedDB di Web)
+function createAuthInstance(firebaseApp: FirebaseApp): Auth {
+  if (Platform.OS === 'web') {
+    return getAuth(firebaseApp);
+  }
+  try {
+    return initializeAuth(firebaseApp, {
+      persistence: getReactNativePersistence(AsyncStorage),
+    });
+  } catch {
+    return getAuth(firebaseApp);
+  }
+}
+
+export const auth: Auth = createAuthInstance(app);
 
 // Inisialisasi Cloud Firestore dengan dukungan cache offline pada Web
 function createFirestoreInstance(firebaseApp: FirebaseApp): Firestore {

@@ -14,16 +14,52 @@ import {
 } from 'react-native';
 
 import { AICategoryBadge } from '@/components/ai-category-badge';
+import { useAuth } from '@/context/auth-context';
 import { usePraktikum } from '@/context/praktikum-context';
 import { AIAnalysisResult, analyzeLeaveReason } from '@/services/ai-service';
+import { checkStudentSessionAttendanceExists } from '@/services/attendance-service';
 import {
   checkExistingLeaveRequest,
   createLeaveRequest,
 } from '@/services/leave-service';
+import { subscribeSessions } from '@/services/session-service';
+import { SessionDocument } from '@/types/praktikum';
 
 export default function PengajuanIzinScreen() {
   const params = useLocalSearchParams<{ sessionId?: string }>();
-  const { currentPraktikan, sesiList } = usePraktikum();
+  const { user, userDoc } = useAuth();
+  const { currentPraktikan, sesiList: dummySesiList } = usePraktikum();
+  const [firestoreSessions, setFirestoreSessions] = useState<SessionDocument[]>([]);
+
+  useEffect(() => {
+    const unsub = subscribeSessions((items) => {
+      if (items && items.length > 0) {
+        setFirestoreSessions(items);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  const sesiList = firestoreSessions.length > 0 ? firestoreSessions : dummySesiList;
+  const currentStudent = useMemo(() => {
+    if (userDoc) {
+      return {
+        id: userDoc.uid,
+        nama: userDoc.nama,
+        nim: userDoc.nim || '24060122130000',
+        kelas: (userDoc.kelas || 'A') as 'A' | 'B',
+      };
+    }
+    if (user) {
+      return {
+        id: user.uid,
+        nama: user.displayName || user.email?.split('@')[0] || 'Mahasiswa',
+        nim: '24060122130000',
+        kelas: 'A' as const,
+      };
+    }
+    return currentPraktikan;
+  }, [userDoc, user, currentPraktikan]);
 
   // State Form
   const [selectedSessionId, setSelectedSessionId] = useState<string>(
@@ -32,13 +68,23 @@ export default function PengajuanIzinScreen() {
   const [alasan, setAlasan] = useState<string>('');
   const [lampiranUrl, setLampiranUrl] = useState<string>('');
 
+  // Sinkronkan parameter sesi jika diarahkan dari detail sesi praktikum tanpa cascading render
+  const [prevParamSessionId, setPrevParamSessionId] = useState(params.sessionId);
+  if (params.sessionId !== prevParamSessionId) {
+    setPrevParamSessionId(params.sessionId);
+    if (params.sessionId) {
+      setSelectedSessionId(params.sessionId);
+    }
+  }
+
   // State Analisis AI Real-Time
   const [aiResult, setAiResult] = useState<AIAnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
 
-  // State Status Pengajuan
+  // State Status Pengajuan & Validasi Kehadiran
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isDuplicate, setIsDuplicate] = useState<boolean>(false);
+  const [isAlreadyAttended, setIsAlreadyAttended] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // State Modal Sukses
@@ -46,37 +92,39 @@ export default function PengajuanIzinScreen() {
 
   // Sesi yang relevan untuk kelas praktikan
   const availableSessions = useMemo(() => {
-    if (!currentPraktikan) return sesiList;
-    const kodeKelas = currentPraktikan.kelas.toUpperCase();
+    if (!currentStudent) return sesiList;
+    const kodeKelas = currentStudent.kelas.toUpperCase();
     return sesiList.filter(
       (s) =>
         s.kelas.toUpperCase().includes(kodeKelas) ||
-        s.kelas.includes(currentPraktikan.kelas)
+        s.kelas.includes(currentStudent.kelas)
     );
-  }, [sesiList, currentPraktikan]);
+  }, [sesiList, currentStudent]);
 
   // ID sesi aktif (pilihan pengguna atau opsi pertama yang tersedia)
   const activeSessionId =
     selectedSessionId || (availableSessions.length > 0 ? availableSessions[0].id : '');
 
-  // Cek duplikasi izin saat sesi berubah
+  // Cek duplikasi izin dan riwayat presensi saat sesi berubah
   useEffect(() => {
-    if (!activeSessionId || !currentPraktikan) return;
+    if (!activeSessionId || !currentStudent) return;
 
     let isMounted = true;
 
     (async () => {
       try {
-        const exists = await checkExistingLeaveRequest(
-          activeSessionId,
-          currentPraktikan.id
-        );
+        const [exists, attended] = await Promise.all([
+          checkExistingLeaveRequest(activeSessionId, currentStudent.id),
+          checkStudentSessionAttendanceExists(activeSessionId, currentStudent.id),
+        ]);
         if (isMounted) {
           setIsDuplicate(exists);
+          setIsAlreadyAttended(attended);
         }
       } catch {
         if (isMounted) {
           setIsDuplicate(false);
+          setIsAlreadyAttended(false);
         }
       }
     })();
@@ -84,7 +132,7 @@ export default function PengajuanIzinScreen() {
     return () => {
       isMounted = false;
     };
-  }, [activeSessionId, currentPraktikan]);
+  }, [activeSessionId, currentStudent]);
 
   // Inferensi AI on-device saat teks alasan berubah
   useEffect(() => {
@@ -128,10 +176,11 @@ export default function PengajuanIzinScreen() {
     alasan.trim().length >= 10 &&
     Boolean(activeSessionId) &&
     !isDuplicate &&
+    !isAlreadyAttended &&
     !isSubmitting;
 
   const handleSubmit = async () => {
-    if (!isFormValid || !currentPraktikan || !selectedSession) return;
+    if (!isFormValid || !currentStudent || !selectedSession) return;
 
     setErrorMessage(null);
     setIsSubmitting(true);
@@ -140,10 +189,10 @@ export default function PengajuanIzinScreen() {
       await createLeaveRequest({
         sessionId: selectedSession.id,
         sessionName: `${selectedSession.praktikum} - ${selectedSession.materi}`,
-        studentId: currentPraktikan.id,
-        studentName: currentPraktikan.nama,
-        studentNim: currentPraktikan.nim,
-        studentClass: currentPraktikan.kelas,
+        studentId: currentStudent.id,
+        studentName: currentStudent.nama,
+        studentNim: currentStudent.nim,
+        studentClass: currentStudent.kelas,
         alasan: alasan.trim(),
         lampiranUrl: lampiranUrl.trim() || undefined,
       });
@@ -166,29 +215,13 @@ export default function PengajuanIzinScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
         <View style={styles.container}>
-          {/* 1. Breadcrumb Navigasi Sesuai DESIGN.md */}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Kembali ke Jadwal Praktikum"
-            onPress={() => {
-              if (router.canGoBack()) {
-                router.back();
-              } else {
-                router.replace('/praktikan/jadwal');
-              }
-            }}
-            style={({ pressed }) => [styles.breadcrumbPill, pressed && styles.pressed]}>
-            <Text style={styles.breadcrumbText}>← Kembali ke Jadwal Praktikum</Text>
-          </Pressable>
-
-          {/* 2. Header Layar */}
+          {/* Header Layar */}
           <View style={styles.header}>
             <View style={styles.eyebrowRow}>
               <View style={styles.eyebrowBadge}>
                 <Text style={styles.eyebrowText}>PORTAL MAHASISWA</Text>
               </View>
               <View style={styles.aiTag}>
-                <View style={styles.aiDot} />
                 <Text style={styles.aiTagText}>Model EDOM On-Device</Text>
               </View>
             </View>
@@ -204,65 +237,116 @@ export default function PengajuanIzinScreen() {
           <View style={styles.identityCard}>
             <View style={styles.avatarCircle}>
               <Text style={styles.avatarText}>
-                {currentPraktikan?.nama?.charAt(0).toUpperCase() || 'M'}
+                {currentStudent?.nama?.charAt(0).toUpperCase() || 'M'}
               </Text>
             </View>
             <View style={styles.identityMeta}>
               <View style={styles.identityNameRow}>
-                <Text style={styles.identityName}>{currentPraktikan?.nama || '-'}</Text>
+                <Text style={styles.identityName}>{currentStudent?.nama || '-'}</Text>
                 <View style={styles.classChip}>
-                  <Text style={styles.classText}>Kelas {currentPraktikan?.kelas || '-'}</Text>
+                  <Text style={styles.classText}>Kelas {currentStudent?.kelas || '-'}</Text>
                 </View>
               </View>
-              <Text style={styles.identityNim}>NIM: {currentPraktikan?.nim || '-'}</Text>
+              <Text style={styles.identityNim}>NIM: {currentStudent?.nim || '-'}</Text>
             </View>
           </View>
 
           {/* 4. Formulir Masukan */}
           <View style={styles.formCard}>
-            {/* Pilihan Sesi Praktikum */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>
-                Pilih Sesi Praktikum yang Berhalangan Hadir <Text style={styles.required}>*</Text>
-              </Text>
-              <View style={styles.sessionSelectWrap}>
-                {availableSessions.map((sesi) => {
-                  const isSelected = sesi.id === activeSessionId;
-                  return (
-                    <Pressable
-                      key={sesi.id}
-                      accessibilityRole="button"
-                      onPress={() => setSelectedSessionId(sesi.id)}
+            {/* Pilihan Sesi Praktikum: Langsung ke sesi terkait jika dibuka dari detail sesi */}
+            {params.sessionId && selectedSession ? (
+              <View style={styles.inputGroup}>
+                <View style={styles.labelRow}>
+                  <Text style={styles.inputLabel}>
+                    Sesi Praktikum yang Diajukan Izin <Text style={styles.required}>*</Text>
+                  </Text>
+                  <View style={styles.directTargetBadge}>
+                    <Text style={styles.directTargetBadgeText}>Sesi Terpilih</Text>
+                  </View>
+                </View>
+
+                <View style={[styles.sessionOption, styles.sessionOptionSelected]}>
+                  <View style={styles.sessionOptionHeader}>
+                    <Text
                       style={[
-                        styles.sessionOption,
-                        isSelected && styles.sessionOptionSelected,
+                        styles.sessionOptionTitle,
+                        styles.sessionOptionTitleSelected,
                       ]}>
-                      <View style={styles.sessionOptionHeader}>
-                        <Text
-                          style={[
-                            styles.sessionOptionTitle,
-                            isSelected && styles.sessionOptionTitleSelected,
-                          ]}>
-                          {sesi.praktikum} ({sesi.kelas})
-                        </Text>
-                        <View
-                          style={[
-                            styles.radioDot,
-                            isSelected && styles.radioDotSelected,
-                          ]}
-                        />
-                      </View>
-                      <Text style={styles.sessionOptionMateri} numberOfLines={2}>
-                        {sesi.materi}
-                      </Text>
-                      <Text style={styles.sessionOptionSchedule}>
-                        {sesi.tanggal} • {sesi.waktuMulai} - {sesi.waktuSelesai} WIB
-                      </Text>
-                    </Pressable>
-                  );
-                })}
+                      {selectedSession.praktikum} ({selectedSession.kelas})
+                    </Text>
+                    <View style={[styles.radioDot, styles.radioDotSelected]} />
+                  </View>
+                  <Text style={styles.sessionOptionMateri}>
+                    {selectedSession.materi}
+                  </Text>
+                  <Text style={styles.sessionOptionSchedule}>
+                    {selectedSession.tanggal} • {selectedSession.waktuMulai} -{' '}
+                    {selectedSession.waktuSelesai} WIB
+                  </Text>
+                  {selectedSession.ruang ? (
+                    <Text style={styles.sessionOptionRoom}>
+                      Ruang: {selectedSession.ruang}
+                    </Text>
+                  ) : null}
+                </View>
               </View>
-            </View>
+            ) : (
+              <View style={styles.inputGroup}>
+                <View style={styles.labelRow}>
+                  <Text style={styles.inputLabel}>
+                    Pilih Sesi Praktikum yang Berhalangan Hadir <Text style={styles.required}>*</Text>
+                  </Text>
+                  {availableSessions.length > 2 && (
+                    <Text style={styles.sessionCountTag}>
+                      {availableSessions.length} Sesi Tersedia
+                    </Text>
+                  )}
+                </View>
+                <View style={styles.sessionScrollContainer}>
+                  <ScrollView
+                    nestedScrollEnabled={true}
+                    showsVerticalScrollIndicator={true}
+                    style={styles.sessionScrollView}
+                    contentContainerStyle={styles.sessionSelectWrap}>
+                    {availableSessions.map((sesi) => {
+                      const isSelected = sesi.id === activeSessionId;
+                      return (
+                        <Pressable
+                          key={sesi.id}
+                          accessibilityRole="button"
+                          onPress={() => setSelectedSessionId(sesi.id)}
+                          style={[
+                            styles.sessionOption,
+                            isSelected && styles.sessionOptionSelected,
+                          ]}>
+                          <View style={styles.sessionOptionHeader}>
+                            <Text
+                              style={[
+                                styles.sessionOptionTitle,
+                                isSelected && styles.sessionOptionTitleSelected,
+                              ]}>
+                              {sesi.praktikum} ({sesi.kelas})
+                            </Text>
+                            <View
+                              style={[
+                                styles.radioDot,
+                                isSelected && styles.radioDotSelected,
+                              ]}
+                            />
+                          </View>
+                          <Text style={styles.sessionOptionMateri} numberOfLines={2}>
+                            {sesi.materi}
+                          </Text>
+                          <Text style={styles.sessionOptionSchedule}>
+                            {sesi.tanggal} • {sesi.waktuMulai} - {sesi.waktuSelesai} WIB
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              </View>
+            )}
 
             {/* Peringatan jika sudah pernah mengajukan */}
             {isDuplicate ? (
@@ -271,6 +355,16 @@ export default function PengajuanIzinScreen() {
                 <Text style={styles.warningText}>
                   Anda sudah pernah mengajukan permohonan izin untuk sesi praktikum ini.
                   Silakan periksa status peninjauan di tab Riwayat.
+                </Text>
+              </View>
+            ) : null}
+
+            {/* Peringatan jika mahasiswa sudah presensi (Issue 4) */}
+            {isAlreadyAttended ? (
+              <View style={[styles.warningBox, { backgroundColor: '#FEF2F2', borderColor: '#FCA5A5' }]}>
+                <Text style={[styles.warningTitle, { color: '#B91C1C' }]}>Presensi Telah Tercatat</Text>
+                <Text style={[styles.warningText, { color: '#991B1B' }]}>
+                  Anda sudah tercatat hadir pada sesi praktikum ini. Pengajuan izin ketidakhadiran tidak dapat dilakukan untuk sesi yang telah dihadiri.
                 </Text>
               </View>
             ) : null}
@@ -325,11 +419,11 @@ export default function PengajuanIzinScreen() {
                   <Text style={styles.aiSummaryText}>{aiResult.ringkasan}</Text>
                   <View style={styles.aiMetaInfo}>
                     <Text style={styles.aiMetaItem}>
-                      Sentimen Teks: <Text style={styles.bold}>{aiResult.sentimen}</Text>
+                      Sentimen: <Text style={styles.bold}>{aiResult.sentimen}</Text>
                     </Text>
                     <Text style={styles.aiMetaSeparator}>•</Text>
                     <Text style={styles.aiMetaItem}>
-                      Pemrosesan: <Text style={styles.bold}>JavaScript On-Device (Offline)</Text>
+                      Engine: <Text style={styles.bold}>Model EDOM On-Device</Text>
                     </Text>
                   </View>
                 </View>
@@ -447,20 +541,6 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     gap: 16,
   },
-  breadcrumbPill: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-  },
-  breadcrumbText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#334155',
-  },
   header: {
     gap: 8,
   },
@@ -494,12 +574,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 16,
-  },
-  aiDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#0D9488',
   },
   aiTagText: {
     fontSize: 11,
@@ -591,8 +665,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 8,
   },
   inputLabel: {
+    flex: 1,
     fontSize: 13,
     fontWeight: '800',
     color: '#1E293B',
@@ -612,6 +688,29 @@ const styles = StyleSheet.create({
   },
   counterTextValid: {
     color: '#16A34A',
+  },
+  sessionCountTag: {
+    flexShrink: 0,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#EA580C',
+    backgroundColor: '#FFF7ED',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+  },
+  sessionScrollContainer: {
+    maxHeight: 230,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+    padding: 8,
+  },
+  sessionScrollView: {
+    maxHeight: 214,
   },
   sessionSelectWrap: {
     gap: 8,
@@ -661,6 +760,24 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#64748B',
     marginTop: 2,
+  },
+  sessionOptionRoom: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#0F766E',
+    marginTop: 2,
+  },
+  directTargetBadge: {
+    backgroundColor: '#EA580C',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  directTargetBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   textArea: {
     backgroundColor: '#F8FAFC',
@@ -733,12 +850,14 @@ const styles = StyleSheet.create({
   aiMetaInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 6,
-    marginTop: 2,
+    marginTop: 4,
   },
   aiMetaItem: {
     fontSize: 11,
     color: '#0D9488',
+    flexShrink: 1,
   },
   aiMetaSeparator: {
     fontSize: 11,

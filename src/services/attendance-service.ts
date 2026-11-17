@@ -1,11 +1,13 @@
 import {
   Unsubscribe,
   collection,
+  deleteDoc,
   doc,
   getDoc,
   onSnapshot,
   query,
   setDoc,
+  updateDoc,
   where,
 } from 'firebase/firestore';
 import { Platform } from 'react-native';
@@ -124,6 +126,22 @@ export function subscribeStudentSessionAttendance(
 }
 
 /**
+ * Memeriksa apakah mahasiswa telah melakukan presensi pada sesi tertentu di Firestore.
+ */
+export async function checkStudentSessionAttendanceExists(
+  sessionId: string,
+  studentId: string
+): Promise<boolean> {
+  const attendanceRef = doc(
+    db,
+    ATTENDANCES_COLLECTION,
+    buildAttendanceId(sessionId, studentId)
+  );
+  const docSnap = await getDoc(attendanceRef);
+  return docSnap.exists();
+}
+
+/**
  * Listener real-time seluruh presensi milik satu mahasiswa.
  */
 export function subscribeStudentAttendances(
@@ -198,6 +216,130 @@ export function subscribePraktikanUsers(
       if (onError) onError(err);
     }
   );
+}
+
+/**
+ * Listener real-time daftar seluruh asisten laboratorium (peran == 'asisten') di /users.
+ */
+export function subscribeAsistenUsers(
+  onData: (assistants: UserDocument[]) => void,
+  onError?: (error: Error) => void
+): Unsubscribe {
+  const q = query(
+    collection(db, USERS_COLLECTION),
+    where('peran', '==', 'asisten')
+  );
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const items = snapshot.docs.map((d) => ({
+        ...(d.data() as UserDocument),
+        uid: d.id,
+      }));
+      items.sort((a, b) => a.nama.localeCompare(b.nama));
+      onData(items);
+    },
+    (err) => {
+      if (onError) onError(err);
+    }
+  );
+}
+
+/**
+ * Menambahkan data asisten baru ke Firestore koleksi /users.
+ */
+export async function createAsistenUser(data: {
+  nama: string;
+  nim?: string;
+  peranLab?: string;
+  email?: string;
+}): Promise<string> {
+  const cleanNim =
+    (data.nim ?? '').trim() ||
+    `240601211${Math.floor(10000 + Math.random() * 90000)}`;
+  const customId = `ast-${cleanNim}`;
+  const now = new Date().toISOString();
+  const userDoc: UserDocument = {
+    uid: customId,
+    email:
+      data.email ||
+      `${cleanNim}@alumni.undip.ac.id`,
+    nama: data.nama.trim(),
+    nim: cleanNim,
+    peran: 'asisten',
+    peranLab: data.peranLab?.trim() || 'Pengampu Lab Komputasi',
+    createdAt: now,
+    updatedAt: now,
+  };
+  await setDoc(doc(db, USERS_COLLECTION, customId), userDoc);
+  return customId;
+}
+
+/**
+ * Memperbarui data asisten di Firestore /users.
+ */
+export async function updateAsistenUser(
+  uid: string,
+  data: Partial<Pick<UserDocument, 'nama' | 'peranLab' | 'nim'>>
+): Promise<void> {
+  await updateDoc(doc(db, USERS_COLLECTION, uid), {
+    ...data,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+/**
+ * Menghapus data asisten dari Firestore /users.
+ */
+export async function deleteAsistenUser(uid: string): Promise<void> {
+  await deleteDoc(doc(db, USERS_COLLECTION, uid));
+}
+
+/**
+ * Menambahkan data praktikan baru ke Firestore koleksi /users.
+ */
+export async function createPraktikanUser(data: {
+  nama: string;
+  nim: string;
+  kelas: 'A' | 'B';
+  email?: string;
+}): Promise<string> {
+  const cleanNim = data.nim.trim();
+  const customId = `prak-${cleanNim}`;
+  const now = new Date().toISOString();
+  const userDoc: UserDocument = {
+    uid: customId,
+    email: data.email || `${cleanNim}@alumni.undip.ac.id`,
+    nama: data.nama.trim(),
+    peran: 'praktikan',
+    nim: cleanNim,
+    kelas: data.kelas,
+    createdAt: now,
+    updatedAt: now,
+  };
+  await setDoc(doc(db, USERS_COLLECTION, customId), userDoc);
+  return customId;
+}
+
+/**
+ * Memperbarui data profil praktikan di Firestore /users.
+ */
+export async function updatePraktikanUser(
+  uid: string,
+  data: Partial<Pick<UserDocument, 'nama' | 'nim' | 'kelas'>>
+): Promise<void> {
+  await updateDoc(doc(db, USERS_COLLECTION, uid), {
+    ...data,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+/**
+ * Menghapus data praktikan dari Firestore /users.
+ */
+export async function deletePraktikanUser(uid: string): Promise<void> {
+  await deleteDoc(doc(db, USERS_COLLECTION, uid));
 }
 
 export interface SubmitAttendanceParams {

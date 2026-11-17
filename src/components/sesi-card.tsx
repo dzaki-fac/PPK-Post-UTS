@@ -9,6 +9,9 @@ interface SesiCardProps {
   isHadir?: boolean;
   waktuHadir?: string;
   totalHadir?: number;
+  totalIzin?: number;
+  leaveStatus?: 'menunggu' | 'disetujui' | 'ditolak';
+  leaveCategory?: string;
   role?: 'praktikan' | 'asisten';
   onPress: () => void;
 }
@@ -18,6 +21,9 @@ export function SesiCard({
   isHadir,
   waktuHadir,
   totalHadir,
+  totalIzin,
+  leaveStatus,
+  leaveCategory,
   role = 'praktikan',
   onPress,
 }: SesiCardProps) {
@@ -75,11 +81,15 @@ export function SesiCard({
         <View style={styles.asistenFooter}>
           <View style={styles.asistenFooterLeft}>
             <View style={styles.attendanceCountBadge}>
-              <View style={styles.miniDotAsisten} />
               <Text style={styles.attendanceCountText}>
-                {totalHadir !== undefined ? `${totalHadir} Mahasiswa Hadir` : 'Kelola Kehadiran'}
+                {totalHadir !== undefined ? `${totalHadir} Hadir` : 'Kelola'}
               </Text>
             </View>
+            {totalIzin && totalIzin > 0 ? (
+              <View style={styles.izinCountBadge}>
+                <Text style={styles.izinCountText}>{totalIzin} Izin</Text>
+              </View>
+            ) : null}
             {sesi.status === 'dibuka' && sesi.kodeSesi ? (
               <View style={styles.codePill}>
                 <Text style={styles.codePillLabel}>Kode:</Text>
@@ -87,7 +97,9 @@ export function SesiCard({
               </View>
             ) : null}
           </View>
-          <Text style={styles.actionHint}>Kelola sesi →</Text>
+          <View style={styles.actionHintWrap}>
+            <Text style={styles.actionHint}>Kelola sesi →</Text>
+          </View>
         </View>
       ) : null}
 
@@ -101,6 +113,57 @@ export function SesiCard({
             <Text style={styles.attendanceTitle}>Sudah Presensi</Text>
             {waktuHadir ? (
               <Text style={styles.attendanceSub}>{waktuHadir}</Text>
+            ) : null}
+          </View>
+        </View>
+      ) : null}
+
+      {/* Praktikan leave status banner if student filed leave */}
+      {!isAsisten && !isHadir && leaveStatus ? (
+        <View
+          style={[
+            styles.leaveBanner,
+            leaveStatus === 'disetujui' && styles.leaveBannerApproved,
+            leaveStatus === 'menunggu' && styles.leaveBannerPending,
+            leaveStatus === 'ditolak' && styles.leaveBannerRejected,
+          ]}>
+          <View
+            style={[
+              styles.leaveTag,
+              leaveStatus === 'disetujui' && styles.leaveTagApproved,
+              leaveStatus === 'menunggu' && styles.leaveTagPending,
+              leaveStatus === 'ditolak' && styles.leaveTagRejected,
+            ]}>
+            <Text
+              style={[
+                styles.leaveTagText,
+                leaveStatus === 'disetujui' && styles.leaveTagTextApproved,
+                leaveStatus === 'menunggu' && styles.leaveTagTextPending,
+                leaveStatus === 'ditolak' && styles.leaveTagTextRejected,
+              ]}>
+              {leaveStatus === 'disetujui'
+                ? 'IZIN DISETUJUI'
+                : leaveStatus === 'menunggu'
+                ? 'MENUNGGU VERIFIKASI'
+                : 'IZIN DITOLAK'}
+            </Text>
+          </View>
+          <View style={styles.attendanceTextWrap}>
+            <Text
+              style={[
+                styles.leaveTitle,
+                leaveStatus === 'disetujui' && { color: '#1E40AF' },
+                leaveStatus === 'menunggu' && { color: '#92400E' },
+                leaveStatus === 'ditolak' && { color: '#991B1B' },
+              ]}>
+              {leaveStatus === 'disetujui'
+                ? 'Pengajuan Izin Disetujui'
+                : leaveStatus === 'menunggu'
+                ? 'Izin Dalam Pemeriksaan Asisten'
+                : 'Izin Tidak Disetujui'}
+            </Text>
+            {leaveCategory ? (
+              <Text style={styles.leaveSub}>Kategori AI: {leaveCategory}</Text>
             ) : null}
           </View>
         </View>
@@ -205,16 +268,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
     marginTop: 12,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#F8FAFC',
+    borderTopColor: '#F1F5F9',
   },
   asistenFooterLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     flexWrap: 'wrap',
+    flexShrink: 1,
   },
   codePill: {
     flexDirection: 'row',
@@ -223,8 +289,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF7ED',
     borderWidth: 1,
     borderColor: '#FED7AA',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
     borderRadius: 6,
   },
   codePillLabel: {
@@ -239,26 +305,34 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   attendanceCountBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
     backgroundColor: '#F0FDFA',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3.5,
+    borderRadius: 7,
     borderWidth: 1,
     borderColor: '#CCFBF1',
   },
-  miniDotAsisten: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#0D9488',
-  },
   attendanceCountText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
     color: '#0F766E',
+  },
+  izinCountBadge: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 7,
+    paddingVertical: 3.5,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  izinCountText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#1E40AF',
+  },
+  actionHintWrap: {
+    marginLeft: 'auto',
+    alignSelf: 'center',
   },
   actionHint: {
     fontSize: 12,
@@ -299,6 +373,59 @@ const styles = StyleSheet.create({
   attendanceSub: {
     fontSize: 11,
     color: '#16A34A',
+    marginTop: 1,
+  },
+  leaveBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 12,
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  leaveBannerApproved: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+  },
+  leaveBannerPending: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
+  },
+  leaveBannerRejected: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+  },
+  leaveTag: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  leaveTagApproved: {
+    backgroundColor: '#2563EB',
+  },
+  leaveTagPending: {
+    backgroundColor: '#D97706',
+  },
+  leaveTagRejected: {
+    backgroundColor: '#DC2626',
+  },
+  leaveTagText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  leaveTagTextApproved: {},
+  leaveTagTextPending: {},
+  leaveTagTextRejected: {},
+  leaveTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  leaveSub: {
+    fontSize: 11,
+    color: '#64748B',
     marginTop: 1,
   },
 });

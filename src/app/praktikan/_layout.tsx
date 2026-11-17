@@ -1,12 +1,19 @@
 import { Redirect, Tabs, type Href } from 'expo-router';
 import React from 'react';
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { RoleHeader } from '@/components/role-header';
+import {
+  TabCalendarIcon,
+  TabDocumentIcon,
+  TabHistoryIcon,
+} from '@/components/tab-icons';
 import { useAuth } from '@/context/auth-context';
 
 export default function PraktikanLayout() {
   const { user, userDoc, loading, role } = useAuth();
+  const insets = useSafeAreaInsets();
 
   if (loading) {
     return (
@@ -25,6 +32,9 @@ export default function PraktikanLayout() {
     return <Redirect href={'/asisten/jadwal' as Href} />;
   }
 
+  const bottomPadding = Platform.OS === 'web' ? 8 : Math.max(insets.bottom, 14) + 8;
+  const tabHeight = Platform.OS === 'web' ? 58 : 56 + bottomPadding;
+
   return (
     <View style={styles.container}>
       <RoleHeader />
@@ -35,15 +45,24 @@ export default function PraktikanLayout() {
           tabBarInactiveTintColor: '#64748B',
           tabBarStyle: [
             styles.tabBar,
+            {
+              height: tabHeight,
+              paddingBottom: bottomPadding,
+              paddingTop: 6,
+            },
             Platform.OS === 'web' && styles.tabBarWeb,
           ],
           tabBarItemStyle: {
             justifyContent: 'center',
             alignItems: 'center',
+            paddingTop: 3,
+            paddingBottom: 2,
           },
           tabBarLabelStyle: {
-            fontSize: 13,
+            fontSize: 10.5,
             fontWeight: '700',
+            marginTop: 1.5,
+            marginBottom: Platform.OS === 'android' ? 2 : 0,
           },
         }}>
         <Tabs.Screen
@@ -51,6 +70,9 @@ export default function PraktikanLayout() {
           options={{
             title: 'Jadwal Praktikum',
             tabBarLabel: 'Jadwal Sesi',
+            tabBarIcon: ({ color, focused }) => (
+              <TabCalendarIcon color={color} focused={focused} />
+            ),
           }}
         />
         <Tabs.Screen
@@ -58,6 +80,9 @@ export default function PraktikanLayout() {
           options={{
             title: 'Pengajuan Izin',
             tabBarLabel: 'Ajukan Izin',
+            tabBarIcon: ({ color, focused }) => (
+              <TabDocumentIcon color={color} focused={focused} />
+            ),
           }}
         />
         <Tabs.Screen
@@ -65,6 +90,9 @@ export default function PraktikanLayout() {
           options={{
             title: 'Riwayat Kehadiran',
             tabBarLabel: 'Riwayat Presensi',
+            tabBarIcon: ({ color, focused }) => (
+              <TabHistoryIcon color={color} focused={focused} />
+            ),
           }}
         />
         <Tabs.Screen
@@ -100,9 +128,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopColor: '#E2E8F0',
     borderTopWidth: 1,
-    height: 60,
-    paddingBottom: 8,
-    paddingTop: 6,
   },
   tabBarWeb: {
     maxWidth: 480,

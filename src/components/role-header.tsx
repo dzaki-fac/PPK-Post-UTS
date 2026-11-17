@@ -22,7 +22,11 @@ export function RoleHeader() {
   const name = userDoc?.nama ?? (isPraktikan ? 'Praktikan' : 'Asisten');
   const subInfo = isPraktikan
     ? `Kelas ${userDoc?.kelas ?? '-'}`
-    : userDoc?.peranLab ?? 'Pengampu Lab';
+    : 'Asisten Lab';
+
+  const fullSubInfo = isPraktikan
+    ? `Kelas ${userDoc?.kelas ?? '-'}`
+    : userDoc?.peranLab ?? 'Pengampu Lab Komputasi';
 
   const handleConfirmLogout = async () => {
     setLoggingOut(true);
@@ -59,8 +63,10 @@ export function RoleHeader() {
             <Text style={styles.logoBadgeText}>PPK</Text>
           </View>
           <View>
-            <Text style={styles.brandTitle}>PPK LabPortal</Text>
-            <Text style={styles.brandSubtitle}>Presensi & Manajemen Sesi</Text>
+            <Text style={styles.brandTitle}>LabPortal</Text>
+            {Platform.OS === 'web' && (
+              <Text style={styles.brandSubtitle}>Presensi & Manajemen Sesi</Text>
+            )}
           </View>
         </Pressable>
 
@@ -122,7 +128,7 @@ export function RoleHeader() {
               NIM: {userDoc?.nim ?? '-'} • Kelas {userDoc?.kelas ?? '-'}
             </Text>
           ) : (
-            <Text style={styles.summaryMeta}>{subInfo}</Text>
+            <Text style={styles.summaryMeta}>{fullSubInfo}</Text>
           )}
         </View>
       </ConfirmationModal>
@@ -141,22 +147,23 @@ const styles = StyleSheet.create({
     maxWidth: 960,
     width: '100%',
     alignSelf: 'center',
-    paddingHorizontal: Platform.OS === 'web' ? 20 : 14,
+    paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    gap: 8,
+    flexWrap: 'nowrap',
+    gap: 4,
   },
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 5,
+    flexShrink: 1,
   },
   logoBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 9,
+    width: 26,
+    height: 26,
+    borderRadius: 6,
     backgroundColor: '#FFF7ED',
     borderWidth: 1.5,
     borderColor: '#FED7AA',
@@ -164,36 +171,38 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoBadgeText: {
-    fontSize: 12,
+    fontSize: 9.5,
     fontWeight: '900',
     color: '#EA580C',
     letterSpacing: 0.5,
   },
   brandTitle: {
-    fontSize: Platform.OS === 'web' ? 15 : 13.5,
+    fontSize: Platform.OS === 'web' ? 14 : 11.5,
     fontWeight: '800',
     color: '#0F172A',
     letterSpacing: -0.3,
   },
   brandSubtitle: {
-    fontSize: 10,
+    fontSize: 8.5,
     color: '#64748B',
     fontWeight: '500',
   },
   rightGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 4,
+    flexShrink: 0,
   },
   userPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
+    gap: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 2.5,
+    borderRadius: 7,
     borderWidth: 1,
-    maxWidth: 210,
+    flexShrink: 1,
+    maxWidth: Platform.OS === 'web' ? 260 : 210,
   },
   userPillPraktikan: {
     backgroundColor: '#FFF7ED',
@@ -204,22 +213,25 @@ const styles = StyleSheet.create({
     borderColor: '#99F6E4',
   },
   userInfoWrap: {
-    gap: 1,
+    gap: 0.5,
+    flexShrink: 1,
   },
   userName: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: '#0F172A',
-    maxWidth: Platform.OS === 'web' ? 140 : 100,
+    flexShrink: 1,
+    maxWidth: Platform.OS === 'web' ? 180 : 160,
   },
   userSub: {
-    fontSize: 10,
+    fontSize: 8.5,
     color: '#64748B',
+    maxWidth: Platform.OS === 'web' ? 180 : 160,
   },
   roleMiniBadge: {
-    paddingHorizontal: 5,
-    paddingVertical: 1.5,
-    borderRadius: 5,
+    paddingHorizontal: 3.5,
+    paddingVertical: 1,
+    borderRadius: 4,
   },
   roleMiniPraktikan: {
     backgroundColor: '#FED7AA',
@@ -228,9 +240,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#99F6E4',
   },
   roleMiniText: {
-    fontSize: 8.5,
+    fontSize: 7.5,
     fontWeight: '800',
-    letterSpacing: 0.4,
+    letterSpacing: 0.3,
   },
   textPraktikan: {
     color: '#9A3412',
@@ -239,17 +251,17 @@ const styles = StyleSheet.create({
     color: '#0F766E',
   },
   logoutBtn: {
-    minHeight: 44,
+    height: 28,
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#CBD5E1',
-    paddingHorizontal: 12,
-    borderRadius: 10,
+    paddingHorizontal: 6,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
   logoutBtnText: {
-    fontSize: 12,
+    fontSize: 10.5,
     fontWeight: '700',
     color: '#334155',
   },

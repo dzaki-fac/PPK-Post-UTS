@@ -355,12 +355,12 @@ Programmer 2 bertanggung jawab atas alur pengajuan izin oleh praktikan, integras
     "ringkasan": "Terdeteksi sentimen negatif dengan indikasi masalah kesehatan (demam & rawat klinik)."
   }
   ```
-- **FR-P2-02.4:** Mendukung fleksibilitas integrasi eksternal: Jika pengajar juga menyediakan endpoint REST API via `EXPO_PUBLIC_AI_API_URL`, sistem dapat mengirimkan HTTP POST request ke server tersebut, dengan model lokal `ai/model-edom.json` sebagai mesin inferensi utama yang tangguh dan selalu aktif.
+- **FR-P2-02.4:** Arsitektur AI murni On-Device: Menggunakan paket model JavaScript resmi pengajar (`ai/model-edom.json` dan `ai/sentiment.js`) secara lokal di dalam aplikasi, sehingga tidak memerlukan server backend atau variabel lingkungan `EXPO_PUBLIC_AI_API_URL`, menjamin inferensi 100% instan dan bekerja tanpa kuota internet.
 - **FR-P2-02.5:** Menyediakan layar pengujian inferensi AI interaktif (`src/app/test-ai.tsx`) sesuai pola modul praktikum untuk mendemonstrasikan eksekusi langsung `createSentimentClassifier(model)` dan fungsi `classify(text)` pada perangkat tanpa ketergantungan jaringan eksternal.
 
 ### FR-P2-03 — Penanganan Galat & Fallback API AI (Resilience Standard)
 - **FR-P2-03.1:** Karena model EDOM berjalan lokal di dalam JavaScript aplikasi, inferensi AI berkecepatan tinggi (< 50ms) dan memiliki keandalan 100% (*zero network failure*).
-- **FR-P2-03.2:** Jika menggunakan mode REST API eksternal, batas waktu tunggu (*timeout*) maksimal adalah **5.000 ms (5 detik)**. Jika server eksternal offline, sistem otomatis beralih (*fallback*) ke model lokal EDOM.
+- **FR-P2-03.2:** Jika terjadi anomali masukan teks atau kegagalan parsing pada model, modul inferensi secara otomatis menerapkan mekanisme *fallback* aman (`isFallback: true`) dengan kategori default `Lainnya` dan sentimen `netral` tanpa menyebabkan aplikasi terhenti (*crash*).
 - **FR-P2-03.3:** **Prinsip Regulasi Human-in-the-Loop:** Model AI bertindak murni sebagai pendukung keputusan (*decision support*). Pengajuan izin **DILARANG KERAS** otomatis berstatus disetujui atau ditolak hanya berdasarkan prediksi AI. Status awal pengajuan selalu tetap `menunggu` dan keputusan akhir mutlak di tangan Asisten Laboratorium.
 
 ### FR-P2-04 — Penyimpanan Dokumen Izin ke Cloud Firestore
@@ -449,7 +449,16 @@ Aplikasi harus dapat mendemonstrasikan 2 alur demonstrasi utama tanpa error dan 
 
 ## 8. Panduan Teknis & Protokol Kolaborasi Git
 
-### 8.1 Format Branching
+### 8.1 Matriks Pembagian Tugas Programmer & Ringkasan Prompt
+
+Berikut adalah rekapitulasi pembagian tugas antara Programmer 1 dan Programmer 2 beserta prompt kerja yang digunakan:
+
+| Peran | Branch Git | Fitur & Tanggung Jawab | Berkas Utama | Ringkasan Prompt AI | Status |
+|---|---|---|---|---|---|
+| **Programmer 1** | `feature/auth-firestore-presensi` | • Autentikasi Pengguna (Email/Password & Akun Google)<br>• Manajemen Identitas & Role-Based Routing (`/praktikan` vs `/asisten`)<br>• CRUD Sesi Praktikum & Sinkronisasi Status Real-Time<br>• Presensi Praktikan (Kode Sesi 4 Digit & Proteksi Anti-Duplikasi)<br>• Rekapitulasi Presensi Real-Time Asisten Lab | `src/context/auth-context.tsx`<br>`src/lib/firebase.ts`<br>`src/app/login.tsx`<br>`src/app/register.tsx`<br>`src/services/session-service.ts`<br>`src/app/praktikan/detail-sesi/[id].tsx`<br>`src/app/asisten/detail-sesi/[id].tsx` | Buat AuthContext Firebase multi-peran, halaman login & pendaftaran (wajib NIM & kelas praktikan), CRUD koleksi Firestore `/sessions`, serta pencatatan presensi real-time `/attendances` anti-duplikasi dengan kode 4 digit patuh `DESIGN.md`. | Selesai & Teruji |
+| **Programmer 2** | `feature/izin-ai-moderation` | • Formulir Pengajuan Izin Praktikan<br>• Integrasi Model AI Resmi Pengajar (Model EDOM on-device JavaScript)<br>• Analisis Sentimen & Klasifikasi Kategori Alasan (100% Offline-Ready)<br>• Komponen UI `AICategoryBadge` (Standar Warna & Geometri Anti-Slop)<br>• Panel Moderasi Izin Asisten (Human-in-the-Loop Approval/Rejection)<br>• Pemantauan Riwayat Izin Real-Time & Firestore Security Rules | `src/services/ai-service.ts`<br>`src/services/leave-service.ts`<br>`src/components/ai-category-badge.tsx`<br>`src/app/praktikan/pengajuan-izin.tsx`<br>`src/app/asisten/moderasi-izin.tsx`<br>`src/app/praktikan/riwayat.tsx`<br>`firestore.rules`<br>`firestore.indexes.json` | Implementasikan modul pengajuan izin praktikan dengan inferensi lokal Model EDOM (tanpa API eksternal), badge kategori AI berstandar UI, panel moderasi asisten untuk keputusan akhir (AI sebagai pendukung), dan sinkronisasi real-time Firestore `/leave_requests`. | Selesai & Teruji |
+
+### 8.2 Format Branching
 Dua branch independen telah dibuat di repositori lokal:
 1. **Programmer 1:** `feature/auth-firestore-presensi`
 2. **Programmer 2:** `feature/izin-ai-moderation`
@@ -458,7 +467,7 @@ Dua branch independen telah dibuat di repositori lokal:
 > **Aturan Git:**
 > Sesuai instruksi, **JANGAN melakukan push ke GitHub remote terlebih dahulu** sebelum seluruh modul selesai diuji dan divalidasi secara lokal. Penggabungan (*merge*) ke branch `main` dilakukan setelah kedua feature branch lulus pengujian integrasi.
 
-### 8.2 Prosedur Kerja Programmer 1
+### 8.3 Prosedur Kerja Programmer 1
 ```bash
 # Beralih ke branch kerja Programmer 1
 git checkout feature/auth-firestore-presensi
@@ -472,7 +481,7 @@ npx tsc --noEmit
 npx expo lint
 ```
 
-### 8.3 Prosedur Kerja Programmer 2
+### 8.4 Prosedur Kerja Programmer 2
 ```bash
 # Beralih ke branch kerja Programmer 2
 git checkout feature/izin-ai-moderation
@@ -486,13 +495,13 @@ npx tsc --noEmit
 npx expo lint
 ```
 
-### 8.4 Urutan Penggabungan (*Merge Protocol*)
+### 8.5 Urutan Penggabungan (*Merge Protocol*)
 1. Programmer 1 menyelesaikan `feature/auth-firestore-presensi` $\rightarrow$ diverifikasi lulus typecheck & lint.
 2. Programmer 2 melakukan *rebase* atau *merge* dari `feature/auth-firestore-presensi` ke dalam `feature/izin-ai-moderation` untuk menggunakan `AuthContext` dan konfigurasi Firebase.
 3. Kedua branch diuji secara terintegrasi pada skenario end-to-end.
 4. Penggabungan akhir ke branch `main` dilakukan secara bersih tanpa *conflict*.
 
-### 8.5 Protokol Prompting AI & Design System Guardrails
+### 8.6 Protokol Prompting AI & Design System Guardrails
 
 > [!CAUTION]
 > **ATURAN MUTLAK BAGI PROGRAMMER YANG MENGGUNAKAN AI CODING AGENT (COPILOT, CLAUDE, GEMINI, CHATGPT):**
@@ -504,7 +513,7 @@ npx expo lint
 
 ---
 
-### 8.6 Template Prompt Siap Pakai — Programmer 1 (Branch: `feature/auth-firestore-presensi`)
+### 8.7 Template Prompt Siap Pakai — Programmer 1 (Branch: `feature/auth-firestore-presensi`)
 
 Salin dan berikan prompt utuh berikut kepada AI assistant (Copilot / Claude / Gemini / ChatGPT) saat mengerjakan modul Programmer 1:
 
@@ -547,7 +556,7 @@ Tolong berikan kode lengkap, rapi, dan modular!
 
 ---
 
-### 8.7 Template Prompt Siap Pakai — Programmer 2 (Branch: `feature/izin-ai-moderation`)
+### 8.8 Template Prompt Siap Pakai — Programmer 2 (Branch: `feature/izin-ai-moderation`)
 
 Salin dan berikan prompt utuh berikut kepada AI assistant (Copilot / Claude / Gemini / ChatGPT) saat mengerjakan modul Programmer 2:
 

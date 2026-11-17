@@ -1,8 +1,10 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   GoogleAuthProvider,
   User,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  signInWithCredential,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
@@ -11,9 +13,16 @@ import {
 import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
-import { auth, db, isFirebaseConfigured } from '@/lib/firebase';
+import { GOOGLE_WEB_CLIENT_ID, auth, db, isFirebaseConfigured } from '@/lib/firebase';
 import { UserDocument, UserRole } from '@/types/praktikum';
+
+if (Platform.OS !== 'web') {
+  GoogleSignin.configure({
+    webClientId: GOOGLE_WEB_CLIENT_ID,
+  });
+}
 
 export type { UserDocument, UserRole };
 
@@ -105,18 +114,21 @@ function validateProfileFields(
     throw new Error('Nama lengkap wajib diisi minimal 2 karakter.');
   }
 
-  if (peran === 'praktikan') {
-    const cleanNim = (nim ?? '').replace(/\s+/g, '');
-    if (!NIM_REGEX.test(cleanNim)) {
-      throw new Error('NIM praktikan wajib berisi 14 digit angka (contoh: 24060122130001).');
-    }
-    if (kelas !== 'A' && kelas !== 'B') {
-      throw new Error('Silakan pilih kelas praktikum (Kelas A atau Kelas B).');
-    }
-    return { cleanNama, cleanNim, cleanKelas: kelas };
+  // Baik praktikan maupun asisten keduanya memiliki NIM mahasiswa
+  let cleanNim = (nim ?? '').replace(/\s+/g, '');
+  if (!cleanNim) {
+    const prefix = peran === 'asisten' ? '240601211' : '240601241';
+    cleanNim = `${prefix}${Math.floor(10000 + Math.random() * 90000)}`;
+  } else if (!NIM_REGEX.test(cleanNim)) {
+    throw new Error('NIM wajib berisi 14 digit angka format Undip (contoh: 24060122130001).');
   }
 
-  return { cleanNama };
+  if (peran === 'praktikan') {
+    const cleanKelas = (kelas === 'B' ? 'B' : 'A') as 'A' | 'B';
+    return { cleanNama, cleanNim, cleanKelas };
+  }
+
+  return { cleanNama, cleanNim };
 }
 
 function buildUserDocument(
@@ -134,12 +146,12 @@ function buildUserDocument(
     email: email.trim().toLowerCase(),
     nama: nama.trim(),
     peran,
+    nim, // Disimpan untuk semua peran (praktikan & asisten)
     createdAt: now,
     updatedAt: now,
   };
 
   if (peran === 'praktikan') {
-    base.nim = nim;
     base.kelas = kelas;
   } else {
     base.peranLab = peranLab?.trim() || 'Pengampu Lab Komputasi';
@@ -148,13 +160,38 @@ function buildUserDocument(
   return base;
 }
 
+const CACHED_USER_DOC_KEY = '@ppk_labportal_user_doc';
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(auth.currentUser);
   const [userDoc, setUserDoc] = useState<UserDocument | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [needsProfileCompletion, setNeedsProfileCompletion] = useState<boolean>(false);
 
+  const persistUserDoc = useCallback((docData: UserDocument | null) => {
+    setUserDoc(docData);
+    if (docData) {
+      AsyncStorage.setItem(CACHED_USER_DOC_KEY, JSON.stringify(docData)).catch(() => {});
+    } else {
+      AsyncStorage.removeItem(CACHED_USER_DOC_KEY).catch(() => {});
+    }
+  }, []);
+
   useEffect(() => {
+    let isMounted = true;
+
+    // Muat profil dari AsyncStorage untuk pemulihan instan saat cold start aplikasi
+    AsyncStorage.getItem(CACHED_USER_DOC_KEY)
+      .then((raw) => {
+        if (raw && isMounted) {
+          try {
+            const parsed = JSON.parse(raw) as UserDocument;
+            setUserDoc((prev) => prev || parsed);
+          } catch {}
+        }
+      })
+      .catch(() => {});
+
     let unsubscribeProfile: (() => void) | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
@@ -166,7 +203,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(firebaseUser);
 
       if (!firebaseUser) {
-        setUserDoc(null);
+        persistUserDoc(null);
         setNeedsProfileCompletion(false);
         setLoading(false);
         return;
@@ -180,47 +217,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         (snap) => {
           if (snap.exists()) {
             const data = snap.data() as UserDocument;
-            setUserDoc({ ...data, uid: snap.id });
+            persistUserDoc({ ...data, uid: snap.id });
             setNeedsProfileCompletion(false);
           } else {
-            setUserDoc(null);
+            persistUserDoc(null);
             setNeedsProfileCompletion(true);
           }
           setLoading(false);
         },
         () => {
-          setUserDoc(null);
+          // Pertahankan userDoc yang sudah tercache jika terjadi gangguan jaringan sementara
           setLoading(false);
         }
       );
     });
 
     return () => {
+      isMounted = false;
       if (unsubscribeProfile) {
         unsubscribeProfile();
       }
       unsubscribeAuth();
     };
-  }, []);
+  }, [persistUserDoc]);
 
   const refreshUserDoc = useCallback(async (): Promise<UserDocument | null> => {
     const current = auth.currentUser;
     if (!current) {
-      setUserDoc(null);
+      persistUserDoc(null);
       setNeedsProfileCompletion(false);
       return null;
     }
     const snap = await getDoc(doc(db, 'users', current.uid));
     if (snap.exists()) {
       const data = { ...(snap.data() as UserDocument), uid: snap.id };
-      setUserDoc(data);
+      persistUserDoc(data);
       setNeedsProfileCompletion(false);
       return data;
     }
-    setUserDoc(null);
+    persistUserDoc(null);
     setNeedsProfileCompletion(true);
     return null;
-  }, []);
+  }, [persistUserDoc]);
 
   const login = useCallback(async (email: string, password: string): Promise<UserDocument | null> => {
     if (!isFirebaseConfigured()) {
@@ -239,17 +277,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const snap = await getDoc(doc(db, 'users', credential.user.uid));
       if (snap.exists()) {
         const data = { ...(snap.data() as UserDocument), uid: snap.id };
-        setUserDoc(data);
+        persistUserDoc(data);
         setNeedsProfileCompletion(false);
         return data;
       }
-      setUserDoc(null);
+      persistUserDoc(null);
       setNeedsProfileCompletion(true);
       return null;
     } catch (error) {
       throw new Error(mapFirebaseAuthError(error));
     }
-  }, []);
+  }, [persistUserDoc]);
 
   const register = useCallback(
     async (
@@ -296,14 +334,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         );
 
         await setDoc(doc(db, 'users', credential.user.uid), profile);
-        setUserDoc(profile);
+        persistUserDoc(profile);
         setNeedsProfileCompletion(false);
         return profile;
       } catch (error) {
         throw new Error(mapFirebaseAuthError(error));
       }
     },
-    []
+    [persistUserDoc]
   );
 
   const loginWithGoogle = useCallback(async (): Promise<GoogleLoginResult> => {
@@ -313,32 +351,83 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       );
     }
 
-    if (Platform.OS !== 'web') {
-      throw new Error(
-        'Masuk dengan Akun Google popup tersedia pada Web browser. Pada perangkat mobile tanpa OAuth Client ID native, silakan masuk dengan Email & Kata Sandi.'
-      );
-    }
-
     try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: 'select_account' });
-      const credential = await signInWithPopup(auth, provider);
-      const snap = await getDoc(doc(db, 'users', credential.user.uid));
+      let firebaseUser: User;
+
+      if (Platform.OS === 'web') {
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
+        const credential = await signInWithPopup(auth, provider);
+        firebaseUser = credential.user;
+      } else {
+        await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+        const signInResult = await GoogleSignin.signIn();
+        if (signInResult.type === 'cancelled') {
+          throw new Error('Proses masuk dengan Akun Google dibatalkan.');
+        }
+        const idToken = signInResult.data?.idToken;
+        if (!idToken) {
+          throw new Error('Gagal mendapatkan ID token dari Akun Google.');
+        }
+        const credential = GoogleAuthProvider.credential(idToken);
+        const userCredential = await signInWithCredential(auth, credential);
+        firebaseUser = userCredential.user;
+      }
+
+      const snap = await getDoc(doc(db, 'users', firebaseUser.uid));
 
       if (snap.exists()) {
         const data = { ...(snap.data() as UserDocument), uid: snap.id };
-        setUserDoc(data);
+        persistUserDoc(data);
         setNeedsProfileCompletion(false);
-        return { user: credential.user, userDoc: data, isNewUser: false };
+        return { user: firebaseUser, userDoc: data, isNewUser: false };
       }
 
-      setUserDoc(null);
+      // Pengguna baru Google Sign-in: Otomatis buat dan simpan profil ke Cloud Firestore (/users)
+      // agar akun Google langsung tercatat di database sistem (sebagai praktikan/mahasiswa aktif)
+      const now = new Date().toISOString();
+      const defaultName =
+        firebaseUser.displayName?.trim() ||
+        firebaseUser.email?.split('@')[0] ||
+        'Mahasiswa Google';
+      const autoNim = `240601241${Math.floor(10000 + Math.random() * 90000)}`;
+
+      const newProfile: UserDocument = {
+        uid: firebaseUser.uid,
+        email: (firebaseUser.email || '').trim().toLowerCase(),
+        nama: defaultName,
+        peran: 'praktikan',
+        nim: autoNim,
+        kelas: 'A',
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      await setDoc(doc(db, 'users', firebaseUser.uid), newProfile);
+      persistUserDoc(newProfile);
       setNeedsProfileCompletion(true);
-      return { user: credential.user, userDoc: null, isNewUser: true };
-    } catch (error) {
+      return { user: firebaseUser, userDoc: newProfile, isNewUser: true };
+    } catch (error: any) {
+      if (
+        error?.code === statusCodes.SIGN_IN_CANCELLED ||
+        error?.message?.includes('dibatalkan')
+      ) {
+        throw new Error('Proses masuk dengan Akun Google dibatalkan.');
+      }
+      if (error?.code === statusCodes.IN_PROGRESS) {
+        throw new Error('Proses masuk dengan Akun Google sedang berjalan.');
+      }
+      if (error?.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        throw new Error('Layanan Google Play Services tidak tersedia pada perangkat.');
+      }
+      if (error?.code === '10' || error?.message?.includes('DEVELOPER_ERROR')) {
+        throw new Error(
+          'Konfigurasi SHA-1 belum terdaftar di Firebase Console (SHA-1: 58:3A:22:E2:5F:01:A3:82:E1:87:F2:8F:FB:F4:62:24:91:0F:7D:B2).'
+        );
+      }
       throw new Error(mapFirebaseAuthError(error));
     }
-  }, []);
+  }, [persistUserDoc]);
 
   const completeGoogleProfile = useCallback(
     async (
@@ -375,22 +464,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         );
 
         await setDoc(doc(db, 'users', current.uid), profile);
-        setUserDoc(profile);
+        persistUserDoc(profile);
         setNeedsProfileCompletion(false);
         return profile;
       } catch (error) {
         throw new Error(mapFirebaseAuthError(error));
       }
     },
-    []
+    [persistUserDoc]
   );
 
   const logout = useCallback(async () => {
-    await signOut(auth);
-    setUser(null);
-    setUserDoc(null);
-    setNeedsProfileCompletion(false);
-  }, []);
+    try {
+      if (Platform.OS !== 'web') {
+        try {
+          await GoogleSignin.signOut();
+        } catch {
+          // Abaikan bila sebelumnya tidak masuk via Google Sign-In
+        }
+      }
+      await signOut(auth);
+      setUser(null);
+      persistUserDoc(null);
+      setNeedsProfileCompletion(false);
+    } catch (error) {
+      throw new Error(mapFirebaseAuthError(error));
+    }
+  }, [persistUserDoc]);
 
   const role: UserRole | null = userDoc?.peran ?? null;
 

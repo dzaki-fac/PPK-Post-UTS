@@ -14,20 +14,34 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ConfirmationModal } from '@/components/confirmation-modal';
 import { EmptyState } from '@/components/empty-state';
+import { SessionQRCode } from '@/components/session-qr-code';
 import { StatusBadge } from '@/components/status-badge';
 import {
   normalizeClassCode,
   subscribePraktikanUsers,
   subscribeSessionAttendances,
 } from '@/services/attendance-service';
+import {
+  MAX_LAB_RADIUS_METER,
+  MIN_LAB_RADIUS_METER,
+  buildFallbackDefaultLabs,
+  subscribeLabs,
+} from '@/services/lab-service';
 import { LeaveRequestDocument, subscribeLeaveRequests } from '@/services/leave-service';
+import { formatDistanceMeters } from '@/services/location-service';
 import {
   deleteSession,
   subscribeSessionById,
   updateSession,
   updateSessionStatus,
 } from '@/services/session-service';
-import { AttendanceDocument, SessionDocument, UserDocument } from '@/types/praktikum';
+import {
+  AttendanceDocument,
+  LabLocationDocument,
+  SessionDocument,
+  UserDocument,
+} from '@/types/praktikum';
+import { buildSessionQrPayload } from '@/utils/qr-payload';
 
 type KehadiranFilter = 'semua' | 'hadir' | 'izin' | 'belum-hadir';
 type ModalAction = 'buka' | 'tutup' | 'buka-kembali' | 'hapus';
@@ -39,6 +53,8 @@ interface RosterRow {
   kelas: string;
   hadir: boolean;
   waktuHadir?: string;
+  distanceMeters?: number;
+  verificationMethod?: 'code-location' | 'qr-location';
   leaveStatus?: 'menunggu' | 'disetujui' | 'ditolak';
   aiCategory?: string;
   aiConfidence?: number;
@@ -51,10 +67,12 @@ export default function DetailSesiAsistenScreen() {
   const sessionId = Array.isArray(id) ? id[0] : id;
 
   const [sesi, setSesi] = useState<SessionDocument | null>(null);
+  const [labs, setLabs] = useState<LabLocationDocument[]>([]);
   const [loadingSession, setLoadingSession] = useState(Boolean(sessionId));
   const [presensiSesi, setPresensiSesi] = useState<AttendanceDocument[]>([]);
   const [praktikanUsers, setPraktikanUsers] = useState<UserDocument[]>([]);
   const [sessionLeaves, setSessionLeaves] = useState<LeaveRequestDocument[]>([]);
+  const [showQrCode, setShowQrCode] = useState(false);
 
   const [modalAction, setModalAction] = useState<ModalAction | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -64,7 +82,9 @@ export default function DetailSesiAsistenScreen() {
   // Edit Modal State
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [editMateri, setEditMateri] = useState('');
+  const [editLabId, setEditLabId] = useState('');
   const [editRuang, setEditRuang] = useState('');
+  const [editRadiusOverride, setEditRadiusOverride] = useState('');
   const [editTanggal, setEditTanggal] = useState('');
   const [editWaktuMulai, setEditWaktuMulai] = useState('');
   const [editWaktuSelesai, setEditWaktuSelesai] = useState('');
@@ -87,6 +107,15 @@ export default function DetailSesiAsistenScreen() {
       }
     );
 
+    const unsubLabs = subscribeLabs(
+      (items) => {
+        setLabs(items.length > 0 ? items : buildFallbackDefaultLabs());
+      },
+      () => {
+        setLabs(buildFallbackDefaultLabs());
+      }
+    );
+
     const unsubAttendances = subscribeSessionAttendances(sessionId, (items) => {
       setPresensiSesi(items);
     });
@@ -101,6 +130,7 @@ export default function DetailSesiAsistenScreen() {
 
     return () => {
       unsubSession();
+      unsubLabs();
       unsubAttendances();
       unsubStudents();
       unsubLeaves();
@@ -139,6 +169,8 @@ export default function DetailSesiAsistenScreen() {
         kelas: p.kelas ?? '-',
         hadir: Boolean(record),
         waktuHadir: record?.waktuKehadiran,
+        distanceMeters: record?.locationSnapshot?.distanceMeters,
+        verificationMethod: record?.verificationMethod,
         leaveStatus: leave?.status,
         aiCategory: leave?.aiClassification?.category,
         aiConfidence: leave?.aiClassification?.confidence,
@@ -156,6 +188,8 @@ export default function DetailSesiAsistenScreen() {
         kelas: rec.studentClass,
         hadir: true,
         waktuHadir: rec.waktuKehadiran,
+        distanceMeters: rec.locationSnapshot?.distanceMeters,
+        verificationMethod: rec.verificationMethod,
         leaveStatus: leave?.status,
         aiCategory: leave?.aiClassification?.category,
         aiConfidence: leave?.aiClassification?.confidence,
@@ -185,6 +219,22 @@ export default function DetailSesiAsistenScreen() {
   const totalMahasiswa = daftarStatusPraktikan.length;
   const persentaseHadir =
     totalMahasiswa > 0 ? Math.round((totalHadir / totalMahasiswa) * 100) : 0;
+
+  const linkedLab = useMemo(() => {
+    if (!sesi) return null;
+    if (sesi.labId) {
+      const byId = labs.find((l) => l.id === sesi.labId);
+      if (byId) return byId;
+    }
+    const roomLower = (sesi.ruang ?? '').trim().toLowerCase();
+    return (
+      labs.find(
+        (l) =>
+          l.nama.trim().toLowerCase() === roomLower ||
+          l.kode.trim().toLowerCase() === roomLower
+      ) ?? null
+    );
+  }, [sesi, labs]);
 
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -226,7 +276,11 @@ export default function DetailSesiAsistenScreen() {
 
   const handleOpenEdit = () => {
     setEditMateri(sesi.materi || '');
+    setEditLabId(sesi.labId || linkedLab?.id || '');
     setEditRuang(sesi.ruang || '');
+    setEditRadiusOverride(
+      sesi.radiusOverride !== undefined ? String(sesi.radiusOverride) : ''
+    );
     setEditTanggal(sesi.tanggal || '');
     setEditWaktuMulai(sesi.waktuMulai || '');
     setEditWaktuSelesai(sesi.waktuSelesai || '');
@@ -241,11 +295,27 @@ export default function DetailSesiAsistenScreen() {
       return;
     }
 
+    let parsedRadiusOverride: number | undefined;
+    if (editRadiusOverride.trim()) {
+      const n = Number(editRadiusOverride.trim());
+      if (!Number.isFinite(n) || n < MIN_LAB_RADIUS_METER || n > MAX_LAB_RADIUS_METER) {
+        setEditError(
+          `Radius khusus sesi harus antara ${MIN_LAB_RADIUS_METER} sampai ${MAX_LAB_RADIUS_METER} meter.`
+        );
+        return;
+      }
+      parsedRadiusOverride = Math.round(n);
+    }
+
+    const pickedLab = labs.find((l) => l.id === editLabId);
+
     setSavingEdit(true);
     try {
       await updateSession(sesi.id, {
         materi: editMateri.trim(),
-        ruang: editRuang.trim(),
+        ruang: pickedLab?.nama || editRuang.trim(),
+        ...(pickedLab ? { labId: pickedLab.id } : {}),
+        radiusOverride: parsedRadiusOverride ?? null,
         tanggal: editTanggal.trim(),
         waktuMulai: editWaktuMulai.trim(),
         waktuSelesai: editWaktuSelesai.trim(),
@@ -347,8 +417,13 @@ export default function DetailSesiAsistenScreen() {
 
               {sesi.ruang ? (
                 <View style={styles.gridItem}>
-                  <Text style={styles.gridLabel}>Ruang Laboratorium</Text>
-                  <Text style={styles.gridValue}>{sesi.ruang}</Text>
+                  <Text style={styles.gridLabel}>Ruang & Radius Geofencing</Text>
+                  <Text style={styles.gridValue}>
+                    {sesi.ruang}
+                    {sesi.radiusOverride ?? linkedLab?.radiusMeter
+                      ? ` • ${sesi.radiusOverride ?? linkedLab?.radiusMeter}m`
+                      : ''}
+                  </Text>
                 </View>
               ) : null}
 
@@ -373,15 +448,15 @@ export default function DetailSesiAsistenScreen() {
             </View>
           </View>
 
-          {/* Active 4-Digit Attendance Code Card (Reference: CodeDisplay) */}
+          {/* Active 4-Digit Attendance Code & QR Code Card */}
           {sesi.kodeSesi && sesi.status === 'dibuka' ? (
             <View style={styles.codeCard}>
               <View style={styles.codeHeaderRow}>
                 <View style={styles.codeBadge}>
-                  <Text style={styles.codeBadgeText}>KODE PRESENSI SESI</Text>
+                  <Text style={styles.codeBadgeText}>KODE & QR PRESENSI SESI</Text>
                 </View>
                 <Text style={styles.codeSubtitle}>
-                  Bagikan 4 digit kode ini kepada mahasiswa di laboratorium
+                  Bagikan 4 digit kode atau tampilkan QR Code kepada mahasiswa di dalam radius laboratorium
                 </Text>
               </View>
               <View style={styles.codeBoxRow}>
@@ -391,6 +466,32 @@ export default function DetailSesiAsistenScreen() {
                   </View>
                 ))}
               </View>
+
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setShowQrCode((prev) => !prev)}
+                style={({ pressed }) => [
+                  styles.qrToggleBtn,
+                  pressed && styles.buttonPressed,
+                ]}>
+                <Text style={styles.qrToggleBtnText}>
+                  {showQrCode ? 'Sembunyikan QR Code Sesi' : 'Tampilkan QR Code Presensi'}
+                </Text>
+              </Pressable>
+
+              {showQrCode ? (
+                <View style={styles.qrDisplayWrap}>
+                  <SessionQRCode
+                    value={
+                      sesi.qrPayload || buildSessionQrPayload(sesi.id, sesi.kodeSesi)
+                    }
+                    size={184}
+                  />
+                  <Text style={styles.qrDisplayCaption}>
+                    Pindai dari Halaman Presensi Praktikan (tetap memerlukan validasi radius GPS)
+                  </Text>
+                </View>
+              ) : null}
             </View>
           ) : null}
 
@@ -616,6 +717,12 @@ export default function DetailSesiAsistenScreen() {
                                 : item.waktuHadir}
                             </Text>
                           ) : null}
+                          {item.distanceMeters !== undefined ? (
+                            <Text style={styles.hadirGeoText}>
+                              {formatDistanceMeters(item.distanceMeters)} •{' '}
+                              {item.verificationMethod === 'qr-location' ? 'QR+GPS' : 'GPS'}
+                            </Text>
+                          ) : null}
                         </View>
                       ) : item.leaveStatus === 'disetujui' ? (
                         <View style={styles.izinBadge}>
@@ -734,13 +841,51 @@ export default function DetailSesiAsistenScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Ruang Laboratorium</Text>
+                <Text style={styles.inputLabel}>Laboratorium Acuan Geofencing</Text>
+                <View style={styles.labPickerList}>
+                  {labs.filter((l) => l.isActive).map((lab) => {
+                    const selected = editLabId === lab.id;
+                    return (
+                      <Pressable
+                        key={lab.id}
+                        accessibilityRole="button"
+                        onPress={() => {
+                          setEditLabId(lab.id);
+                          setEditRuang(lab.nama);
+                        }}
+                        style={[
+                          styles.labPickerChip,
+                          selected && styles.labPickerChipActive,
+                        ]}>
+                        <Text
+                          style={[
+                            styles.labPickerName,
+                            selected && styles.labPickerNameActive,
+                          ]}
+                          numberOfLines={1}>
+                          {lab.nama} ({lab.kode})
+                        </Text>
+                        <Text style={styles.labPickerMeta}>
+                          Radius default: {lab.radiusMeter}m
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>
+                  Radius Khusus Sesi (Opsional, {MIN_LAB_RADIUS_METER}-{MAX_LAB_RADIUS_METER}m)
+                </Text>
                 <TextInput
                   style={styles.textInput}
-                  value={editRuang}
-                  onChangeText={setEditRuang}
-                  placeholder="Contoh: Lab Komputasi 1"
+                  value={editRadiusOverride}
+                  onChangeText={(t) => setEditRadiusOverride(t.replace(/[^0-9]/g, ''))}
+                  placeholder="Kosongkan untuk radius default lab"
                   placeholderTextColor="#94A3B8"
+                  keyboardType="number-pad"
+                  maxLength={3}
                 />
               </View>
 
@@ -1479,5 +1624,68 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     fontWeight: '600',
     color: '#B91C1C',
+  },
+  qrToggleBtn: {
+    marginTop: 12,
+    minHeight: 44,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#0D9488',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+  },
+  qrToggleBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0D9488',
+  },
+  qrDisplayWrap: {
+    marginTop: 14,
+    alignItems: 'center',
+    gap: 8,
+  },
+  qrDisplayCaption: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#475569',
+    textAlign: 'center',
+  },
+  hadirGeoText: {
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: '#0F766E',
+    marginTop: 2,
+  },
+  labPickerList: {
+    gap: 8,
+  },
+  labPickerChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#F8FAFC',
+    gap: 2,
+  },
+  labPickerChipActive: {
+    borderColor: '#0D9488',
+    backgroundColor: '#F0FDFA',
+    borderWidth: 1.5,
+  },
+  labPickerName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  labPickerNameActive: {
+    color: '#0F766E',
+  },
+  labPickerMeta: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
   },
 });

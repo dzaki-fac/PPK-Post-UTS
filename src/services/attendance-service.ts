@@ -13,10 +13,27 @@ import {
 import { Platform } from 'react-native';
 
 import { db } from '@/lib/firebase';
-import { AttendanceDocument, SessionDocument, UserDocument } from '@/types/praktikum';
+import { clampRadiusMeter, resolveLabForSession } from '@/services/lab-service';
+import {
+  calculateDistanceMeters,
+  formatDistanceMeters,
+  verifyUserLocationForLab,
+} from '@/services/location-service';
+import { isSessionExpired } from '@/services/session-service';
+import {
+  AttendanceDocument,
+  AttendanceLocationSnapshot,
+  LabLocationDocument,
+  LocationVerificationResult,
+  SessionDocument,
+  UserDocument,
+} from '@/types/praktikum';
+import { parseSessionQrPayload } from '@/utils/qr-payload';
 
 const ATTENDANCES_COLLECTION = 'attendances';
+const SESSIONS_COLLECTION = 'sessions';
 const USERS_COLLECTION = 'users';
+const MAX_LOCATION_AGE_MS = 90 * 1000;
 
 export function normalizeClassCode(cls?: string): string {
   if (!cls) return '';
@@ -51,7 +68,31 @@ function formatWibTimestamp(date: Date): string {
   return `${day} ${month} ${year}, ${jam}:${menit}:${detik} WIB`;
 }
 
+function mapLocationSnapshot(raw: unknown): AttendanceLocationSnapshot | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const obj = raw as Record<string, unknown>;
+  const lat = Number(obj.latitude);
+  const lng = Number(obj.longitude);
+  const dist = Number(obj.distanceMeters);
+  const radius = Number(obj.allowedRadiusMeters);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return undefined;
+
+  const acc = obj.accuracy !== undefined && obj.accuracy !== null ? Number(obj.accuracy) : undefined;
+
+  return {
+    latitude: lat,
+    longitude: lng,
+    ...(acc !== undefined && Number.isFinite(acc) ? { accuracy: acc } : {}),
+    distanceMeters: Number.isFinite(dist) ? dist : 0,
+    allowedRadiusMeters: Number.isFinite(radius) ? radius : 50,
+    labId: String(obj.labId ?? ''),
+    labName: String(obj.labName ?? ''),
+    checkedAt: String(obj.checkedAt ?? ''),
+  };
+}
+
 function mapAttendanceSnapshot(id: string, raw: Record<string, unknown>): AttendanceDocument {
+  const locationSnapshot = mapLocationSnapshot(raw.locationSnapshot);
   return {
     id,
     sessionId: String(raw.sessionId ?? ''),
@@ -64,6 +105,10 @@ function mapAttendanceSnapshot(id: string, raw: Record<string, unknown>): Attend
     ...(raw.catatan ? { catatan: String(raw.catatan) } : {}),
     ...(raw.deviceInfo ? { deviceInfo: String(raw.deviceInfo) } : {}),
     verifiedByCode: Boolean(raw.verifiedByCode),
+    verifiedByLocation: Boolean(raw.verifiedByLocation),
+    verificationMethod:
+      raw.verificationMethod === 'qr-location' ? 'qr-location' : 'code-location',
+    ...(locationSnapshot ? { locationSnapshot } : {}),
   };
 }
 
@@ -347,26 +392,82 @@ export interface SubmitAttendanceParams {
   student: UserDocument;
   kodeInput: string;
   catatan?: string;
+  verificationMethod?: 'code-location' | 'qr-location';
+  qrPayloadInput?: string;
+  lab?: LabLocationDocument | null;
+  locationResult?: LocationVerificationResult | null;
 }
 
+export interface SubmitAttendanceResponse {
+  success: boolean;
+  message: string;
+  locationResult?: LocationVerificationResult;
+}
+
+/**
+ * Pencatatan presensi dengan HARD-VALIDATION (FR-P1-04):
+ * 1. Verifikasi status sesi terbaru langsung di Cloud Firestore ('dibuka' & belum kedaluwarsa).
+ * 2. Verifikasi kesesuaian kelas praktikan vs sesi.
+ * 3. Verifikasi 4 digit kode sesi atau payload QR Code resmi sesi.
+ * 4. Verifikasi lokasi GPS (Haversine) <= radius laboratorium yang berlaku di Firestore /labs.
+ * 5. Proteksi anti-duplikasi dokumen `${sessionId}_${studentId}`.
+ */
 export async function submitAttendance({
   session,
   student,
   kodeInput,
   catatan,
-}: SubmitAttendanceParams): Promise<{ success: boolean; message: string }> {
-  if (session.status !== 'dibuka') {
+  verificationMethod = 'code-location',
+  qrPayloadInput,
+  lab,
+  locationResult,
+}: SubmitAttendanceParams): Promise<SubmitAttendanceResponse> {
+  // 1. Ambil status sesi paling aktual langsung dari Firestore agar tidak mengandalkan state lama UI
+  let activeSession: SessionDocument = session;
+  try {
+    const freshSnap = await getDoc(doc(db, SESSIONS_COLLECTION, session.id));
+    if (!freshSnap.exists()) {
+      return {
+        success: false,
+        message: 'Sesi praktikum tidak ditemukan atau telah dihapus oleh asisten.',
+      };
+    }
+    const raw = freshSnap.data() as Record<string, unknown>;
+    activeSession = {
+      ...session,
+      status:
+        raw.status === 'dibuka' || raw.status === 'ditutup' ? raw.status : 'belum-dibuka',
+      kodeSesi: String(raw.kodeSesi ?? session.kodeSesi ?? ''),
+      kelas: raw.kelas === 'Kelas B' ? 'Kelas B' : 'Kelas A',
+      ruang: String(raw.ruang ?? session.ruang ?? ''),
+      ...(raw.labId ? { labId: String(raw.labId) } : {}),
+      ...(raw.radiusOverride !== undefined && Number.isFinite(Number(raw.radiusOverride))
+        ? { radiusOverride: Number(raw.radiusOverride) }
+        : {}),
+      ...(raw.openedAt ? { openedAt: String(raw.openedAt) } : {}),
+    };
+  } catch {
+    // Jika gagal membaca freshSnap karena gangguan koneksi, kembalikan pesan yang jelas
     return {
       success: false,
       message:
-        session.status === 'ditutup'
-          ? 'Sesi praktikum ini telah ditutup.'
-          : 'Sesi praktikum ini belum dibuka oleh asisten.',
+        'Tidak dapat memverifikasi status sesi di server. Periksa koneksi internet Anda lalu coba lagi.',
     };
   }
 
+  if (activeSession.status !== 'dibuka' || isSessionExpired(activeSession)) {
+    return {
+      success: false,
+      message:
+        activeSession.status === 'ditutup' || isSessionExpired(activeSession)
+          ? 'Presensi ditolak. Sesi praktikum ini telah ditutup.'
+          : 'Presensi ditolak. Sesi praktikum ini belum dibuka oleh asisten.',
+    };
+  }
+
+  // 2. Validasi kesesuaian kelas
   const studentClass = normalizeClassCode(student.kelas);
-  const sessionClass = normalizeClassCode(session.kelas);
+  const sessionClass = normalizeClassCode(activeSession.kelas);
 
   if (studentClass && sessionClass && studentClass !== sessionClass) {
     return {
@@ -375,8 +476,29 @@ export async function submitAttendance({
     };
   }
 
+  // 3. Validasi kode sesi 4 digit atau payload QR Code
   const cleanCode = kodeInput.trim();
-  if (session.kodeSesi && cleanCode !== session.kodeSesi) {
+  if (verificationMethod === 'qr-location') {
+    const parsedQr = parseSessionQrPayload(qrPayloadInput ?? '');
+    if (!parsedQr) {
+      return {
+        success: false,
+        message: 'QR Code presensi tidak valid. Silakan pindai ulang QR Code resmi dari asisten.',
+      };
+    }
+    if (parsedQr.sessionId !== activeSession.id) {
+      return {
+        success: false,
+        message: 'QR Code yang dipindai bukan milik sesi praktikum ini.',
+      };
+    }
+    if (activeSession.kodeSesi && parsedQr.kodeSesi !== activeSession.kodeSesi) {
+      return {
+        success: false,
+        message: 'Kode sesi pada QR Code tidak cocok dengan sesi aktif saat ini.',
+      };
+    }
+  } else if (activeSession.kodeSesi && cleanCode !== activeSession.kodeSesi) {
     return {
       success: false,
       message:
@@ -384,7 +506,77 @@ export async function submitAttendance({
     };
   }
 
-  const attendanceId = buildAttendanceId(session.id, student.uid);
+  // 4. HARD-VALIDATION LOKASI & RADIUS (Geofencing)
+  const resolvedLab = await resolveLabForSession(
+    activeSession,
+    lab ? [lab] : undefined
+  );
+  if (!resolvedLab) {
+    return {
+      success: false,
+      message:
+        'Data koordinat laboratorium belum dikonfigurasi oleh asisten. Hubungi asisten laboratorium.',
+    };
+  }
+
+  const allowedRadiusMeters = clampRadiusMeter(
+    activeSession.radiusOverride ?? resolvedLab.radiusMeter
+  );
+
+  // Periksa apakah locationResult masih segar dan berasal dari lab yang sama; jika tidak, ambil ulang langsung dari GPS
+  const isFreshLocation =
+    Boolean(locationResult) &&
+    locationResult?.labId === resolvedLab.id &&
+    locationResult?.latitude !== undefined &&
+    locationResult?.longitude !== undefined &&
+    Boolean(locationResult?.checkedAt) &&
+    Date.now() - new Date(locationResult.checkedAt).getTime() <= MAX_LOCATION_AGE_MS;
+
+  let verifiedLoc: LocationVerificationResult;
+  if (isFreshLocation && locationResult) {
+    // Hitung ulang jarak Haversine secara independen di level service (tidak mempercayai boolean UI)
+    const recomputedDistance = calculateDistanceMeters(
+      locationResult.latitude!,
+      locationResult.longitude!,
+      resolvedLab.latitude,
+      resolvedLab.longitude
+    );
+    const within = recomputedDistance <= allowedRadiusMeters;
+    verifiedLoc = {
+      ...locationResult,
+      distanceMeters: recomputedDistance,
+      allowedRadiusMeters,
+      isWithinRadius: within,
+      status: within ? 'within_radius' : 'outside_radius',
+      labId: resolvedLab.id,
+      labName: resolvedLab.nama,
+      message: within
+        ? `Lokasi terverifikasi berada di dalam radius ${resolvedLab.nama}.`
+        : `Presensi ditolak. Jarak Anda ${formatDistanceMeters(recomputedDistance)} dari ${resolvedLab.nama}, melebihi batas radius ${allowedRadiusMeters} meter.`,
+    };
+  } else {
+    verifiedLoc = await verifyUserLocationForLab(resolvedLab, {
+      radiusOverride: activeSession.radiusOverride,
+      requestPermission: true,
+    });
+  }
+
+  if (
+    !verifiedLoc.isWithinRadius ||
+    verifiedLoc.status !== 'within_radius' ||
+    verifiedLoc.latitude === undefined ||
+    verifiedLoc.longitude === undefined ||
+    verifiedLoc.distanceMeters === undefined
+  ) {
+    return {
+      success: false,
+      message: verifiedLoc.message,
+      locationResult: verifiedLoc,
+    };
+  }
+
+  // 5. Proteksi anti-duplikasi dokumen `${sessionId}_${studentId}`
+  const attendanceId = buildAttendanceId(activeSession.id, student.uid);
   const attendanceRef = doc(db, ATTENDANCES_COLLECTION, attendanceId);
 
   const existing = await getDoc(attendanceRef);
@@ -392,15 +584,27 @@ export async function submitAttendance({
     return {
       success: false,
       message: 'Anda sudah melakukan presensi pada sesi ini.',
+      locationResult: verifiedLoc,
     };
   }
 
   const now = new Date();
   const cleanCatatan = catatan?.trim();
 
+  const locationSnapshot: AttendanceLocationSnapshot = {
+    latitude: verifiedLoc.latitude,
+    longitude: verifiedLoc.longitude,
+    ...(verifiedLoc.accuracy !== undefined ? { accuracy: Math.round(verifiedLoc.accuracy) } : {}),
+    distanceMeters: verifiedLoc.distanceMeters,
+    allowedRadiusMeters: verifiedLoc.allowedRadiusMeters,
+    labId: resolvedLab.id,
+    labName: resolvedLab.nama,
+    checkedAt: verifiedLoc.checkedAt,
+  };
+
   const payload: AttendanceDocument = {
     id: attendanceId,
-    sessionId: session.id,
+    sessionId: activeSession.id,
     studentId: student.uid,
     studentName: student.nama,
     studentNim: student.nim ?? '-',
@@ -408,6 +612,9 @@ export async function submitAttendance({
     waktuKehadiran: formatWibTimestamp(now),
     timestamp: now.getTime(),
     verifiedByCode: true,
+    verifiedByLocation: true,
+    verificationMethod,
+    locationSnapshot,
     deviceInfo: Platform.OS,
     ...(cleanCatatan ? { catatan: cleanCatatan } : {}),
   };
@@ -416,7 +623,8 @@ export async function submitAttendance({
 
   return {
     success: true,
-    message: 'Presensi berhasil dicatat! Kehadiran Anda telah terverifikasi.',
+    message: `Presensi berhasil dicatat! Lokasi terverifikasi (${formatDistanceMeters(verifiedLoc.distanceMeters)} dari ${resolvedLab.nama}).`,
+    locationResult: verifiedLoc,
   };
 }
 

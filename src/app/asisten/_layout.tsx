@@ -7,6 +7,7 @@ import { RoleHeader } from '@/components/role-header';
 import {
   TabCalendarIcon,
   TabChartIcon,
+  TabLocationPinIcon,
   TabModerationIcon,
   TabUsersIcon,
 } from '@/components/tab-icons';
@@ -73,6 +74,16 @@ export default function AsistenLayout() {
             tabBarLabel: 'Kelola Sesi',
             tabBarIcon: ({ color, focused }) => (
               <TabCalendarIcon color={color} focused={focused} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="lokasi-lab"
+          options={{
+            title: 'Lokasi Laboratorium',
+            tabBarLabel: 'Lokasi Lab',
+            tabBarIcon: ({ color, focused }) => (
+              <TabLocationPinIcon color={color} focused={focused} />
             ),
           }}
         />

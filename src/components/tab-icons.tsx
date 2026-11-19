@@ -182,6 +182,65 @@ export function TabUsersIcon({ color, focused }: TabIconProps) {
   );
 }
 
+/**
+ * TabLocationPinIcon — Ikon Lokasi & Radius Laboratorium
+ */
+export function TabLocationPinIcon({ color, focused }: TabIconProps) {
+  return (
+    <View style={styles.iconContainer}>
+      <View
+        style={[
+          styles.pinOuter,
+          {
+            borderColor: color,
+            borderWidth: focused ? 2 : 1.6,
+            backgroundColor: focused ? color : '#FFFFFF',
+          },
+        ]}>
+        <View
+          style={[
+            styles.pinInner,
+            { backgroundColor: focused ? '#FFFFFF' : color },
+          ]}
+        />
+      </View>
+      <View style={[styles.pinBase, { backgroundColor: color }]} />
+    </View>
+  );
+}
+
+/**
+ * TabCheckinIcon — Ikon Presensi Geofencing (Target Radius)
+ */
+export function TabCheckinIcon({ color, focused }: TabIconProps) {
+  return (
+    <View style={styles.iconContainer}>
+      <View
+        style={[
+          styles.targetOuter,
+          {
+            borderColor: color,
+            borderWidth: focused ? 2 : 1.6,
+          },
+        ]}>
+        <View
+          style={[
+            styles.targetCore,
+            {
+              backgroundColor: focused ? color : 'transparent',
+              borderColor: color,
+            },
+          ]}
+        />
+      </View>
+      <View style={[styles.targetTickTop, { backgroundColor: color }]} />
+      <View style={[styles.targetTickBottom, { backgroundColor: color }]} />
+      <View style={[styles.targetTickLeft, { backgroundColor: color }]} />
+      <View style={[styles.targetTickRight, { backgroundColor: color }]} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   iconContainer: {
     width: 26,
@@ -344,5 +403,70 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 8,
     borderTopRightRadius: 8,
     backgroundColor: '#FFFFFF',
+  },
+  /* Location Pin */
+  pinOuter: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderBottomLeftRadius: 2,
+    transform: [{ rotate: '-45deg' }],
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+  },
+  pinInner: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+  },
+  pinBase: {
+    width: 12,
+    height: 1.8,
+    borderRadius: 1,
+    marginTop: 1,
+  },
+  /* Checkin Target */
+  targetOuter: {
+    width: 17,
+    height: 17,
+    borderRadius: 8.5,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  targetCore: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    borderWidth: 1.5,
+  },
+  targetTickTop: {
+    position: 'absolute',
+    top: 1,
+    width: 1.8,
+    height: 3.5,
+    borderRadius: 1,
+  },
+  targetTickBottom: {
+    position: 'absolute',
+    bottom: 1,
+    width: 1.8,
+    height: 3.5,
+    borderRadius: 1,
+  },
+  targetTickLeft: {
+    position: 'absolute',
+    left: 2,
+    width: 3.5,
+    height: 1.8,
+    borderRadius: 1,
+  },
+  targetTickRight: {
+    position: 'absolute',
+    right: 2,
+    width: 3.5,
+    height: 1.8,
+    borderRadius: 1,
   },
 });

@@ -41,7 +41,21 @@
       ],
       "@react-native-google-signin/google-signin",
       "@react-native-firebase/app",
-      "@react-native-firebase/messaging"
+      "@react-native-firebase/messaging",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Izinkan LabPortal mengakses lokasi Anda untuk memvalidasi kehadiran di dalam radius laboratorium."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Izinkan LabPortal menggunakan kamera untuk memindai QR Code presensi sesi praktikum.",
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

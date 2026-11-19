@@ -17,6 +17,12 @@ import { EmptyState } from '@/components/empty-state';
 import { SesiCard } from '@/components/sesi-card';
 import { useAuth } from '@/context/auth-context';
 import { subscribeAllAttendances } from '@/services/attendance-service';
+import {
+  MAX_LAB_RADIUS_METER,
+  MIN_LAB_RADIUS_METER,
+  buildFallbackDefaultLabs,
+  subscribeLabs,
+} from '@/services/lab-service';
 import { LeaveRequestDocument, subscribeLeaveRequests } from '@/services/leave-service';
 import {
   createSession,
@@ -24,13 +30,19 @@ import {
   subscribeSessions,
   updateSessionStatus,
 } from '@/services/session-service';
-import { AttendanceDocument, SessionDocument, SessionStatus } from '@/types/praktikum';
+import {
+  AttendanceDocument,
+  LabLocationDocument,
+  SessionDocument,
+  SessionStatus,
+} from '@/types/praktikum';
 
 type FilterType = 'semua' | SessionStatus;
 
 export default function JadwalAsistenScreen() {
   const { userDoc } = useAuth();
   const [sesiList, setSesiList] = useState<SessionDocument[]>([]);
+  const [labs, setLabs] = useState<LabLocationDocument[]>([]);
   const [attendances, setAttendances] = useState<AttendanceDocument[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequestDocument[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
@@ -41,10 +53,12 @@ export default function JadwalAsistenScreen() {
   const [newPraktikum, setNewPraktikum] = useState('Praktikum PPK');
   const [newMateri, setNewMateri] = useState('');
   const [newKelas, setNewKelas] = useState<'Kelas A' | 'Kelas B'>('Kelas A');
-  const [newTanggal, setNewTanggal] = useState('12 Nov 2026');
+  const [newTanggal, setNewTanggal] = useState('19 Nov 2026');
   const [newWaktuMulai, setNewWaktuMulai] = useState('07.30');
   const [newWaktuSelesai, setNewWaktuSelesai] = useState('09.30');
+  const [newLabId, setNewLabId] = useState('lab-komputasi-1');
   const [newRuang, setNewRuang] = useState('Lab Komputasi 1');
+  const [newRadiusOverride, setNewRadiusOverride] = useState('');
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -59,6 +73,15 @@ export default function JadwalAsistenScreen() {
       }
     );
 
+    const unsubLabs = subscribeLabs(
+      (items) => {
+        setLabs(items.length > 0 ? items : buildFallbackDefaultLabs());
+      },
+      () => {
+        setLabs(buildFallbackDefaultLabs());
+      }
+    );
+
     const unsubAttendances = subscribeAllAttendances((items) => {
       setAttendances(items);
     });
@@ -69,6 +92,7 @@ export default function JadwalAsistenScreen() {
 
     return () => {
       unsubSessions();
+      unsubLabs();
       unsubAttendances();
       unsubLeaves();
     };
@@ -118,20 +142,37 @@ export default function JadwalAsistenScreen() {
       return;
     }
 
+    let parsedRadiusOverride: number | undefined;
+    if (newRadiusOverride.trim()) {
+      const n = Number(newRadiusOverride.trim());
+      if (!Number.isFinite(n) || n < MIN_LAB_RADIUS_METER || n > MAX_LAB_RADIUS_METER) {
+        setFormError(
+          `Radius khusus sesi harus antara ${MIN_LAB_RADIUS_METER} sampai ${MAX_LAB_RADIUS_METER} meter.`
+        );
+        return;
+      }
+      parsedRadiusOverride = Math.round(n);
+    }
+
+    const selectedLab = labs.find((l) => l.id === newLabId);
+
     setSaving(true);
     try {
       const newCreated = await createSession({
         praktikum: newPraktikum.trim() || 'Praktikum PPK',
         kelas: newKelas,
-        tanggal: newTanggal.trim() || '12 Nov 2026',
+        tanggal: newTanggal.trim() || '19 Nov 2026',
         waktuMulai: newWaktuMulai.trim() || '07.30',
         waktuSelesai: newWaktuSelesai.trim() || '09.30',
-        ruang: newRuang.trim() || 'Lab Komputasi 1',
+        ruang: selectedLab?.nama || newRuang.trim() || 'Lab Komputasi 1',
+        labId: selectedLab?.id || newLabId || undefined,
+        ...(parsedRadiusOverride !== undefined ? { radiusOverride: parsedRadiusOverride } : {}),
         materi: newMateri.trim(),
         createdBy: userDoc.uid,
         status: 'belum-dibuka',
       });
       setNewMateri('');
+      setNewRadiusOverride('');
       setModalTambahVisible(false);
       router.push({
         pathname: '/asisten/detail-sesi/[id]',
@@ -182,11 +223,30 @@ export default function JadwalAsistenScreen() {
             Buka sesi praktikum, pantau presensi kehadiran mahasiswa, atau tutup sesi setelah kegiatan selesai
           </Text>
         </View>
-        <Pressable
-          style={({ pressed }) => [styles.tambahBtn, pressed && styles.chipPressed]}
-          onPress={() => setModalTambahVisible(true)}>
-          <Text style={styles.tambahBtnText}>+ Tambah Sesi</Text>
-        </Pressable>
+        <View style={styles.headerActionBtns}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Kelola Lokasi Laboratorium"
+            style={({ pressed }) => [styles.labShortcutBtn, pressed && styles.chipPressed]}
+            onPress={() => router.push('/asisten/lokasi-lab')}>
+            <Text style={styles.labShortcutBtnText}>Lokasi Lab</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Tambah Sesi Praktikum"
+            style={({ pressed }) => [styles.tambahBtn, pressed && styles.chipPressed]}
+            onPress={() => {
+              const activeLabs = labs.filter((l) => l.isActive);
+              if (activeLabs.length > 0 && !activeLabs.some((l) => l.id === newLabId)) {
+                setNewLabId(activeLabs[0].id);
+                setNewRuang(activeLabs[0].nama);
+              }
+              setFormError(null);
+              setModalTambahVisible(true);
+            }}>
+            <Text style={styles.tambahBtnText}>+ Tambah Sesi</Text>
+          </Pressable>
+        </View>
       </View>
 
       {/* Metrics Overview Cards (Matching Halaman 1 style) */}
@@ -459,13 +519,55 @@ export default function JadwalAsistenScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Ruang Laboratorium</Text>
+                <Text style={styles.inputLabel}>Pilih Laboratorium (Acuan Geofencing) *</Text>
+                <View style={styles.labPickerGrid}>
+                  {labs.filter((l) => l.isActive).map((lab) => {
+                    const selected = newLabId === lab.id;
+                    return (
+                      <Pressable
+                        key={lab.id}
+                        accessibilityRole="button"
+                        onPress={() => {
+                          setNewLabId(lab.id);
+                          setNewRuang(lab.nama);
+                        }}
+                        style={[
+                          styles.labPickerChip,
+                          selected && styles.labPickerChipActive,
+                        ]}>
+                        <Text
+                          style={[
+                            styles.labPickerName,
+                            selected && styles.labPickerNameActive,
+                          ]}
+                          numberOfLines={1}>
+                          {lab.nama}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.labPickerMeta,
+                            selected && styles.labPickerMetaActive,
+                          ]}>
+                          {lab.kode} • Radius {lab.radiusMeter}m
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>
+                  Radius Khusus Sesi (Opsional, {MIN_LAB_RADIUS_METER}-{MAX_LAB_RADIUS_METER}m)
+                </Text>
                 <TextInput
                   style={styles.textInput}
-                  value={newRuang}
-                  onChangeText={setNewRuang}
-                  placeholder="Lab Komputasi 1"
+                  value={newRadiusOverride}
+                  onChangeText={(t) => setNewRadiusOverride(t.replace(/[^0-9]/g, ''))}
+                  placeholder="Kosongkan untuk memakai radius default lab"
                   placeholderTextColor="#94A3B8"
+                  keyboardType="number-pad"
+                  maxLength={3}
                 />
               </View>
             </ScrollView>
@@ -976,5 +1078,59 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     fontWeight: '600',
     color: '#B91C1C',
+  },
+  headerActionBtns: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  labShortcutBtn: {
+    minHeight: 44,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#0D9488',
+    backgroundColor: '#F0FDFA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  labShortcutBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0D9488',
+  },
+  labPickerGrid: {
+    gap: 8,
+  },
+  labPickerChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#F8FAFC',
+    gap: 2,
+  },
+  labPickerChipActive: {
+    borderColor: '#0D9488',
+    backgroundColor: '#F0FDFA',
+    borderWidth: 1.5,
+  },
+  labPickerName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  labPickerNameActive: {
+    color: '#0F766E',
+  },
+  labPickerMeta: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  labPickerMetaActive: {
+    color: '#0D9488',
   },
 });

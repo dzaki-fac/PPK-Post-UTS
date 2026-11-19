@@ -2,6 +2,7 @@ import {
   Unsubscribe,
   addDoc,
   collection,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -14,6 +15,7 @@ import {
 
 import { db } from '@/lib/firebase';
 import { SessionDocument, SessionStatus } from '@/types/praktikum';
+import { buildSessionQrPayload } from '@/utils/qr-payload';
 
 const SESSIONS_COLLECTION = 'sessions';
 const ATTENDANCES_COLLECTION = 'attendances';
@@ -29,14 +31,25 @@ export interface CreateSessionInput {
   createdBy: string;
   status?: SessionStatus;
   kodeSesi?: string;
+  labId?: string;
+  radiusOverride?: number;
 }
 
 export type UpdateSessionInput = Partial<
   Pick<
     SessionDocument,
-    'praktikum' | 'kelas' | 'materi' | 'tanggal' | 'waktuMulai' | 'waktuSelesai' | 'ruang'
+    | 'praktikum'
+    | 'kelas'
+    | 'materi'
+    | 'tanggal'
+    | 'waktuMulai'
+    | 'waktuSelesai'
+    | 'ruang'
+    | 'labId'
   >
->;
+> & {
+  radiusOverride?: number | null;
+};
 
 /**
  * Menghasilkan 4 digit kode numerik acak (1000 - 9999) untuk presensi sesi.
@@ -110,6 +123,11 @@ export function isSessionExpired(session: {
 }
 
 function mapSessionSnapshot(id: string, raw: Record<string, unknown>): SessionDocument {
+  const radiusRaw =
+    raw.radiusOverride !== undefined && raw.radiusOverride !== null
+      ? Number(raw.radiusOverride)
+      : undefined;
+
   return {
     id,
     praktikum: String(raw.praktikum ?? 'Praktikum PPK'),
@@ -125,6 +143,11 @@ function mapSessionSnapshot(id: string, raw: Record<string, unknown>): SessionDo
     createdBy: String(raw.createdBy ?? ''),
     ...(raw.openedAt ? { openedAt: String(raw.openedAt) } : {}),
     ...(raw.closedAt ? { closedAt: String(raw.closedAt) } : {}),
+    ...(raw.labId ? { labId: String(raw.labId) } : {}),
+    ...(radiusRaw !== undefined && Number.isFinite(radiusRaw)
+      ? { radiusOverride: radiusRaw }
+      : {}),
+    ...(raw.qrPayload ? { qrPayload: String(raw.qrPayload) } : {}),
     createdAt: String(raw.createdAt ?? ''),
     updatedAt: String(raw.updatedAt ?? ''),
   };
@@ -199,6 +222,9 @@ export async function createSession(input: CreateSessionInput): Promise<SessionD
   const now = new Date().toISOString();
   const status: SessionStatus = input.status ?? 'belum-dibuka';
   const kodeSesi = input.kodeSesi?.trim() || generateSessionCode();
+  const cleanLabId = input.labId?.trim();
+  const hasRadiusOverride =
+    input.radiusOverride !== undefined && Number.isFinite(input.radiusOverride);
 
   const payload: Omit<SessionDocument, 'id'> = {
     praktikum: input.praktikum.trim() || 'Praktikum PPK',
@@ -214,10 +240,15 @@ export async function createSession(input: CreateSessionInput): Promise<SessionD
     createdAt: now,
     updatedAt: now,
     ...(status === 'dibuka' ? { openedAt: now } : {}),
+    ...(cleanLabId ? { labId: cleanLabId } : {}),
+    ...(hasRadiusOverride ? { radiusOverride: Math.round(input.radiusOverride!) } : {}),
   };
 
   const docRef = await addDoc(collection(db, SESSIONS_COLLECTION), payload);
-  return { id: docRef.id, ...payload };
+  const qrPayload = buildSessionQrPayload(docRef.id, kodeSesi);
+  await updateDoc(docRef, { qrPayload }).catch(() => {});
+
+  return { id: docRef.id, ...payload, qrPayload };
 }
 
 /**
@@ -228,7 +259,7 @@ export async function updateSession(
   updates: UpdateSessionInput
 ): Promise<void> {
   const sessionRef = doc(db, SESSIONS_COLLECTION, sessionId);
-  const cleanUpdates: Record<string, string> = {
+  const cleanUpdates: Record<string, unknown> = {
     updatedAt: new Date().toISOString(),
   };
 
@@ -239,6 +270,14 @@ export async function updateSession(
   if (updates.waktuMulai !== undefined) cleanUpdates.waktuMulai = updates.waktuMulai.trim();
   if (updates.waktuSelesai !== undefined) cleanUpdates.waktuSelesai = updates.waktuSelesai.trim();
   if (updates.ruang !== undefined) cleanUpdates.ruang = updates.ruang.trim();
+  if (updates.labId !== undefined && updates.labId.trim()) {
+    cleanUpdates.labId = updates.labId.trim();
+  }
+  if (updates.radiusOverride === null) {
+    cleanUpdates.radiusOverride = deleteField();
+  } else if (updates.radiusOverride !== undefined && Number.isFinite(updates.radiusOverride)) {
+    cleanUpdates.radiusOverride = Math.round(updates.radiusOverride);
+  }
 
   await updateDoc(sessionRef, cleanUpdates);
 }
@@ -261,9 +300,11 @@ export async function updateSessionStatus(
     payload.openedAt = now;
     const snap = await getDoc(sessionRef);
     const existingCode = snap.exists() ? String(snap.data()?.kodeSesi ?? '').trim() : '';
+    const activeCode = existingCode || generateSessionCode();
     if (!existingCode) {
-      payload.kodeSesi = generateSessionCode();
+      payload.kodeSesi = activeCode;
     }
+    payload.qrPayload = buildSessionQrPayload(sessionId, activeCode);
   } else if (status === 'ditutup') {
     payload.closedAt = now;
   }

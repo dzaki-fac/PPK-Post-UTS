@@ -2,30 +2,27 @@ import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ConfirmationModal } from '@/components/confirmation-modal';
 import { EmptyState } from '@/components/empty-state';
 import { StatusBadge } from '@/components/status-badge';
 import { useAuth } from '@/context/auth-context';
 import {
   normalizeClassCode,
-  submitAttendance,
   subscribeStudentSessionAttendance,
 } from '@/services/attendance-service';
 import {
   LeaveRequestDocument,
   subscribeStudentLeaveRequests,
 } from '@/services/leave-service';
+import { formatDistanceMeters } from '@/services/location-service';
 import { subscribeSessionById } from '@/services/session-service';
 import { AttendanceDocument, SessionDocument } from '@/types/praktikum';
 
@@ -41,24 +38,6 @@ export default function PraktikanDetailSesiScreen() {
   const [loadingSession, setLoadingSession] = useState(Boolean(sessionId));
   const [attendanceRecord, setAttendanceRecord] = useState<AttendanceDocument | null>(null);
   const [studentLeaves, setStudentLeaves] = useState<LeaveRequestDocument[]>([]);
-
-  const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false);
-  const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [kodeInput, setKodeInput] = useState('');
-  const [catatan, setCatatan] = useState('');
-  const [agreementChecked, setAgreementChecked] = useState(true);
-
-  // Pola resmi React untuk mereset state saat parameter sesi berubah tanpa efek kaskade
-  const [prevSessionId, setPrevSessionId] = useState(sessionId);
-  if (sessionId !== prevSessionId) {
-    setPrevSessionId(sessionId);
-    setKodeInput('');
-    setCatatan('');
-    setErrorMessage(null);
-  }
 
   useEffect(() => {
     if (!sessionId) {
@@ -158,65 +137,22 @@ export default function PraktikanDetailSesiScreen() {
     studentClass && sessionClass && studentClass !== sessionClass
   );
 
-  const isSubmitDisabled =
-    !agreementChecked ||
-    !userDoc ||
-    Boolean(sesi.kodeSesi && kodeInput.trim().length !== 4) ||
-    isClassMismatch ||
-    hasActiveLeave;
-
-  const handleOpenPresensiModal = () => {
-    setIsConfirmModalVisible(true);
-  };
-
-  const handleConfirmPresensi = async () => {
-    if (!userDoc) return;
-
-    if (sesi.kodeSesi && kodeInput.trim().length !== 4) {
-      setIsConfirmModalVisible(false);
-      setErrorMessage('Harap masukkan 4 digit kode sesi presensi.');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const result = await submitAttendance({
-        session: sesi,
-        student: userDoc,
-        kodeInput: kodeInput.trim(),
-        catatan,
-      });
-      setIsConfirmModalVisible(false);
-
-      if (result.success) {
-        setSuccessMessage(result.message);
-        setIsSuccessModalVisible(true);
-      } else {
-        setErrorMessage(result.message);
-      }
-    } catch (err) {
-      setIsConfirmModalVisible(false);
-      setErrorMessage(
-        err instanceof Error
-          ? err.message
-          : 'Gagal menyimpan presensi ke Cloud Firestore.'
-      );
-    } finally {
-      setSubmitting(false);
-    }
+  const handleOpenPresensiPage = () => {
+    router.push({
+      pathname: '/praktikan/presensi',
+      params: { sessionId: sesi.id },
+    });
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.contentWrap}>
           {/* Page Heading */}
           <View style={styles.pageHeader}>
             <Text style={styles.pageTitle}>Detail Sesi Praktikum</Text>
             <Text style={styles.pageSubtitle}>
-              Informasi modul dan formulir presensi kehadiran praktikan
+              Informasi modul, jadwal laboratorium, dan status kehadiran praktikan
             </Text>
           </View>
 
@@ -375,6 +311,12 @@ export default function PraktikanDetailSesiScreen() {
                   {attendanceRecord?.waktuKehadiran ?? 'Tercatat'}
                 </Text>
               </View>
+              {attendanceRecord?.locationSnapshot ? (
+                <Text style={styles.alreadySubtitle}>
+                  Terverifikasi GPS: {formatDistanceMeters(attendanceRecord.locationSnapshot.distanceMeters)} dari{' '}
+                  {attendanceRecord.locationSnapshot.labName}
+                </Text>
+              ) : null}
               <Text style={styles.alreadyNotice}>
                 Praktikan hanya dapat melakukan presensi satu kali per sesi
                 praktikum.
@@ -475,13 +417,13 @@ export default function PraktikanDetailSesiScreen() {
               </Pressable>
             </View>
           ) : (
-            /* Case 4: Sesi Dibuka & Belum Presensi (FR-4.1, FR-4.5) */
+            /* Case 4: Sesi Dibuka & Belum Presensi — Arahkan ke Halaman Presensi Khusus (FR-P1-03) */
             <View style={styles.formContainer}>
               <View style={styles.openNoticeBox}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.openNoticeTitle}>Sesi Sedang Berlangsung</Text>
                   <Text style={styles.openNoticeDesc}>
-                    Silakan masukkan kode sesi dari asisten dan kirim presensi sebelum sesi ditutup.
+                    Presensi dilakukan melalui halaman khusus dengan validasi lokasi GPS (geofencing) di dalam radius laboratorium serta kode sesi 4 digit atau QR Code.
                   </Text>
                 </View>
               </View>
@@ -498,84 +440,27 @@ export default function PraktikanDetailSesiScreen() {
                 </View>
               ) : null}
 
-              {/* Kode Sesi Presensi 4 Digit */}
-              {sesi.kodeSesi ? (
-                <View style={styles.inputGroup}>
-                  <View style={styles.codeLabelRow}>
-                    <Text style={styles.inputLabel}>
-                      Kode Sesi Presensi (4 Digit):
-                    </Text>
-                    <View style={styles.requiredBadge}>
-                      <Text style={styles.requiredBadgeText}>Wajib</Text>
-                    </View>
-                  </View>
-                  <TextInput
-                    style={styles.codeInput}
-                    placeholder="Masukkan 4 digit kode dari asisten (mis. 2401)"
-                    placeholderTextColor="#94A3B8"
-                    value={kodeInput}
-                    onChangeText={(t) => setKodeInput(t.replace(/[^0-9]/g, '').slice(0, 4))}
-                    keyboardType="number-pad"
-                    maxLength={4}
-                    editable={!isClassMismatch}
-                  />
-                  <Text style={styles.codeHintText}>
-                    Minta 4 digit kode sesi kepada asisten yang memimpin praktikum di ruang laboratorium.
-                  </Text>
-                </View>
-              ) : null}
-
-              {/* Catatan / Keterangan Masukan (FR-6.1) */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>
-                  Catatan Kehadiran (Opsional):
-                </Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Mis. Meja Lab 04, modul cetak lengkap"
-                  placeholderTextColor="#94A3B8"
-                  value={catatan}
-                  onChangeText={setCatatan}
-                  editable={!isClassMismatch}
-                />
-              </View>
-
-              {/* Checkbox Konfirmasi Integritas */}
+              {/* Tombol Menuju Halaman Presensi Khusus */}
               <Pressable
-                style={styles.checkboxRow}
-                onPress={() => !isClassMismatch && setAgreementChecked(!agreementChecked)}>
-                <View
-                  style={[
-                    styles.checkboxBox,
-                    agreementChecked && styles.checkboxBoxChecked,
-                    isClassMismatch && styles.checkboxBoxDisabled,
-                  ]}>
-                  {agreementChecked ? (
-                    <View style={styles.checkboxInner} />
-                  ) : null}
-                </View>
-                <Text style={[styles.checkboxLabel, isClassMismatch && styles.checkboxLabelDisabled]}>
-                  Saya menyatakan hadir di ruang praktikum dan mengikuti kegiatan secara mandiri.
-                </Text>
-              </Pressable>
-
-              {/* Main Presensi Button */}
-              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Buka Halaman Presensi Berbasis Lokasi"
                 style={({ pressed }) => [
                   styles.actionBtn,
                   styles.actionBtnActive,
-                  isSubmitDisabled && styles.actionBtnDisabled,
-                  pressed && !isSubmitDisabled && styles.buttonPressed,
+                  isClassMismatch && styles.actionBtnDisabled,
+                  pressed && !isClassMismatch && styles.buttonPressed,
                 ]}
-                onPress={handleOpenPresensiModal}
-                disabled={isSubmitDisabled}>
+                onPress={handleOpenPresensiPage}
+                disabled={isClassMismatch}>
                 <Text
                   style={
-                    isSubmitDisabled
+                    isClassMismatch
                       ? styles.actionBtnTextDisabled
                       : styles.actionBtnTextActive
                   }>
-                  {isClassMismatch ? 'Beda Kelas - Tidak Dapat Presensi' : 'Kirim Presensi Kehadiran'}
+                  {isClassMismatch
+                    ? 'Beda Kelas - Tidak Dapat Presensi'
+                    : 'Buka Halaman Presensi (Geofencing) →'}
                 </Text>
               </Pressable>
 
@@ -598,86 +483,7 @@ export default function PraktikanDetailSesiScreen() {
         </View>
         </View>
       </ScrollView>
-
-      {/* Confirmation Modal / Bottom Sheet (FR-6.2, B4) */}
-      <ConfirmationModal
-        visible={isConfirmModalVisible}
-        title="Konfirmasi Presensi Praktikum"
-        description="Pastikan data identitas dan kode sesi Anda sudah sesuai sebelum mengirim presensi."
-        confirmText="Ya, Catat Kehadiran"
-        cancelText="Batal"
-        confirmVariant="primary"
-        isLoading={submitting}
-        onConfirm={handleConfirmPresensi}
-        onCancel={() => !submitting && setIsConfirmModalVisible(false)}>
-        <View style={styles.modalSummaryBox}>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Praktikan:</Text>
-            <Text style={styles.summaryValue}>
-              {userDoc?.nama} ({userDoc?.nim ?? '-'})
-            </Text>
-          </View>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Praktikum:</Text>
-            <Text style={styles.summaryValue}>{sesi.praktikum}</Text>
-          </View>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Kelas & Jadwal:</Text>
-            <Text style={styles.summaryValue}>
-              {sesi.kelas} • {sesi.waktuMulai} - {sesi.waktuSelesai} WIB
-            </Text>
-          </View>
-          {sesi.kodeSesi ? (
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Kode Sesi:</Text>
-              <Text style={styles.summaryValueCode}>{kodeInput.trim()}</Text>
-            </View>
-          ) : null}
-          {catatan ? (
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Catatan:</Text>
-              <Text style={styles.summaryValue}>{catatan}</Text>
-            </View>
-          ) : null}
-        </View>
-      </ConfirmationModal>
-
-      {/* Error Feedback Modal */}
-      <ConfirmationModal
-        visible={errorMessage !== null}
-        title="Presensi Tidak Berhasil"
-        description={errorMessage ?? ''}
-        confirmText="Mengerti"
-        confirmVariant="danger"
-        onConfirm={() => setErrorMessage(null)}
-        onCancel={() => setErrorMessage(null)}>
-        <View style={styles.errorFeedbackContent}>
-          <Text style={styles.errorFeedbackText}>
-            Pastikan 4 digit kode sesi yang dimasukkan sesuai dengan yang dibagikan oleh asisten praktikum dan kelas praktikum cocok dengan identitas Anda.
-          </Text>
-        </View>
-      </ConfirmationModal>
-
-      {/* Success Feedback Modal (FR-4.3) with Redirect to Riwayat */}
-      <ConfirmationModal
-        visible={isSuccessModalVisible}
-        title="Presensi Berhasil"
-        description={successMessage}
-        confirmText="Lihat Riwayat Presensi"
-        cancelText="Tutup"
-        confirmVariant="success"
-        onConfirm={() => {
-          setIsSuccessModalVisible(false);
-          router.replace('/praktikan/riwayat');
-        }}
-        onCancel={() => setIsSuccessModalVisible(false)}>
-        <View style={styles.successFeedbackContent}>
-          <Text style={styles.feedbackSub}>
-            Waktu kehadiran Anda telah tersimpan secara resmi. Klik &quot;Lihat Riwayat Presensi&quot; untuk memeriksa catatan kehadiran Anda di tab Riwayat.
-          </Text>
-        </View>
-      </ConfirmationModal>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

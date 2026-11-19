@@ -130,6 +130,18 @@ export default function PraktikanJadwalScreen() {
         leaveStatus={leaveItem?.status}
         leaveCategory={leaveItem?.aiClassification?.category}
         onPress={() => handleCardPress(item)}
+        onPresensiPress={
+          item.status === 'dibuka' &&
+          !isHadir &&
+          leaveItem?.status !== 'disetujui' &&
+          leaveItem?.status !== 'menunggu'
+            ? () =>
+                router.push({
+                  pathname: '/praktikan/presensi',
+                  params: { sessionId: item.id },
+                })
+            : undefined
+        }
       />
     );
   };

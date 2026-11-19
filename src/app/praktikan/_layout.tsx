@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RoleHeader } from '@/components/role-header';
 import {
   TabCalendarIcon,
+  TabCheckinIcon,
   TabDocumentIcon,
   TabHistoryIcon,
 } from '@/components/tab-icons';
@@ -72,6 +73,16 @@ export default function PraktikanLayout() {
             tabBarLabel: 'Jadwal Sesi',
             tabBarIcon: ({ color, focused }) => (
               <TabCalendarIcon color={color} focused={focused} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="presensi"
+          options={{
+            title: 'Presensi Praktikum',
+            tabBarLabel: 'Presensi',
+            tabBarIcon: ({ color, focused }) => (
+              <TabCheckinIcon color={color} focused={focused} />
             ),
           }}
         />

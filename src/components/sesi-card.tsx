@@ -14,6 +14,7 @@ interface SesiCardProps {
   leaveCategory?: string;
   role?: 'praktikan' | 'asisten';
   onPress: () => void;
+  onPresensiPress?: () => void;
 }
 
 export function SesiCard({
@@ -26,6 +27,7 @@ export function SesiCard({
   leaveCategory,
   role = 'praktikan',
   onPress,
+  onPresensiPress,
 }: SesiCardProps) {
   const isAsisten = role === 'asisten';
 
@@ -166,6 +168,21 @@ export function SesiCard({
               <Text style={styles.leaveSub}>Kategori AI: {leaveCategory}</Text>
             ) : null}
           </View>
+        </View>
+      ) : null}
+      {/* Praktikan quick CTA to dedicated Geofencing Attendance Page */}
+      {!isAsisten && !isHadir && !leaveStatus && sesi.status === 'dibuka' && onPresensiPress ? (
+        <View style={styles.presensiCtaWrap}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Buka Halaman Presensi ${sesi.praktikum}`}
+            onPress={onPresensiPress}
+            style={({ pressed }) => [
+              styles.presensiCtaBtn,
+              pressed && styles.presensiCtaBtnPressed,
+            ]}>
+            <Text style={styles.presensiCtaText}>Buka Halaman Presensi →</Text>
+          </Pressable>
         </View>
       ) : null}
     </Pressable>
@@ -427,5 +444,29 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#64748B',
     marginTop: 1,
+  },
+  presensiCtaWrap: {
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  presensiCtaBtn: {
+    minHeight: 44,
+    borderRadius: 10,
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1.5,
+    borderColor: '#EA580C',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+  },
+  presensiCtaBtnPressed: {
+    opacity: 0.85,
+  },
+  presensiCtaText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#EA580C',
   },
 });

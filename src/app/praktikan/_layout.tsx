@@ -8,6 +8,7 @@ import {
   TabCalendarIcon,
   TabDocumentIcon,
   TabHistoryIcon,
+  TabMapIcon,
 } from '@/components/tab-icons';
 import { useAuth } from '@/context/auth-context';
 
@@ -76,6 +77,16 @@ export default function PraktikanLayout() {
           }}
         />
         <Tabs.Screen
+          name="peta-lab"
+          options={{
+            title: 'Peta Laboratorium',
+            tabBarLabel: 'Peta Lab',
+            tabBarIcon: ({ color, focused }) => (
+              <TabMapIcon color={color} focused={focused} />
+            ),
+          }}
+        />
+        <Tabs.Screen
           name="pengajuan-izin"
           options={{
             title: 'Pengajuan Izin',
@@ -130,7 +141,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
   },
   tabBarWeb: {
-    maxWidth: 480,
+    maxWidth: 560,
     width: '100%',
     alignSelf: 'center',
     marginHorizontal: 'auto',

@@ -26,10 +26,49 @@ export interface SessionDocument {
   status: SessionStatus;
   kodeSesi: string;
   createdBy: string;
+  labId?: string;
+  radiusOverride?: number;
+  qrPayload?: string;
   openedAt?: string;
   closedAt?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface LabLocationDocument {
+  id: string;
+  nama: string;
+  kode: string;
+  gedung: string;
+  latitude: number;
+  longitude: number;
+  radiusMeter: number;
+  deskripsi?: string;
+  isActive: boolean;
+  updatedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LabWithActivity {
+  lab: LabLocationDocument;
+  ongoingSession: SessionDocument | null;
+  nextSession: SessionDocument | null;
+  upcomingSessions: SessionDocument[];
+  distanceMeters?: number;
+  isUserInsideRadius?: boolean;
+}
+
+export interface LocationVerificationResult {
+  status: 'within_radius' | 'outside_radius' | 'permission_denied' | 'services_disabled' | 'unavailable';
+  distanceMeters?: number;
+  allowedRadiusMeters?: number;
+  userCoords?: {
+    latitude: number;
+    longitude: number;
+    accuracy?: number | null;
+  };
+  message: string;
 }
 
 export interface AttendanceDocument {
@@ -43,7 +82,19 @@ export interface AttendanceDocument {
   timestamp: number;
   catatan?: string;
   deviceInfo?: string;
-  verifiedByCode: boolean;
+  verifiedByCode?: boolean;
+  verifiedByLocation?: boolean;
+  verificationMethod?: 'code-location' | 'qr-location';
+  locationSnapshot?: {
+    latitude: number;
+    longitude: number;
+    accuracy?: number;
+    distanceMeters: number;
+    allowedRadiusMeters: number;
+    labId: string;
+    labName: string;
+    checkedAt: string;
+  };
 }
 
 export type Praktikan = {

@@ -7,6 +7,7 @@ import { RoleHeader } from '@/components/role-header';
 import {
   TabCalendarIcon,
   TabChartIcon,
+  TabMapIcon,
   TabModerationIcon,
   TabUsersIcon,
 } from '@/components/tab-icons';
@@ -77,6 +78,16 @@ export default function AsistenLayout() {
           }}
         />
         <Tabs.Screen
+          name="peta-lab"
+          options={{
+            title: 'Peta Laboratorium',
+            tabBarLabel: 'Peta Lab',
+            tabBarIcon: ({ color, focused }) => (
+              <TabMapIcon color={color} focused={focused} />
+            ),
+          }}
+        />
+        <Tabs.Screen
           name="moderasi-izin"
           options={{
             title: 'Moderasi Izin',
@@ -141,7 +152,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
   },
   tabBarWeb: {
-    maxWidth: 580,
+    maxWidth: 640,
     width: '100%',
     alignSelf: 'center',
     marginHorizontal: 'auto',

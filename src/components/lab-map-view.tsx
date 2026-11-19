@@ -9,11 +9,19 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import MapView, { Circle, Marker } from 'react-native-maps';
+import MapView, {
+  AnimatedRegion,
+  Circle,
+  Marker,
+  MarkerAnimated,
+  Polyline,
+  type LatLng,
+} from 'react-native-maps';
 
 import {
   UNDIP_INFORMATIKA_COORDINATES,
 } from '@/services/lab-activity-service';
+import { getRouteCoordinates, type RouteCoordinate } from '@/services/route-service';
 import { LabWithActivity } from '@/types/praktikum';
 
 export interface UserLocationState {
@@ -39,6 +47,18 @@ export function LabMapView({
 }: LabMapViewProps) {
   const mapRef = useRef<MapView>(null);
   const [userLocation, setUserLocation] = useState<UserLocationState | null>(null);
+  const [routeCoords, setRouteCoords] = useState<RouteCoordinate[]>([]);
+  const [isFallbackDirectLine, setIsFallbackDirectLine] = useState<boolean>(false);
+  const hasAnimatedUserOnce = useRef<boolean>(false);
+  const [userAnimatedCoord] = useState(
+    () =>
+      new AnimatedRegion({
+        latitude: UNDIP_INFORMATIKA_COORDINATES.latitude,
+        longitude: UNDIP_INFORMATIKA_COORDINATES.longitude,
+        latitudeDelta: 0,
+        longitudeDelta: 0,
+      })
+  );
   const [permissionStatus, setPermissionStatus] = useState<
     'loading' | 'granted' | 'denied' | 'disabled'
   >('loading');
@@ -118,6 +138,64 @@ export function LabMapView({
   }, [onUserLocationChange]);
 
   const selectedActivity = activities.find((a) => a.lab.id === selectedLabId);
+
+  // Animasi halus pergerakan marker pengguna pada sisi native (AnimatedRegion)
+  useEffect(() => {
+    if (!userLocation) return;
+
+    if (!hasAnimatedUserOnce.current) {
+      hasAnimatedUserOnce.current = true;
+      userAnimatedCoord.setValue({
+        latitude: userLocation.latitude,
+        longitude: userLocation.longitude,
+        latitudeDelta: 0,
+        longitudeDelta: 0,
+      });
+      return;
+    }
+
+    userAnimatedCoord
+      .timing({
+        latitude: userLocation.latitude,
+        longitude: userLocation.longitude,
+        latitudeDelta: 0,
+        longitudeDelta: 0,
+        duration: 700,
+        useNativeDriver: false,
+        toValue: 0,
+      })
+      .start();
+  }, [userLocation, userAnimatedCoord]);
+
+  // Ambil koordinat rute Polyline dari posisi pengguna menuju lab yang dipilih
+  useEffect(() => {
+    let active = true;
+
+    if (!userLocation || !selectedActivity) {
+      return;
+    }
+
+    getRouteCoordinates(
+      { latitude: userLocation.latitude, longitude: userLocation.longitude },
+      { latitude: selectedActivity.lab.latitude, longitude: selectedActivity.lab.longitude }
+    )
+      .then((result) => {
+        if (!active) return;
+        setRouteCoords(result.coordinates);
+        setIsFallbackDirectLine(result.isFallbackDirectLine);
+      })
+      .catch(() => {
+        if (!active) return;
+        setRouteCoords([]);
+        setIsFallbackDirectLine(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [userLocation, selectedActivity]);
+
+  const activeRouteCoords = userLocation && selectedActivity ? routeCoords : [];
 
   const centerToUser = () => {
     if (!userLocation || !mapRef.current) return;
@@ -276,7 +354,17 @@ export function LabMapView({
           );
         })}
 
-        {/* Marker Lokasi Pengguna (Live) */}
+        {/* Polyline Rute dari Posisi Pengguna menuju Lab yang Dipilih */}
+        {activeRouteCoords.length >= 2 && (
+          <Polyline
+            coordinates={activeRouteCoords}
+            strokeColor={accentColor}
+            strokeWidth={4}
+            lineDashPattern={isFallbackDirectLine ? [8, 6] : undefined}
+          />
+        )}
+
+        {/* Marker Lokasi Pengguna (Live AnimatedMarker) */}
         {userLocation && (
           <>
             {userLocation.accuracy && userLocation.accuracy <= 50 ? (
@@ -291,11 +379,8 @@ export function LabMapView({
                 fillColor="rgba(37, 99, 235, 0.12)"
               />
             ) : null}
-            <Marker
-              coordinate={{
-                latitude: userLocation.latitude,
-                longitude: userLocation.longitude,
-              }}
+            <MarkerAnimated
+              coordinate={userAnimatedCoord as unknown as LatLng}
               title="Posisi Anda"
               description="Lokasi perangkat saat ini">
               <View style={styles.userLocationMarker}>
@@ -303,7 +388,7 @@ export function LabMapView({
                   <View style={styles.userLocationInnerDot} />
                 </View>
               </View>
-            </Marker>
+            </MarkerAnimated>
           </>
         )}
       </MapView>

@@ -40,14 +40,16 @@ const EXPO_PUSH_ENDPOINT = 'https://exp.host/--/api/v2/push/send';
 export type NotificationPermissionState = 'granted' | 'denied' | 'unavailable';
 
 /** Handler notifikasi foreground (SDK 57 memakai shouldShowBanner / shouldShowList). */
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+if (Platform.OS !== 'web') {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+}
 
 /** Channel Android harus dibuat sebelum token diminta (Android 13+). */
 export async function configureNotificationChannel(): Promise<void> {

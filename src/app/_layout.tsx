@@ -9,8 +9,10 @@ import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { NotificationBootstrap } from '@/components/notification-bootstrap';
 import { AuthProvider } from '@/context/auth-context';
 import { PraktikumProvider } from '@/context/praktikum-context';
+import { registerBackgroundRichNotificationHandlers } from '@/services/rich-notification-service';
 
 SplashScreen.preventAutoHideAsync();
+registerBackgroundRichNotificationHandlers();
 
 export default function RootLayout() {
   useEffect(() => {

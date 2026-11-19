@@ -8,6 +8,8 @@ export interface UserDocument {
   nim?: string;
   kelas?: 'A' | 'B';
   peranLab?: string;
+  fcmToken?: string;
+  fcmTokenUpdatedAt?: string;
   expoPushToken?: string;
   pushTokenUpdatedAt?: string;
   notificationsEnabled?: boolean;

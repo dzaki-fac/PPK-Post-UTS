@@ -6,6 +6,7 @@ import { Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { NotificationBootstrap } from '@/components/notification-bootstrap';
 import { AuthProvider } from '@/context/auth-context';
 import { PraktikumProvider } from '@/context/praktikum-context';
 
@@ -22,6 +23,7 @@ export default function RootLayout() {
       <StatusBar style="dark" />
       <ThemeProvider value={DefaultTheme}>
         <AuthProvider>
+          <NotificationBootstrap />
           <PraktikumProvider>
             <Stack screenOptions={{ headerShown: false }} />
             <AnimatedSplashOverlay />

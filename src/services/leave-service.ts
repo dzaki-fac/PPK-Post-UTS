@@ -19,6 +19,7 @@ import {
 
 import { db } from '@/lib/firebase';
 import { AICategory, AISentiment, analyzeLeaveReason } from './ai-service';
+import { notifyLeaveDecision } from './notification-service';
 
 export type LeaveStatus = 'menunggu' | 'disetujui' | 'ditolak';
 
@@ -482,6 +483,20 @@ export async function reviewLeaveRequest(
     }
 
     await setDoc(docRef, firestorePayload, { merge: true });
+
+    // Peristiwa 3: keputusan izin. Non-blocking: kegagalan push tidak mengubah hasil moderasi.
+    if (updatedDoc?.studentId) {
+      void notifyLeaveDecision(
+        {
+          id: requestId,
+          studentId: updatedDoc.studentId,
+          sessionName: updatedDoc.sessionName,
+          reviewNotes: notes,
+        },
+        decision,
+        notes
+      ).catch((error) => console.warn('Gagal menyiapkan notifikasi keputusan izin:', error));
+    }
     return true;
   } catch (error) {
     console.warn('Peringatan: Gagal memperbarui izin di Firestore, tersimpan di lokal:', error);

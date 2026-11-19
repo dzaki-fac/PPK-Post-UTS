@@ -14,6 +14,7 @@ import {
 
 import { db } from '@/lib/firebase';
 import { SessionDocument, SessionStatus } from '@/types/praktikum';
+import { notifyScheduleChanged, notifySessionOpened } from './notification-service';
 
 const SESSIONS_COLLECTION = 'sessions';
 const ATTENDANCES_COLLECTION = 'attendances';
@@ -217,7 +218,11 @@ export async function createSession(input: CreateSessionInput): Promise<SessionD
   };
 
   const docRef = await addDoc(collection(db, SESSIONS_COLLECTION), payload);
-  return { id: docRef.id, ...payload };
+  const created: SessionDocument = { id: docRef.id, ...payload };
+  if (status === 'dibuka') {
+    void notifySessionOpened(created);
+  }
+  return created;
 }
 
 /**
@@ -241,6 +246,29 @@ export async function updateSession(
   if (updates.ruang !== undefined) cleanUpdates.ruang = updates.ruang.trim();
 
   await updateDoc(sessionRef, cleanUpdates);
+
+  // Peristiwa 2: jadwal diubah. Notifikasi non-blocking, tidak menggagalkan update Firestore.
+  const scheduleChanges: string[] = [];
+  if (updates.tanggal !== undefined) scheduleChanges.push(`Tanggal: ${updates.tanggal}`);
+  if (updates.waktuMulai !== undefined || updates.waktuSelesai !== undefined) {
+    scheduleChanges.push(
+      `Jam: ${updates.waktuMulai ?? '(lama)'} - ${updates.waktuSelesai ?? '(lama)'}`
+    );
+  }
+  if (updates.materi !== undefined) scheduleChanges.push(`Materi: ${updates.materi.trim()}`);
+  if (updates.ruang !== undefined) scheduleChanges.push(`Ruang: ${updates.ruang.trim()}`);
+  if (scheduleChanges.length > 0) {
+    getDoc(sessionRef)
+      .then((snap) => {
+        if (snap.exists()) {
+          void notifyScheduleChanged(
+            mapSessionSnapshot(snap.id, snap.data() as Record<string, unknown>),
+            scheduleChanges.join(' • ')
+          );
+        }
+      })
+      .catch((error) => console.warn('Gagal menyiapkan notifikasi perubahan jadwal:', error));
+  }
 }
 
 /**
@@ -269,6 +297,17 @@ export async function updateSessionStatus(
   }
 
   await updateDoc(sessionRef, payload);
+
+  // Peristiwa 1: sesi dibuka. Kirim ke praktikan kelas terkait tanpa menahan operasi utama.
+  if (status === 'dibuka') {
+    getDoc(sessionRef)
+      .then((snap) => {
+        if (snap.exists()) {
+          void notifySessionOpened(mapSessionSnapshot(snap.id, snap.data() as Record<string, unknown>));
+        }
+      })
+      .catch((error) => console.warn('Gagal menyiapkan notifikasi sesi dibuka:', error));
+  }
 }
 
 /**

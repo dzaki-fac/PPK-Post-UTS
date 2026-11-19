@@ -8,8 +8,35 @@ export interface UserDocument {
   nim?: string;
   kelas?: 'A' | 'B';
   peranLab?: string;
+  expoPushToken?: string;
+  pushTokenUpdatedAt?: string;
+  notificationsEnabled?: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Jenis peristiwa yang memicu notifikasi pada Sprint 3. */
+export type NotificationEventType =
+  | 'session_opened'
+  | 'schedule_updated'
+  | 'leave_approved'
+  | 'leave_rejected';
+
+export type NotificationDeliveryStatus = 'sent' | 'failed' | 'in_app_only';
+
+/** Log notifikasi di koleksi Firestore /notifications (juga dipakai sebagai fallback in-app). */
+export interface NotificationDocument {
+  id: string;
+  targetUserId: string;
+  targetRole: UserRole;
+  eventType: NotificationEventType;
+  title: string;
+  body: string;
+  relatedSessionId?: string;
+  relatedLeaveId?: string;
+  isRead: boolean;
+  deliveryStatus: NotificationDeliveryStatus;
+  createdAt: string;
 }
 
 export type SessionStatus = 'belum-dibuka' | 'dibuka' | 'ditutup';

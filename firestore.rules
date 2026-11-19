@@ -85,7 +85,30 @@ service cloud.firestore {
     }
 
     // -------------------------------------------------------------------------
-    // 5. Koleksi Sistem / Health Check (untuk verifikasi koneksi)
+    // 5. Koleksi labs (/labs/{labId}) — Sprint 3
+    // Read untuk semua pengguna terautentikasi, tulis hanya Asisten.
+    // -------------------------------------------------------------------------
+    match /labs/{labId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAsisten();
+    }
+
+    // -------------------------------------------------------------------------
+    // 6. Koleksi notifications (/notifications/{notificationId}) — Sprint 3
+    // Log peristiwa dibuat oleh aplikasi, hanya pemilik yang dapat membaca
+    // dan menandai isRead.
+    // -------------------------------------------------------------------------
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && resource.data.targetUserId == request.auth.uid;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated()
+        && resource.data.targetUserId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
+      allow delete: if false;
+    }
+
+    // -------------------------------------------------------------------------
+    // 7. Koleksi Sistem / Health Check (untuk verifikasi koneksi)
     // -------------------------------------------------------------------------
     match /system_health/{docId} {
       allow read, write: if isAuthenticated();

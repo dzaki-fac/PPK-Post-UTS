@@ -102,6 +102,14 @@ export function RoleHeader() {
 
           <Pressable
             style={({ pressed }) => [styles.logoutBtn, pressed && styles.btnPressed]}
+            onPress={() => router.push('/notifikasi' as Href)}
+            accessibilityRole="button"
+            accessibilityLabel="Buka pusat notifikasi">
+            <Text style={styles.logoutBtnText}>Notifikasi</Text>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [styles.logoutBtn, pressed && styles.btnPressed]}
             onPress={() => setLogoutModalVisible(true)}
             accessibilityRole="button"
             accessibilityLabel="Keluar dari akun">

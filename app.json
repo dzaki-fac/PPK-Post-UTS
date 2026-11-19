@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "LabPortal",
-    "slug": "PPK-Post-UTS",
+    "slug": "ppk-post-uts",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -39,7 +39,9 @@
           "imageWidth": 76
         }
       ],
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -48,9 +50,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "763c7736-c8f0-4453-b6a9-652b0ef2ca43"
+        "projectId": "1d853816-e66a-4656-ab7c-b49e359a6887"
       }
     },
-    "owner": "gregoriusseptiano"
+    "owner": "sanftts-team"
   }
 }

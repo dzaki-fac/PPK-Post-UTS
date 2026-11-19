@@ -180,6 +180,28 @@ export default function PraktikanJadwalScreen() {
         </View>
       </Pressable>
 
+      {/* Banner Peta Laboratorium */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Peta Laboratorium Interaktif"
+        onPress={() => router.push('/praktikan/peta-lab' as any)}
+        style={({ pressed }) => [styles.mapBanner, pressed && styles.cardPressed]}>
+        <View style={styles.mapBannerLeft}>
+          <View style={styles.mapBannerTagRow}>
+            <Text style={styles.mapBannerTitle}>Peta Laboratorium Interaktif</Text>
+            <View style={styles.mapTag}>
+              <Text style={styles.mapTagText}>LIVE</Text>
+            </View>
+          </View>
+          <Text style={styles.mapBannerSub}>
+            Lihat ruang lab Informatika, posisi Anda secara langsung, dan status aktivitas sesi
+          </Text>
+        </View>
+        <View style={styles.mapBannerBtn}>
+          <Text style={styles.mapBannerBtnText}>Buka Peta →</Text>
+        </View>
+      </Pressable>
+
       {/* Notice jika ada izin yang sedang menunggu keputusan */}
       {totalIzinMenunggu > 0 && (
         <Pressable
@@ -568,6 +590,62 @@ const styles = StyleSheet.create({
     color: '#475569',
   },
   countTextActive: {
+    color: '#FFFFFF',
+  },
+  mapBanner: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 14,
+    padding: 14,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+  },
+  mapBannerLeft: {
+    flex: 1,
+    gap: 3,
+  },
+  mapBannerTagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  mapBannerTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#1E40AF',
+  },
+  mapTag: {
+    backgroundColor: '#DBEAFE',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 6,
+  },
+  mapTagText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#1D4ED8',
+    letterSpacing: 0.3,
+  },
+  mapBannerSub: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: '#475569',
+  },
+  mapBannerBtn: {
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    minHeight: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mapBannerBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
   izinBanner: {

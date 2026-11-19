@@ -151,6 +151,38 @@ export function TabChartIcon({ color, focused }: TabIconProps) {
 }
 
 /**
+ * TabMapIcon — Ikon Peta Laboratorium Interaktif (Folded Map / Location Pin)
+ */
+export function TabMapIcon({ color, focused }: TabIconProps) {
+  return (
+    <View style={styles.iconContainer}>
+      {/* Outer folded map frame */}
+      <View
+        style={[
+          styles.mapFrame,
+          {
+            borderColor: color,
+            borderWidth: focused ? 2 : 1.6,
+          },
+        ]}>
+        {/* Map fold divider */}
+        <View style={[styles.mapFoldLine, { backgroundColor: color }]} />
+        {/* Map Pin Dot */}
+        <View
+          style={[
+            styles.mapPinDot,
+            {
+              backgroundColor: focused ? color : 'transparent',
+              borderColor: color,
+            },
+          ]}
+        />
+      </View>
+    </View>
+  );
+}
+
+/**
  * TabUsersIcon — Ikon Pengguna / Mahasiswa (Profile Group)
  */
 export function TabUsersIcon({ color, focused }: TabIconProps) {
@@ -389,6 +421,30 @@ const styles = StyleSheet.create({
     width: 3.2,
     borderTopLeftRadius: 1.5,
     borderTopRightRadius: 1.5,
+  },
+  /* Map */
+  mapFrame: {
+    width: 20,
+    height: 19,
+    borderRadius: 3.5,
+    backgroundColor: '#FFFFFF',
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mapFoldLine: {
+    position: 'absolute',
+    top: 2,
+    bottom: 2,
+    width: 1.2,
+    left: '50%',
+    opacity: 0.6,
+  },
+  mapPinDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    borderWidth: 1.4,
   },
   /* Users */
   userHead: {

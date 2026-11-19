@@ -24,7 +24,7 @@ export interface LabLocationDocument {
   radiusMeter: number;
   deskripsi?: string;
   isActive: boolean;
-  updatedBy: string;
+  updatedBy?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -50,6 +50,11 @@ export interface LocationVerificationResult {
   latitude?: number;
   longitude?: number;
   accuracy?: number;
+  userCoords?: {
+    latitude: number;
+    longitude: number;
+    accuracy?: number | null;
+  };
   labId: string;
   labName: string;
   checkedAt: string;
@@ -79,13 +84,22 @@ export interface SessionDocument {
   status: SessionStatus;
   kodeSesi: string;
   createdBy: string;
+  labId?: string;
+  radiusOverride?: number;
+  qrPayload?: string;
   openedAt?: string;
   closedAt?: string;
   createdAt: string;
   updatedAt: string;
-  labId?: string;
-  radiusOverride?: number;
-  qrPayload?: string;
+}
+
+export interface LabWithActivity {
+  lab: LabLocationDocument;
+  ongoingSession: SessionDocument | null;
+  nextSession: SessionDocument | null;
+  upcomingSessions: SessionDocument[];
+  distanceMeters?: number;
+  isUserInsideRadius?: boolean;
 }
 
 export interface AttendanceDocument {

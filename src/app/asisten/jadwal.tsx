@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -228,7 +228,7 @@ export default function JadwalAsistenScreen() {
             accessibilityRole="button"
             accessibilityLabel="Kelola Lokasi Laboratorium"
             style={({ pressed }) => [styles.labShortcutBtn, pressed && styles.chipPressed]}
-            onPress={() => router.push('/asisten/lokasi-lab')}>
+            onPress={() => router.push('/asisten/lokasi-lab' as Href)}>
             <Text style={styles.labShortcutBtnText}>Lokasi Lab</Text>
           </Pressable>
           <Pressable

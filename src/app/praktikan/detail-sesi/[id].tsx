@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, type Href } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -141,7 +141,7 @@ export default function PraktikanDetailSesiScreen() {
     router.push({
       pathname: '/praktikan/presensi',
       params: { sessionId: sesi.id },
-    });
+    } as unknown as Href);
   };
 
   return (

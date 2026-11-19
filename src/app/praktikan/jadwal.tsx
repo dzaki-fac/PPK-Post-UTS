@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -139,7 +139,7 @@ export default function PraktikanJadwalScreen() {
                 router.push({
                   pathname: '/praktikan/presensi',
                   params: { sessionId: item.id },
-                })
+                } as unknown as Href)
             : undefined
         }
       />

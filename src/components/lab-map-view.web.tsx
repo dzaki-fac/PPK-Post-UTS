@@ -76,13 +76,21 @@ export function LabMapView({
     };
   }, [onUserLocationChange]);
 
+  const selectedActivity = activities.find((a) => a.lab.id === selectedLabId) ?? activities[0] ?? null;
+  const mapTargetLat = selectedActivity?.lab.latitude ?? -7.0496;
+  const mapTargetLng = selectedActivity?.lab.longitude ?? 110.4407;
+  const googleMapsEmbedUrl =
+    userLocation && selectedActivity
+      ? `https://maps.google.com/maps?saddr=${userLocation.latitude},${userLocation.longitude}&daddr=${mapTargetLat},${mapTargetLng}&output=embed`
+      : `https://maps.google.com/maps?q=${mapTargetLat},${mapTargetLng}&z=18&output=embed`;
+
   return (
     <View style={styles.container}>
       {/* Web Simulation Banner */}
       <View style={styles.webNoticeBanner}>
         <View style={styles.webNoticeDot} />
         <Text style={styles.webNoticeText}>
-          Mode Web Terpadu: Menampilkan pemetaan spasial interaktif laboratorium Departemen Informatika FSM UNDIP.
+          Google Maps Aktif: Pilih kartu laboratorium di bawah untuk melihat lokasi dan rute pada peta.
         </Text>
       </View>
 
@@ -96,8 +104,32 @@ export function LabMapView({
       {/* Visual Spatial Campus Map Representation */}
       <View style={styles.mapCanvas}>
         <View style={styles.campusGridHeader}>
-          <Text style={styles.campusTitle}>GEDUNG E & F — FSM UNDIP</Text>
-          <Text style={styles.campusSubtitle}>Area Koordinat: -7.0496°, 110.4407°</Text>
+          <Text style={styles.campusTitle}>
+            {selectedActivity ? selectedActivity.lab.nama.toUpperCase() : 'GEDUNG E & F — FSM UNDIP'}
+          </Text>
+          <Text style={styles.campusSubtitle}>
+            Koordinat: {mapTargetLat.toFixed(5)}, {mapTargetLng.toFixed(5)}
+          </Text>
+        </View>
+
+        {/* Live Embedded Google Maps Canvas untuk Web */}
+        <View
+          style={{
+            height: 220,
+            borderRadius: 12,
+            overflow: 'hidden',
+            borderWidth: 1,
+            borderColor: '#CBD5E1',
+            marginBottom: 12,
+            backgroundColor: '#E2E8F0',
+          }}>
+          <iframe
+            title="Peta Laboratorium Informatika FSM UNDIP"
+            src={googleMapsEmbedUrl}
+            style={{ width: '100%', height: '100%', border: 0 }}
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+          />
         </View>
 
         {/* Floor 2 & 3 Schematics */}

@@ -21,9 +21,6 @@ const ALLOWED_ROUTES = [
   '/praktikan/presensi',
   '/praktikan/peta-lab',
   '/praktikan/pengajuan-izin',
-  '/asisten/jadwal',
-  '/asisten/moderasi-izin',
-  '/asisten/peta-lab',
   '/notifikasi',
 ];
 
@@ -34,13 +31,15 @@ function resolveRoute(data: Record<string, unknown> | undefined): Href | null {
 }
 
 export function useNotifications() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  const isPraktikan = role === 'praktikan';
   const [permission, setPermission] = useState<NotificationPermissionState>('unavailable');
   const lastHandledId = useRef<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    if (!user?.uid) {
+    // Push notification hanya ditujukan untuk role mahasiswa (praktikan)
+    if (!user?.uid || !isPraktikan) {
       return;
     }
 
@@ -59,10 +58,10 @@ export function useNotifications() {
     return () => {
       active = false;
     };
-  }, [user?.uid]);
+  }, [user?.uid, isPraktikan]);
 
   useEffect(() => {
-    if (Platform.OS === 'web') {
+    if (Platform.OS === 'web' || !user?.uid || !isPraktikan) {
       return;
     }
 
@@ -90,7 +89,7 @@ export function useNotifications() {
     });
 
     // Step 4 & Step 6: Listener foreground FCM (Rich Notification) & Deep Linking on Tap
-    const unsubscribeRich = subscribeRichNotifications(user?.uid, (data) => {
+    const unsubscribeRich = subscribeRichNotifications(user.uid, (data) => {
       const route = resolveRoute(data);
       if (route) router.push(route);
     });
@@ -100,11 +99,15 @@ export function useNotifications() {
       respond.remove();
       unsubscribeRich();
     };
-  }, [user?.uid]);
+  }, [user?.uid, isPraktikan]);
 
   const refreshPermission = async () => {
+    if (!isPraktikan) {
+      setPermission('unavailable');
+      return;
+    }
     setPermission(await getNotificationPermissionState());
   };
 
-  return { permission: user?.uid ? permission : 'unavailable', refreshPermission };
+  return { permission: user?.uid && isPraktikan ? permission : 'unavailable', refreshPermission };
 }

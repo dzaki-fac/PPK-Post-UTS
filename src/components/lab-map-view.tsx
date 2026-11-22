@@ -14,7 +14,9 @@ import MapView, {
   Circle,
   Marker,
   MarkerAnimated,
+  Polygon,
   Polyline,
+  PROVIDER_GOOGLE,
   type LatLng,
 } from 'react-native-maps';
 
@@ -23,6 +25,47 @@ import {
 } from '@/services/lab-activity-service';
 import { getRouteCoordinates, type RouteCoordinate } from '@/services/route-service';
 import { LabWithActivity } from '@/types/praktikum';
+
+/** Zona poligon kawasan Gedung E & F Departemen Informatika FSM UNDIP */
+const INFORMATIKA_ZONE_POLYGON: LatLng[] = [
+  { latitude: -7.0489, longitude: 110.4400 },
+  { latitude: -7.0489, longitude: 110.4414 },
+  { latitude: -7.0503, longitude: 110.4414 },
+  { latitude: -7.0503, longitude: 110.4400 },
+];
+
+function animateAlongPath(
+  path: RouteCoordinate[],
+  coord: AnimatedRegion,
+  onDone?: () => void
+) {
+  let index = 0;
+  const step = () => {
+    if (index >= path.length) {
+      onDone?.();
+      return;
+    }
+    coord
+      .timing({
+        latitude: path[index].latitude,
+        longitude: path[index].longitude,
+        latitudeDelta: 0,
+        longitudeDelta: 0,
+        duration: 180,
+        useNativeDriver: false,
+        toValue: 0,
+      })
+      .start(({ finished }) => {
+        if (finished) {
+          index += 1;
+          step();
+        } else {
+          onDone?.();
+        }
+      });
+  };
+  step();
+}
 
 export interface UserLocationState {
   latitude: number;
@@ -63,6 +106,7 @@ export function LabMapView({
     'loading' | 'granted' | 'denied' | 'disabled'
   >('loading');
   const [isLocating, setIsLocating] = useState<boolean>(false);
+  const [isSimulatingRoute, setIsSimulatingRoute] = useState<boolean>(false);
 
   // Subscribe live position watching
   useEffect(() => {
@@ -270,12 +314,25 @@ export function LabMapView({
 
       <MapView
         ref={mapRef}
+        provider={PROVIDER_GOOGLE}
         style={styles.map}
         initialRegion={UNDIP_INFORMATIKA_COORDINATES}
         showsUserLocation={false}
         showsCompass
         showsScale
         loadingEnabled>
+        {/* Polygon Zona Kawasan Departemen Informatika FSM UNDIP */}
+        <Polygon
+          coordinates={INFORMATIKA_ZONE_POLYGON}
+          fillColor={
+            accentColor === '#EA580C'
+              ? 'rgba(234, 88, 12, 0.08)'
+              : 'rgba(13, 148, 136, 0.08)'
+          }
+          strokeColor={accentColor}
+          strokeWidth={1.5}
+        />
+
         {/* Lingkaran Area Radius Lab yang sedang dipilih */}
         {selectedActivity && (
           <Circle
@@ -395,6 +452,22 @@ export function LabMapView({
 
       {/* Floating Control Buttons */}
       <View style={styles.floatingControls}>
+        {activeRouteCoords.length >= 2 && (
+          <TouchableOpacity
+            style={[styles.floatingBtn, isSimulatingRoute && styles.floatingBtnActive]}
+            onPress={() => {
+              if (isSimulatingRoute) return;
+              setIsSimulatingRoute(true);
+              animateAlongPath(activeRouteCoords, userAnimatedCoord, () => {
+                setIsSimulatingRoute(false);
+              });
+            }}
+            accessibilityLabel="Simulasi Pergerakan Rute">
+            <Text style={[{ fontSize: 10, fontWeight: '800', letterSpacing: 0.4, color: accentColor }]}>
+              {isSimulatingRoute ? '...' : 'RUTE'}
+            </Text>
+          </TouchableOpacity>
+        )}
         {userLocation && (
           <TouchableOpacity
             style={[styles.floatingBtn, isLocating && styles.floatingBtnActive]}

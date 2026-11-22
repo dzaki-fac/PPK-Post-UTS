@@ -39,13 +39,13 @@ const EXPO_PUSH_ENDPOINT = 'https://exp.host/--/api/v2/push/send';
 
 export type NotificationPermissionState = 'granted' | 'denied' | 'unavailable';
 
-/** Handler notifikasi foreground (SDK 57 memakai shouldShowBanner / shouldShowList). */
+/** Handler notifikasi foreground (tampilan banner ditangani oleh rich-notification-service agar tidak ganda). */
 if (Platform.OS !== 'web') {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
-      shouldShowBanner: true,
+      shouldShowBanner: false,
       shouldShowList: true,
-      shouldPlaySound: true,
+      shouldPlaySound: false,
       shouldSetBadge: false,
     }),
   });
@@ -224,11 +224,13 @@ async function getTargetByUid(uid: string): Promise<PushTarget | null> {
   if (!uid) return null;
   try {
     const snap = await getDoc(doc(db, USERS_COLLECTION, uid));
-    if (!snap.exists()) return { uid };
+    if (!snap.exists()) return null;
     const data = snap.data() as UserDocument;
+    // Pastikan push notification hanya ditujukan ke role mahasiswa (praktikan)
+    if (data.peran !== 'praktikan') return null;
     return { uid, expoPushToken: data.expoPushToken };
   } catch {
-    return { uid };
+    return null;
   }
 }
 
@@ -282,7 +284,7 @@ export async function notifySessionOpened(session: SessionDocument): Promise<voi
     title: 'Sesi Praktikum Dibuka',
     body: `${session.praktikum} • ${session.kelas} di ${session.ruang || 'laboratorium'} sudah dibuka. Buka halaman presensi untuk mencatat kehadiran.`,
     data: {
-      url: '/praktikan/jadwal',
+      url: '/praktikan/presensi',
       eventType: 'session_opened',
       relatedSessionId: session.id,
     },

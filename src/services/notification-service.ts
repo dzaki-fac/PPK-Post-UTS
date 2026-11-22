@@ -31,6 +31,7 @@ import {
   UserRole,
 } from '@/types/praktikum';
 import type { LeaveRequestDocument, LeaveStatus } from './leave-service';
+import { displayLocalRichNotification } from './rich-notification-service';
 
 const USERS_COLLECTION = 'users';
 const NOTIFICATIONS_COLLECTION = 'notifications';
@@ -39,31 +40,81 @@ const EXPO_PUSH_ENDPOINT = 'https://exp.host/--/api/v2/push/send';
 
 export type NotificationPermissionState = 'granted' | 'denied' | 'unavailable';
 
-/** Handler notifikasi foreground (tampilan banner ditangani oleh rich-notification-service agar tidak ganda). */
+/** Handler notifikasi foreground:
+ * - Tampilkan banner heads-up & suara seperti WhatsApp untuk notifikasi lokal (instant & terjadwal).
+ * - Untuk remote FCM yang sudah ditangani rich-notification-service, cegah banner ganda.
+ */
 if (Platform.OS !== 'web') {
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowBanner: false,
-      shouldShowList: true,
-      shouldPlaySound: false,
-      shouldSetBadge: false,
-    }),
+    handleNotification: async (notification) => {
+      const trigger = notification.request.trigger as { type?: string } | null;
+      const isRemotePush = trigger?.type === 'push';
+      return {
+        shouldShowBanner: !isRemotePush,
+        shouldShowList: true,
+        shouldPlaySound: !isRemotePush,
+        shouldSetBadge: false,
+      };
+    },
   });
 }
 
-/** Channel Android harus dibuat sebelum token diminta (Android 13+). */
+/** Channel Android (MAX importance agar muncul pop-up heads-up di atas layar seperti WhatsApp). */
 export async function configureNotificationChannel(): Promise<void> {
   if (Platform.OS !== 'android') return;
   try {
     await Notifications.setNotificationChannelAsync(NOTIFICATION_CHANNEL_ID, {
       name: 'Pembaruan Praktikum',
       description: 'Pemberitahuan sesi praktikum, perubahan jadwal, dan keputusan izin.',
-      importance: Notifications.AndroidImportance.HIGH,
+      importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
+      enableVibrate: true,
+      sound: 'default',
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
       lightColor: '#EA580C',
     });
   } catch (error) {
     console.warn('Gagal menyiapkan channel notifikasi:', error);
+  }
+}
+
+/**
+ * Memunculkan Rich Notification pop-up sistem (heads-up banner + tombol aksi Buka/Tutup + suara + getar)
+ * langsung di HP Android/iOS menggunakan react-native-notify-kit (fallback ke expo-notifications).
+ */
+export async function presentInstantPhoneNotificationAsync(input: {
+  title: string;
+  body: string;
+  imageUrl?: string;
+  data?: Record<string, string>;
+}): Promise<void> {
+  if (Platform.OS === 'web') return;
+  try {
+    const perm = await Notifications.getPermissionsAsync();
+    if (!perm.granted) return;
+
+    const displayedByNotifyKit = await displayLocalRichNotification({
+      title: input.title,
+      body: input.body,
+      imageUrl: input.imageUrl,
+      channelId: NOTIFICATION_CHANNEL_ID,
+      data: input.data,
+    });
+    if (displayedByNotifyKit) return;
+
+    await configureNotificationChannel();
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: input.title,
+        body: input.body,
+        sound: 'default',
+        priority: Notifications.AndroidNotificationPriority.MAX,
+        data: input.data ?? {},
+      },
+      trigger: null,
+    });
+  } catch (error) {
+    console.warn('Gagal memunculkan notifikasi pop-up HP:', error);
   }
 }
 
@@ -145,6 +196,7 @@ async function sendPushMessagesAsync(
           title,
           body,
           sound: 'default' as const,
+          priority: 'high' as const,
           channelId: NOTIFICATION_CHANNEL_ID,
           data,
         }))
@@ -212,8 +264,12 @@ async function getPraktikanTargets(kelas?: string): Promise<PushTarget[]> {
     const users = snap.docs.map(
       (item) => ({ uid: item.id, ...item.data() }) as PushTarget & UserDocument
     );
-    const wantedClass = kelas?.replace('Kelas ', '').trim();
-    return wantedClass ? users.filter((user) => user.kelas === wantedClass) : users;
+    const normalizeClass = (value?: string) =>
+      value ? value.replace(/[^A-Za-z]/g, '').slice(-1).toUpperCase() : '';
+    const wantedClass = normalizeClass(kelas);
+    return wantedClass
+      ? users.filter((user) => normalizeClass(user.kelas) === wantedClass)
+      : users;
   } catch (error) {
     console.warn('Gagal mengambil target notifikasi:', error);
     return [];
@@ -366,4 +422,172 @@ export function subscribeUserNotifications(
 
 export async function markNotificationAsRead(notificationId: string): Promise<void> {
   await updateDoc(doc(db, NOTIFICATIONS_COLLECTION, notificationId), { isRead: true });
+}
+
+const MONTH_INDEX_MAP: Record<string, number> = {
+  jan: 0,
+  januari: 0,
+  january: 0,
+  feb: 1,
+  februari: 1,
+  february: 1,
+  mar: 2,
+  maret: 2,
+  march: 2,
+  apr: 3,
+  april: 3,
+  mei: 4,
+  may: 4,
+  jun: 5,
+  juni: 5,
+  june: 5,
+  jul: 6,
+  juli: 6,
+  july: 6,
+  agu: 7,
+  agt: 7,
+  agustus: 7,
+  aug: 7,
+  august: 7,
+  sep: 8,
+  sept: 8,
+  september: 8,
+  okt: 9,
+  oktober: 9,
+  oct: 9,
+  october: 9,
+  nov: 10,
+  november: 10,
+  des: 11,
+  desember: 11,
+  dec: 11,
+  december: 11,
+};
+
+/**
+ * Mengurai kombinasi tanggal ('22 Nov 2026' atau '2026-11-22') dan waktuMulai ('07.30' / '07:30')
+ * menjadi objek Date lokal perangkat untuk penjadwalan notifikasi otomatis.
+ */
+export function parseSessionStartDate(tanggal?: string, waktuMulai?: string): Date | null {
+  if (!tanggal || !waktuMulai) return null;
+
+  const cleanTime = waktuMulai.replace('.', ':').trim();
+  const timeMatch = cleanTime.match(/^(\d{1,2}):(\d{2})/);
+  if (!timeMatch) return null;
+
+  const hour = Number(timeMatch[1]);
+  const minute = Number(timeMatch[2]);
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+
+  const cleanDate = tanggal.trim();
+
+  // Format ISO: YYYY-MM-DD
+  const isoMatch = cleanDate.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (isoMatch) {
+    const year = Number(isoMatch[1]);
+    const month = Number(isoMatch[2]) - 1;
+    const day = Number(isoMatch[3]);
+    const d = new Date(year, month, day, hour, minute, 0, 0);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  // Format lokal: "22 Nov 2026" atau "22 November 2026"
+  const humanMatch = cleanDate.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/);
+  if (humanMatch) {
+    const day = Number(humanMatch[1]);
+    const monthKey = humanMatch[2].toLowerCase();
+    const year = Number(humanMatch[3]);
+    const month = MONTH_INDEX_MAP[monthKey];
+    if (month !== undefined) {
+      const d = new Date(year, month, day, hour, minute, 0, 0);
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+  }
+
+  // Fallback parser standar JS
+  const parsed = new Date(cleanDate);
+  if (Number.isNaN(parsed.getTime())) return null;
+  parsed.setHours(hour, minute, 0, 0);
+  return parsed;
+}
+
+/**
+ * Membatalkan seluruh pengingat jadwal mulai praktikum yang pernah dijadwalkan di perangkat.
+ */
+export async function cancelSessionStartRemindersAsync(): Promise<void> {
+  if (Platform.OS === 'web') return;
+  try {
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    const classReminders = scheduled.filter(
+      (item) => item.content.data?.eventType === 'session_started'
+    );
+    await Promise.all(
+      classReminders.map((item) =>
+        Notifications.cancelScheduledNotificationAsync(item.identifier).catch(() => {})
+      )
+    );
+  } catch {
+    // Abaikan jika modul tidak tersedia
+  }
+}
+
+/**
+ * Menjadwalkan notifikasi otomatis tepat pada jam mulai praktikum (waktuMulai)
+ * khusus untuk mahasiswa (praktikan) pada kelas yang sesuai.
+ * Berjalan penuh meski aplikasi sedang di background atau tertutup.
+ */
+export async function syncSessionStartRemindersAsync(
+  sessions: SessionDocument[],
+  studentClass?: 'A' | 'B'
+): Promise<void> {
+  if (Platform.OS === 'web') return;
+
+  try {
+    const perm = await Notifications.getPermissionsAsync();
+    if (!perm.granted) return;
+
+    await configureNotificationChannel();
+    await cancelSessionStartRemindersAsync();
+
+    const nowMs = Date.now();
+    const normalizedStudentClass = studentClass?.trim().toUpperCase();
+
+    const upcomingSessions = sessions.filter((session) => {
+      if (session.status === 'ditutup') return false;
+      const sessionClass = session.kelas.replace(/[^A-Za-z]/g, '').slice(-1).toUpperCase();
+      if (normalizedStudentClass && sessionClass && sessionClass !== normalizedStudentClass) {
+        return false;
+      }
+      const startDate = parseSessionStartDate(session.tanggal, session.waktuMulai);
+      return startDate !== null && startDate.getTime() > nowMs;
+    });
+
+    await Promise.all(
+      upcomingSessions.map(async (session) => {
+        const startDate = parseSessionStartDate(session.tanggal, session.waktuMulai);
+        if (!startDate) return;
+
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: 'Kelas Praktikum Dimulai',
+            body: `${session.praktikum} • ${session.kelas} (${session.waktuMulai} WIB) di ${session.ruang || 'laboratorium'} sudah dimulai. Segera masuk dan lakukan presensi.`,
+            sound: 'default',
+            priority: Notifications.AndroidNotificationPriority.MAX,
+            data: {
+              url: '/praktikan/presensi',
+              eventType: 'session_started',
+              relatedSessionId: session.id,
+            },
+          },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date: startDate,
+            channelId: NOTIFICATION_CHANNEL_ID,
+          },
+        });
+      })
+    );
+  } catch (error) {
+    console.warn('Gagal menyinkronkan jadwal pengingat mulai kelas:', error);
+  }
 }

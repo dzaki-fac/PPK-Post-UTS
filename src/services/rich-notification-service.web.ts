@@ -30,6 +30,20 @@ export async function requestRichNotificationPermission(
   };
 }
 
+export interface LocalRichNotificationInput {
+  title: string;
+  body: string;
+  imageUrl?: string;
+  channelId?: string;
+  data?: Record<string, string>;
+}
+
+export async function displayLocalRichNotification(
+  _input: LocalRichNotificationInput
+): Promise<boolean> {
+  return false;
+}
+
 export async function displayRichNotification(_remoteMessage: unknown): Promise<void> {
   // Tidak berlaku pada platform Web
 }

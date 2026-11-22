@@ -20,6 +20,7 @@ export interface UserDocument {
 /** Jenis peristiwa yang memicu notifikasi pada Sprint 3. */
 export type NotificationEventType =
   | 'session_opened'
+  | 'session_started'
   | 'schedule_updated'
   | 'leave_approved'
   | 'leave_rejected';

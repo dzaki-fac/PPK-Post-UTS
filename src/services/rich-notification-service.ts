@@ -202,41 +202,41 @@ function getStringField(
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
 }
 
+export interface LocalRichNotificationInput {
+  title: string;
+  body: string;
+  imageUrl?: string;
+  channelId?: string;
+  data?: Record<string, string>;
+}
+
 /**
- * Step 4: Menampilkan Rich Notification (BigPicture / BigText + Action Buttons + iOS Attachment).
+ * Menampilkan Rich Notification langsung di perangkat menggunakan react-native-notify-kit
+ * (AndroidStyle.BIGPICTURE / BIGTEXT, Action Buttons 'Buka' & 'Tutup', iOS attachments).
  */
-export async function displayRichNotification(remoteMessage: RemoteMessage): Promise<void> {
+export async function displayLocalRichNotification(
+  input: LocalRichNotificationInput
+): Promise<boolean> {
   try {
     await createNotificationChannels();
 
-    const data = remoteMessage.data as Record<string, string | object | number> | undefined;
-    const title =
-      remoteMessage.notification?.title ??
-      getStringField(data, 'title') ??
-      'Pemberitahuan LabPortal';
-    const body =
-      remoteMessage.notification?.body ??
-      getStringField(data, 'body') ??
-      'Ada pembaruan kegiatan praktikum.';
-    const imageUrl = getStringField(data, 'imageUrl');
-    const channelId = getStringField(data, 'channelId') ?? PRAKTIKUM_CHANNEL_ID;
-
     const notificationPayload: NotifeeNotification = {
-      title,
-      body,
-      data,
+      title: input.title,
+      body: input.body,
+      data: input.data,
       android: {
-        channelId,
+        channelId: input.channelId ?? PRAKTIKUM_CHANNEL_ID,
         smallIcon: 'ic_launcher',
-        ...(imageUrl ? { largeIcon: imageUrl } : {}),
-        style: imageUrl
+        importance: AndroidImportance.HIGH,
+        ...(input.imageUrl ? { largeIcon: input.imageUrl } : {}),
+        style: input.imageUrl
           ? {
               type: AndroidStyle.BIGPICTURE,
-              picture: imageUrl,
+              picture: input.imageUrl,
             }
           : {
               type: AndroidStyle.BIGTEXT,
-              text: body,
+              text: input.body,
             },
         pressAction: { id: 'default' },
         actions: [
@@ -245,15 +245,42 @@ export async function displayRichNotification(remoteMessage: RemoteMessage): Pro
         ],
       },
       ios: {
-        attachments: imageUrl ? [{ url: imageUrl }] : [],
+        attachments: input.imageUrl ? [{ url: input.imageUrl }] : [],
         categoryId: IOS_ACTION_CATEGORY_ID,
       },
     };
 
     await notifee.displayNotification(notificationPayload);
+    return true;
   } catch (error) {
     console.warn('[RichNotif] Gagal menampilkan rich notification:', error);
+    return false;
   }
+}
+
+/**
+ * Step 4: Menampilkan Rich Notification dari pesan FCM (BigPicture / BigText + Action Buttons + iOS Attachment).
+ */
+export async function displayRichNotification(remoteMessage: RemoteMessage): Promise<void> {
+  const data = remoteMessage.data as Record<string, string> | undefined;
+  const title =
+    remoteMessage.notification?.title ??
+    getStringField(data, 'title') ??
+    'Pemberitahuan LabPortal';
+  const body =
+    remoteMessage.notification?.body ??
+    getStringField(data, 'body') ??
+    'Ada pembaruan kegiatan praktikum.';
+  const imageUrl = getStringField(data, 'imageUrl');
+  const channelId = getStringField(data, 'channelId') ?? PRAKTIKUM_CHANNEL_ID;
+
+  await displayLocalRichNotification({
+    title,
+    body,
+    imageUrl,
+    channelId,
+    data,
+  });
 }
 
 /**

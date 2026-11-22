@@ -26,6 +26,7 @@ import { NotificationDocument, NotificationEventType } from '@/types/praktikum';
 
 const EVENT_LABEL: Record<NotificationEventType, string> = {
   session_opened: 'Sesi Dibuka',
+  session_started: 'Kelas Dimulai',
   schedule_updated: 'Jadwal Diubah',
   leave_approved: 'Izin Disetujui',
   leave_rejected: 'Izin Ditolak',

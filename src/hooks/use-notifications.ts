@@ -8,13 +8,18 @@ import { Platform } from 'react-native';
 import { useAuth } from '@/context/auth-context';
 import {
   NotificationPermissionState,
+  cancelSessionStartRemindersAsync,
   getNotificationPermissionState,
+  presentInstantPhoneNotificationAsync,
   registerForPushNotificationsAsync,
+  subscribeUserNotifications,
+  syncSessionStartRemindersAsync,
 } from '@/services/notification-service';
 import {
   requestRichNotificationPermission,
   subscribeRichNotifications,
 } from '@/services/rich-notification-service';
+import { subscribeSessions } from '@/services/session-service';
 
 const ALLOWED_ROUTES = [
   '/praktikan/jadwal',
@@ -31,7 +36,7 @@ function resolveRoute(data: Record<string, unknown> | undefined): Href | null {
 }
 
 export function useNotifications() {
-  const { user, role } = useAuth();
+  const { user, userDoc, role } = useAuth();
   const isPraktikan = role === 'praktikan';
   const [permission, setPermission] = useState<NotificationPermissionState>('unavailable');
   const lastHandledId = useRef<string | null>(null);
@@ -40,6 +45,7 @@ export function useNotifications() {
     let active = true;
     // Push notification hanya ditujukan untuk role mahasiswa (praktikan)
     if (!user?.uid || !isPraktikan) {
+      void cancelSessionStartRemindersAsync();
       return;
     }
 
@@ -57,6 +63,67 @@ export function useNotifications() {
 
     return () => {
       active = false;
+    };
+  }, [user?.uid, isPraktikan]);
+
+  // Sinkronisasi otomatis pengingat lokal tepat saat jam praktikum dimulai (khusus praktikan)
+  useEffect(() => {
+    if (Platform.OS === 'web' || !user?.uid || !isPraktikan) {
+      return;
+    }
+
+    const unsubscribeSessions = subscribeSessions((sessions) => {
+      void syncSessionStartRemindersAsync(sessions, userDoc?.kelas);
+    });
+
+    return () => {
+      unsubscribeSessions();
+    };
+  }, [user?.uid, isPraktikan, userDoc?.kelas]);
+
+  // Munculkan pop-up heads-up banner di HP seperti WhatsApp secara instan saat ada notifikasi baru
+  useEffect(() => {
+    if (Platform.OS === 'web' || !user?.uid || !isPraktikan) {
+      return;
+    }
+
+    let isInitialSnapshot = true;
+    const seenIds = new Set<string>();
+
+    const unsubscribeUserNotifs = subscribeUserNotifications(user.uid, (items) => {
+      if (isInitialSnapshot) {
+        items.forEach((item) => seenIds.add(item.id));
+        isInitialSnapshot = false;
+        return;
+      }
+
+      for (const item of items) {
+        if (seenIds.has(item.id)) continue;
+        seenIds.add(item.id);
+        if (item.isRead) continue;
+
+        const targetUrl =
+          item.eventType === 'session_opened' || item.eventType === 'session_started'
+            ? '/praktikan/presensi'
+            : item.eventType === 'schedule_updated'
+            ? '/praktikan/jadwal'
+            : '/praktikan/pengajuan-izin';
+
+        void presentInstantPhoneNotificationAsync({
+          title: item.title,
+          body: item.body,
+          data: {
+            url: targetUrl,
+            eventType: item.eventType,
+            ...(item.relatedSessionId ? { relatedSessionId: item.relatedSessionId } : {}),
+            ...(item.relatedLeaveId ? { relatedLeaveId: item.relatedLeaveId } : {}),
+          },
+        });
+      }
+    });
+
+    return () => {
+      unsubscribeUserNotifs();
     };
   }, [user?.uid, isPraktikan]);
 

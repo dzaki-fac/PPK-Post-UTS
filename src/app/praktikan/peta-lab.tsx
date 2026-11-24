@@ -88,7 +88,7 @@ export default function PraktikanPetaLabScreen() {
           </Pressable>
 
           <View style={styles.headerTitleRow}>
-            <View>
+            <View style={styles.headerTitleCol}>
               <Text style={styles.screenTitle}>Peta Laboratorium</Text>
               <Text style={styles.screenSubtitle}>
                 Departemen Informatika FSM UNDIP • Pantau Sesi & Posisi Fisik
@@ -214,6 +214,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    gap: 8,
+  },
+  headerTitleCol: {
+    flex: 1,
+    minWidth: 0,
   },
   screenTitle: {
     fontSize: 20,
@@ -230,6 +235,7 @@ const styles = StyleSheet.create({
   liveIndicatorBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 0,
     backgroundColor: '#DCFCE7',
     paddingHorizontal: 8,
     paddingVertical: 4,

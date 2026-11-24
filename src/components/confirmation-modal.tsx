@@ -178,7 +178,9 @@ const styles = StyleSheet.create({
   },
   btnCancel: {
     flex: 1,
+    minHeight: 44,
     paddingVertical: 12,
+    paddingHorizontal: 12,
     borderRadius: 12,
     backgroundColor: '#F1F5F9',
     alignItems: 'center',
@@ -190,10 +192,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#475569',
+    textAlign: 'center',
   },
   btnConfirm: {
     flex: 1,
+    minHeight: 44,
     paddingVertical: 12,
+    paddingHorizontal: 12,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -211,6 +216,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
+    textAlign: 'center',
   },
   btnPressed: {
     opacity: 0.85,

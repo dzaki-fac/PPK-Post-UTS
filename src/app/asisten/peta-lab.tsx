@@ -83,7 +83,7 @@ export default function AsistenPetaLabScreen() {
           </Pressable>
 
           <View style={styles.headerTitleRow}>
-            <View>
+            <View style={styles.headerTitleCol}>
               <Text style={styles.screenTitle}>Monitoring Peta Laboratorium</Text>
               <Text style={styles.screenSubtitle}>
                 Departemen Informatika FSM UNDIP • Status Real-Time Ruang & Sesi
@@ -204,6 +204,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    gap: 8,
+  },
+  headerTitleCol: {
+    flex: 1,
+    minWidth: 0,
   },
   screenTitle: {
     fontSize: 20,
@@ -220,6 +225,7 @@ const styles = StyleSheet.create({
   liveIndicatorBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 0,
     backgroundColor: '#F0FDFA',
     paddingHorizontal: 8,
     paddingVertical: 4,

@@ -8,7 +8,6 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { LabActivitySheet } from '@/components/lab-activity-sheet';
 import { LabMapView, UserLocationState } from '@/components/lab-map-view';
@@ -17,7 +16,6 @@ import { subscribeLabActivities } from '@/services/lab-activity-service';
 import { LabWithActivity } from '@/types/praktikum';
 
 export default function PraktikanPetaLabScreen() {
-  const insets = useSafeAreaInsets();
   const { userDoc } = useAuth();
   const [activities, setActivities] = useState<LabWithActivity[]>([]);
   const [selectedLabId, setSelectedLabId] = useState<string | null>(null);
@@ -68,7 +66,7 @@ export default function PraktikanPetaLabScreen() {
   const userClass = userDoc?.kelas;
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top }]}>
+    <View style={styles.root}>
       <View style={styles.centerContainer}>
         {/* Top Breadcrumb & Title */}
         <View style={styles.topHeader}>
@@ -186,8 +184,8 @@ const styles = StyleSheet.create({
   },
   topHeader: {
     paddingHorizontal: Platform.OS === 'web' ? 20 : 14,
-    paddingTop: 8,
-    paddingBottom: 10,
+    paddingTop: 12,
+    paddingBottom: 12,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',

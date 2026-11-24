@@ -72,7 +72,7 @@ export default function AsistenLayout() {
           name="jadwal"
           options={{
             title: 'Jadwal Praktikum',
-            tabBarLabel: 'Kelola Sesi',
+            tabBarLabel: 'Sesi',
             tabBarIcon: ({ color, focused }) => (
               <TabCalendarIcon color={color} focused={focused} />
             ),
@@ -82,7 +82,7 @@ export default function AsistenLayout() {
           name="lokasi-lab"
           options={{
             title: 'Lokasi Laboratorium',
-            tabBarLabel: 'Lokasi Lab',
+            tabBarLabel: 'Lokasi',
             tabBarIcon: ({ color, focused }) => (
               <TabLocationPinIcon color={color} focused={focused} />
             ),
@@ -102,7 +102,7 @@ export default function AsistenLayout() {
           name="moderasi-izin"
           options={{
             title: 'Moderasi Izin',
-            tabBarLabel: 'Moderasi Izin',
+            tabBarLabel: 'Izin',
             tabBarIcon: ({ color, focused }) => (
               <TabModerationIcon color={color} focused={focused} />
             ),
@@ -112,7 +112,7 @@ export default function AsistenLayout() {
           name="rekap"
           options={{
             title: 'Rekap Presensi',
-            tabBarLabel: 'Rekap Kelas',
+            tabBarLabel: 'Rekap',
             tabBarIcon: ({ color, focused }) => (
               <TabChartIcon color={color} focused={focused} />
             ),

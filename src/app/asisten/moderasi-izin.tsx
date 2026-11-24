@@ -361,14 +361,15 @@ const styles = StyleSheet.create({
     color: '#065F46',
   },
   headerTitle: {
-    fontSize: Platform.OS === 'web' ? 32 : 26,
-    fontWeight: '900',
+    fontSize: Platform.OS === 'web' ? 28 : 22,
+    lineHeight: Platform.OS === 'web' ? 34 : 28,
+    fontWeight: '800',
     color: '#0F172A',
-    letterSpacing: -0.6,
+    letterSpacing: -0.4,
   },
   headerSubtitle: {
-    fontSize: 14,
-    lineHeight: 22,
+    fontSize: 13,
+    lineHeight: 20,
     color: '#64748B',
   },
   hitlBanner: {
@@ -412,7 +413,7 @@ const styles = StyleSheet.create({
   metricsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 10,
   },
   metricCard: {
     flex: 1,
@@ -451,9 +452,10 @@ const styles = StyleSheet.create({
   filterRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     marginTop: 4,
     paddingVertical: 2,
+    paddingRight: 12,
   },
   filterChip: {
     paddingHorizontal: 11,

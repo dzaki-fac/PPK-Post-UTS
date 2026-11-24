@@ -165,8 +165,6 @@ export function TabMapIcon({ color, focused }: TabIconProps) {
             borderWidth: focused ? 2 : 1.6,
           },
         ]}>
-        {/* Map fold divider */}
-        <View style={[styles.mapFoldLine, { backgroundColor: color }]} />
         {/* Map Pin Dot */}
         <View
           style={[
@@ -431,14 +429,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  mapFoldLine: {
-    position: 'absolute',
-    top: 2,
-    bottom: 2,
-    width: 1.2,
-    left: '50%',
-    opacity: 0.6,
   },
   mapPinDot: {
     width: 6,

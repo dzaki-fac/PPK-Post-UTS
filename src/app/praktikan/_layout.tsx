@@ -71,7 +71,7 @@ export default function PraktikanLayout() {
           name="jadwal"
           options={{
             title: 'Jadwal Praktikum',
-            tabBarLabel: 'Jadwal Sesi',
+            tabBarLabel: 'Jadwal',
             tabBarIcon: ({ color, focused }) => (
               <TabCalendarIcon color={color} focused={focused} />
             ),
@@ -101,7 +101,7 @@ export default function PraktikanLayout() {
           name="pengajuan-izin"
           options={{
             title: 'Pengajuan Izin',
-            tabBarLabel: 'Ajukan Izin',
+            tabBarLabel: 'Izin',
             tabBarIcon: ({ color, focused }) => (
               <TabDocumentIcon color={color} focused={focused} />
             ),
@@ -111,7 +111,7 @@ export default function PraktikanLayout() {
           name="riwayat"
           options={{
             title: 'Riwayat Kehadiran',
-            tabBarLabel: 'Riwayat Presensi',
+            tabBarLabel: 'Riwayat',
             tabBarIcon: ({ color, focused }) => (
               <TabHistoryIcon color={color} focused={focused} />
             ),

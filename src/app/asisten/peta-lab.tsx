@@ -8,7 +8,6 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { LabActivitySheet } from '@/components/lab-activity-sheet';
 import { LabMapView, UserLocationState } from '@/components/lab-map-view';
@@ -16,7 +15,6 @@ import { subscribeLabActivities } from '@/services/lab-activity-service';
 import { LabWithActivity } from '@/types/praktikum';
 
 export default function AsistenPetaLabScreen() {
-  const insets = useSafeAreaInsets();
   const [activities, setActivities] = useState<LabWithActivity[]>([]);
   const [selectedLabId, setSelectedLabId] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -63,7 +61,7 @@ export default function AsistenPetaLabScreen() {
   const idleLabsCount = totalLabs - activeSessionsCount;
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top }]}>
+    <View style={styles.root}>
       <View style={styles.centerContainer}>
         {/* Top Header & Breadcrumb */}
         <View style={styles.topHeader}>
@@ -176,8 +174,8 @@ const styles = StyleSheet.create({
   },
   topHeader: {
     paddingHorizontal: Platform.OS === 'web' ? 20 : 14,
-    paddingTop: 8,
-    paddingBottom: 10,
+    paddingTop: 12,
+    paddingBottom: 12,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',

@@ -211,6 +211,7 @@ npx eas-cli build -p android --profile preview
 
 #### Tautan Build APK Terbaru (`sanftts-team` — Rilis Preview):
 - **Halaman Pantau & Unduh Build EAS Terbaru:** [expo.dev/@sanftts-team/ppk-post-uts/builds/76b47c1d-1b80-46c3-90b6-7c93698159ab](https://expo.dev/accounts/sanftts-team/projects/ppk-post-uts/builds/76b47c1d-1b80-46c3-90b6-7c93698159ab)
+- **Tautan Unduhan Langsung APK Terkini:** [Download LabPortal (_yMNTAoQ... .apk)](https://expo.dev/artifacts/eas/_yMNTAoQbYCbgseU2u3pYroRkuv1dIBEevvT5ye8GeQ.apk)
 
 > [!TIP]
 > **Registrasi SHA-1 Fingerprint untuk Google Sign-In:**  

@@ -552,3 +552,61 @@ const styles = StyleSheet.create({
     borderRadius: 1,
   },
 });
+
+/**
+ * Ikon Tagihan / Invoice (geometris dokumen tagihan dengan garis nominal).
+ */
+export function TabBillIcon({ color, focused, size = 22 }: TabIconProps) {
+  const s = size;
+  const stroke = focused ? 2 : 1.7;
+
+  return (
+    <View
+      style={{
+        width: s,
+        height: s,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+      <View
+        style={{
+          width: s * 0.72,
+          height: s * 0.84,
+          borderWidth: stroke,
+          borderColor: color,
+          borderRadius: 4,
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingHorizontal: 3,
+          gap: 3,
+        }}>
+        <View
+          style={{
+            width: '100%',
+            height: stroke,
+            backgroundColor: color,
+            borderRadius: 1,
+          }}
+        />
+        <View
+          style={{
+            width: '72%',
+            height: stroke,
+            backgroundColor: color,
+            borderRadius: 1,
+            alignSelf: 'flex-start',
+          }}
+        />
+        <View
+          style={{
+            width: '55%',
+            height: stroke,
+            backgroundColor: color,
+            borderRadius: 1,
+            alignSelf: 'flex-end',
+          }}
+        />
+      </View>
+    </View>
+  );
+}

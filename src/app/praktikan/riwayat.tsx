@@ -89,6 +89,7 @@ export default function PraktikanRiwayatScreen() {
           waktuKehadiran: att.waktuKehadiran,
           attendanceStatus: att.attendanceStatus ?? 'hadir',
           lateMinutes: att.lateness?.minutesAfterStart,
+          fineId: att.fineId,
           sesi: sesi,
         } as RiwayatItem;
       });

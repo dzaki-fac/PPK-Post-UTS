@@ -28,7 +28,7 @@ Untuk mempermudah pemahaman arsitektur dan kolaborasi pengembang, dokumentasi pr
 Aplikasi dirancang secara adaptif dari perspektif peran pengguna:
 1. **Praktikan (Mahasiswa Informatika):** Memantau jadwal praktikum, melakukan presensi di halaman khusus dengan validasi radius lokasi laboratorium (kode 4 digit atau QR Code), melihat peta persebaran laboratorium dan aktivitas praktikum real-time beserta rute jalan kaki, menerima notifikasi saat sesi dibuka/diubah atau izin diputuskan, mengajukan izin jika berhalangan hadir, serta memeriksa rekap riwayat kehadiran dan tagihan/pembayaran denda keterlambatan *(Sprint 4)*.
 2. **Asisten Praktikum / Asprak (d/h Asisten Laboratorium):** Menjalankan operasional sesi praktikum pada laboratorium yang menjadi tanggung jawabnya — membuka/menutup sesi real-time (termasuk kode 4 digit & QR sesi), memantau dan mengelola presensi roster kelas, serta meninjau rekomendasi AI dan mengambil keputusan persetujuan izin ketidakhadiran.
-3. **Asisten Laboratorium / Aslab *(Sprint 4 — dalam pengembangan)*:** Mengelola laboratorium per mata kuliah (lokasi, koordinat, radius, *grace period*, nominal denda), melakukan tiga alur *bulk/single insert* terpisah (lab, praktikan, asprak) beserta template unduhan, memindahkan praktikan/asprak antar laboratorium, menjadwalkan sesi, serta memantau dashboard keberlangsungan laboratorium dan riwayat keuangan denda.
+3. **Asisten Laboratorium / Aslab *(Sprint 4 — Terintegrasi)*:** Mengelola laboratorium per mata kuliah (lokasi, koordinat, radius, *grace period*, nominal denda), melakukan tiga alur *bulk/single insert* terpisah (lab, praktikan, asprak) beserta template unduhan, memindahkan praktikan/asprak antar laboratorium, menjadwalkan sesi, serta memantau dashboard keberlangsungan laboratorium dan riwayat keuangan denda.
 
 ---
 
@@ -90,74 +90,125 @@ PPK-Post-UTS/
 ├── ai/                               # On-Device AI Engine (Model EDOM Resmi)
 │   ├── model-edom.json               # Bobot kamus sentimen & leksikon model EDOM
 │   └── sentiment.js                  # Pure JavaScript inference engine (< 20ms, 100% offline)
+├── functions/                        # Backend Tepercaya Express + Firebase Admin (Node 20 + TS)
+│   ├── vercel.json                   # Konfigurasi deploy serverless Vercel
+│   ├── package.json                  # Dependensi backend & skrip build/start
+│   ├── README.md                     # Panduan setup env & uji manual keamanan webhook
+│   └── src/
+│       ├── config.ts                 # Inisialisasi Admin SDK & env Midtrans Sandbox
+│       ├── index.ts                  # Server Express (/health, /api/attendances/*, /api/payments/*)
+│       ├── lateness.ts               # Evaluasi keterlambatan server & penerbitan fines/{attendanceId}
+│       ├── midtrans.ts               # Klien Snap API, Status API, & verifikasi SHA-512
+│       ├── notify.ts                 # Dispatcher Expo Push API & log /notifications
+│       ├── payments.ts               # Transaksi Snap, rekonsiliasi & penutupan pending kedaluwarsa
+│       └── webhook.ts                # Handler POST webhook Midtrans + idempotensi payment_events
+├── scripts/
+│   └── seed-sprint4.ts               # Seed mata kuliah PPK, lab contoh, dan akun Aslab
 └── src/
     ├── app/                          # Expo Router (File-based routing)
     │   ├── _layout.tsx               # Root layout dengan safe-area, web title & NotificationBootstrap
     │   ├── index.tsx                 # Halaman portal landing & redirect role guard
     │   ├── login.tsx                 # Layar Masuk (Email & Password + Native Google Sign-In)
-    │   ├── register.tsx              # Layar Daftar Baru (Peran Mahasiswa / Asisten Lab)
+    │   ├── register.tsx              # Layar Daftar Baru (Praktikan / Asprak Lab)
     │   ├── notifikasi.tsx            # Pusat Notifikasi in-app real-time (/notifications)
     │   ├── test-ai.tsx               # Layar uji coba klasifikasi AI EDOM
-    │   ├── asisten/
-    │   │   ├── _layout.tsx           # Tab navigator asisten (Sesi, Lokasi, Peta Lab, Izin, Rekap, Pengguna)
-    │   │   ├── jadwal.tsx            # Pengelolaan sesi praktikum & metrik asisten
-    │   │   ├── lokasi-lab.tsx        # Manajemen lokasi koordinat & radius laboratorium (/labs)
-    │   │   ├── peta-lab.tsx          # Peta laboratorium interaktif & aktivitas lab (Asisten)
-    │   │   ├── moderasi-izin.tsx     # Panel moderasi izin berbantuan rekomendasi AI
-    │   │   ├── rekap.tsx             # Rekapitulasi kehadiran kelas per sesi & status izin
-    │   │   ├── mahasiswa.tsx         # Master Data Pengguna (CRUD Praktikan & Asisten)
-    │   │   └── detail-sesi/[id].tsx  # Kontrol sesi (buka/tutup/buka kembali), kode 4 digit, QR & roster
+    │   ├── aslab/                    # Portal Asisten Laboratorium (Aksen Indigo #4F46E5)
+    │   │   ├── _layout.tsx           # Tab navigator Aslab (5 tab utama + 5 rute tersembunyi)
+    │   │   ├── dashboard.tsx         # Dashboard keberlangsungan lab, filter periode & keuangan
+    │   │   ├── jadwal.tsx            # CRUD jadwal sesi lab dengan startAt & labId wajib
+    │   │   ├── laboratorium.tsx      # Manajemen lab per mata kuliah (radius, grace period, denda)
+    │   │   ├── anggota.tsx           # Daftar anggota per lab (Praktikan & Asprak)
+    │   │   ├── impor-lab.tsx         # Bulk/single insert laboratorium + Generator Cepat & template
+    │   │   ├── impor-praktikan.tsx   # Bulk/single insert praktikan ke lab + deteksi konflik NIM
+    │   │   ├── impor-asprak.tsx      # Bulk/single insert asprak ke lab + template
+    │   │   ├── pindah-anggota.tsx    # Pemindahan praktikan/asprak antar lab (tanpa pindah jadwal)
+    │   │   ├── peta-lab.tsx          # Peta laboratorium interaktif aksen Indigo
+    │   │   └── notifikasi.tsx        # Shortcut Pusat Notifikasi di portal Aslab
+    │   ├── asisten/                  # Portal Asprak (legacy path, aksen Teal #0D9488)
+    │   │   ├── _layout.tsx           # Tab navigator Asprak terfokus (lokasi-lab disembunyikan)
+    │   │   ├── jadwal.tsx            # Sesi praktikum khusus lab yang diampu (buka/tutup real-time)
+    │   │   ├── lokasi-lab.tsx        # Keterangan pemindahan konfigurasi lab ke Portal Aslab
+    │   │   ├── peta-lab.tsx          # Peta laboratorium interaktif & aktivitas lab (Asprak)
+    │   │   ├── moderasi-izin.tsx     # Panel moderasi izin (excused absence, bebas denda)
+    │   │   ├── rekap.tsx             # Rekapitulasi kehadiran kelas & keterlambatan/izin
+    │   │   ├── mahasiswa.tsx         # Kelas Saya (daftar anggota lab yang diampu, baca saja)
+    │   │   └── detail-sesi/[id].tsx  # Buka/tutup sesi (startedAt), kode 4 digit, QR, roster & manual
     │   └── praktikan/
-    │       ├── _layout.tsx           # Tab navigator praktikan (Jadwal, Presensi, Peta Lab, Izin, Riwayat)
-    │       ├── jadwal.tsx            # Jadwal praktikum, filter kelas saya & status sesi
-    │       ├── presensi.tsx          # Halaman Presensi Khusus (Geofencing + kode 4 digit / QR Code)
-    │       ├── peta-lab.tsx          # Peta laboratorium interaktif, live user tracking & rute (Praktikan)
+    │       ├── _layout.tsx           # Tab navigator praktikan (Jadwal, Presensi, Peta, Izin, Riwayat, Tagihan)
+    │       ├── jadwal.tsx            # Jadwal praktikum lab/kelas saya & sinkronisasi real-time
+    │       ├── presensi.tsx          # Halaman Presensi (Geofencing, QR/kode, evaluasi terlambat & blokir izin)
+    │       ├── peta-lab.tsx          # Peta laboratorium interaktif, live tracking & rute (Praktikan)
     │       ├── pengajuan-izin.tsx    # Formulir izin praktikum dengan analisis AI on-device
-    │       ├── riwayat.tsx           # Riwayat kehadiran & persentase keaktifan pribadi
+    │       ├── riwayat.tsx           # Riwayat kehadiran (Hadir/Terlambat/Izin) & izin
+    │       ├── tagihan.tsx           # Daftar tagihan denda keterlambatan & metrik nominal
+    │       ├── tagihan/[id].tsx      # Rincian tagihan, riwayat percobaan & bayar via Midtrans Snap
+    │       ├── pembayaran-hasil.tsx  # Pemantauan verifikasi status pembayaran real-time & Coba Lagi
+    │       ├── riwayat-pembayaran.tsx# Riwayat transaksi Midtrans persisten (cache AsyncStorage)
     │       └── detail-sesi/[id].tsx  # Detail sesi, materi modul & status kehadiran
     ├── components/                   # Komponen UI modular (DESIGN.md, Anti-Slop)
     │   ├── ai-category-badge.tsx     # Badge rekomendasi AI (Kategori & Tingkat Keyakinan)
+    │   ├── attendance-roster.tsx     # Roster presensi Hadir/Terlambat/Izin/Belum Hadir & entri manual
     │   ├── confirmation-modal.tsx    # Dialog modal konfirmasi aksi & feedback
+    │   ├── dashboard/                # Kartu status lab & filter periode Hari/Minggu/Bulan
     │   ├── device-status-banner.tsx  # Banner kondisi perangkat (izin, GPS, notifikasi, jaringan)
     │   ├── empty-state.tsx           # Tampilan terstruktur saat data kosong
     │   ├── google-profile-modal.tsx  # Dialog kelengkapan profil pengguna baru Google Sign-In
+    │   ├── import-review-list.tsx    # Daftar tinjauan impor interaktif per baris
     │   ├── lab-activity-sheet.tsx    # Panel detail aktivitas lab (sedang berlangsung & berikutnya)
     │   ├── lab-map-view.tsx          # Peta native Android/iOS (react-native-maps + rute polyline)
     │   ├── lab-map-view.web.tsx      # Fallback peta laboratorium interaktif untuk Web
     │   ├── leave-card.tsx            # Kartu antrean izin dengan rekomendasi AI & aksi moderasi
     │   ├── location-status-card.tsx  # Kartu status pemeriksaan radius geofencing pengguna
+    │   ├── metrics-grid.tsx          # Komponen kartu metrik ringkasan standar DESIGN.md
     │   ├── notification-bootstrap.tsx# Bootstrap listener push notification & FCM token sync
-    │   ├── role-header.tsx           # Universal header dengan profil, tombol notifikasi & keluar
+    │   ├── role-header.tsx           # Universal header 3 peran (PRAKTIKAN / ASPRAK / ASLAB)
     │   ├── sesi-card.tsx             # Kartu jadwal sesi seragam
-    │   ├── session-qr-code.tsx       # Generator QR Code sesi praktikum untuk asisten
-    │   ├── status-badge.tsx          # Badge status sesi & kehadiran
+    │   ├── session-qr-code.tsx       # Generator QR Code sesi praktikum
+    │   ├── status-badge.tsx          # Badge status sesi, presensi, izin, denda & pembayaran
     │   └── tab-icons.tsx             # Komponen ikon vektor murni untuk bottom navigation bar
+    ├── constants/
+    │   ├── praktikum-config.ts       # Default radius (50m), grace (15m), denda (Rp 10.000), WIB
+    │   └── theme.ts                  # Token tema 3 peran (termasuk Aslab Indigo #4F46E5)
     ├── context/
-    │   ├── auth-context.tsx          # Manajemen sesi Firebase Auth & sinkronisasi profil user
+    │   ├── auth-context.tsx          # Manajemen sesi Firebase Auth, 3 peran & member linking
     │   └── praktikum-context.tsx     # State runtime fallback & cache sesi
     ├── data/                         # Data dummy & tipe referensi awal
     ├── hooks/
     │   ├── use-device-resilience.ts  # Hook deteksi status izin lokasi, GPS, notifikasi & koneksi
-    │   ├── use-notifications.ts      # Hook registrasi push token & listener respons notifikasi
+    │   ├── use-import-draft.ts       # Hook manajemen draf, validasi & aksi massal impor
+    │   ├── use-notifications.ts      # Hook registrasi push token & routing notifikasi
     │   └── use-theme.ts              # Hook tema tampilan
     ├── lib/
     │   └── firebase.ts               # Inisialisasi Firebase App, Auth, Firestore & Google Client ID
     ├── services/
     │   ├── ai-service.ts             # Layanan klasifikasi AI On-Device EDOM (offline resilience)
-    │   ├── attendance-service.ts     # Layanan validasi keras & pencatatan presensi geofencing
+    │   ├── attendance-admin-service.ts# Layanan entri presensi manual oleh Asprak
+    │   ├── attendance-service.ts     # Layanan validasi keras, geofencing & evaluasi keterlambatan
+    │   ├── course-service.ts         # Layanan mata kuliah (/courses)
+    │   ├── dashboard-service.ts      # Agregasi real-time dashboard lab, kegiatan & keuangan
+    │   ├── import-parser.ts          # Parser berkas .csv (papaparse) dan .xlsx (SheetJS)
+    │   ├── import-template-service.ts# Generator & pengunduh template .csv / .xlsx per alur impor
     │   ├── lab-activity-service.ts   # Layanan pemetaan aktivitas lab real-time (/labs + /sessions)
-    │   ├── lab-service.ts            # Layanan CRUD lokasi laboratorium Cloud Firestore (/labs)
-    │   ├── leave-service.ts          # Layanan CRUD pengajuan izin Cloud Firestore + trigger notif
+    │   ├── lab-import-service.ts     # Validasi & penyimpanan batch impor laboratorium
+    │   ├── lab-member-service.ts     # CRUD anggota lab, penautan login & pemindahan lab
+    │   ├── lab-service.ts            # Layanan CRUD lokasi, radius, grace & denda lab (/labs)
+    │   ├── leave-service.ts          # Layanan pengajuan & moderasi izin + catatan attendance 'izin'
     │   ├── location-service.ts       # Wrapper expo-location & kalkulasi jarak Haversine
+    │   ├── member-import-service.ts  # Validasi & penyimpanan impor praktikan dan asprak terpisah
     │   ├── notification-service.ts   # Layanan registrasi token, dispatcher event & /notifications
+    │   ├── payment-service.ts        # Klien API pembayaran Midtrans & listener /fines + /payments
     │   ├── rich-notification-service.ts      # Layanan tampilan notifikasi rich Android/iOS
     │   ├── rich-notification-service.web.ts  # Stub/fallback rich notification untuk Web
     │   ├── route-service.ts          # Layanan rute jalan kaki (Google Routes API + fallback)
-    │   └── session-service.ts        # Layanan CRUD jadwal sesi Cloud Firestore + trigger notif
+    │   └── session-service.ts        # Layanan CRUD jadwal sesi & startedAt (WIB -> UTC)
     ├── types/
-    │   └── praktikum.ts              # Kontrak antarmuka TypeScript terpadu
+    │   └── praktikum.ts              # Kontrak antarmuka TypeScript terpadu Sprint 1-4
     └── utils/
-        └── qr-payload.ts             # Pembentuk & parser payload QR Code presensi sesi
+        ├── format.ts                 # Format Rupiah (formatRupiah) & normalisasi teks
+        ├── lateness.ts               # Evaluasi keterlambatan presensi murni (evaluateLateness)
+        ├── qr-payload.ts             # Pembentuk & parser payload QR Code presensi sesi
+        ├── role.ts                   # Normalisasi 3 peran (normalizeRole, getHomeRouteByRole)
+        └── wib.ts                    # Parsing & pemformatan waktu WIB + rentang periode dashboard
 ```
 
 ---
@@ -194,7 +245,13 @@ EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=123456789012-xxxx.apps.googleusercontent.com
 
 # Google Maps SDK for Android & Routes API (react-native-maps)
 EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=AIzaSy...
+
+# Backend Pembayaran & Evaluasi Keterlambatan (Express / Vercel)
+# Jangan pernah menyimpan MIDTRANS_SERVER_KEY di sini
+EXPO_PUBLIC_PAYMENT_API_URL=https://ppk-labportal-backend.vercel.app
 ```
+
+Untuk menjalankan backend secara lokal (bila tidak memakai deployment Vercel), salin `functions/.env.example` menjadi `functions/.env` dan lengkapi `MIDTRANS_SERVER_KEY` (Sandbox) beserta kredensial Service Account Firebase Admin (lihat [functions/README.md](./functions/README.md)).
 
 > [!IMPORTANT]
 > **Berkas `google-services.json` Lokal (Wajib untuk Build Native Android):**  
@@ -242,6 +299,9 @@ npx expo lint
 
 # 3. Diagnostik kompatibilitas dependensi Expo SDK
 npx expo-doctor
+
+# 4. Build backend Express + Firebase Admin (Node 20 + TypeScript)
+npm --prefix functions run build
 ```
 
 ---
@@ -275,13 +335,13 @@ npx expo-doctor
 | 4 | **Push Notification Berbasis Peristiwa (FCM/Expo)** | Programmer 3 | **Selesai (100%)** | Notifikasi real-time saat sesi dibuka/dimulai, jadwal berubah, dan izin diputuskan, plus Pusat Notifikasi `/notifications`. |
 | 5 | **Ketahanan Izin, Kondisi Perangkat & Rules RBAC** | Programmer 3 | **Selesai (100%)** | Penanganan izin ditolak, GPS nonaktif, lokasi belum tersedia, mode offline (`NetInfo`), dan pembaruan `firestore.rules`. |
 
-### C. Sprint 4 (Aslab, Dashboard Lab, Denda & Midtrans Sandbox — Pembagian 3 Branch)
+### C. Sprint 4 (Aslab, Dashboard Lab, Denda & Midtrans Sandbox — Selesai & Terintegrasi di `main`)
 
 | No | Modul / Fitur | Programmer Penanggung Jawab | Branch Git | Status | Keterangan Hasil |
 |---|---|:---:|---|:---:|---|
-| 1 | **Peran Aslab, Manajemen Lab, 3 Alur Impor Terpisah & Pemindahan Anggota** | Programmer 1 | `feature/sprint4-aslab-lab-management` | **Spesifikasi Siap (`SRS4.md`)** | Stage 0 kontrak tipe/util/rules, CRUD lab (+radius & grace), 3 alur bulk/single insert + template + review list, pindah anggota tanpa pindah jadwal. |
-| 2 | **Dashboard Keberlangsungan Lab, Jadwal Aslab, Portal Asprak & Finalisasi UI** | Programmer 2 | `feature/sprint4-dashboard-asprak-session` | **Spesifikasi Siap (`SRS4.md`)** | Dashboard filter Hari/Minggu/Bulan, sesi Asprak terfokus (`startedAt`), izin *excused absence*, dan audit `DESIGN.md`. |
-| 3 | **Backend Tepercaya, Denda Keterlambatan, Midtrans Sandbox & Notifikasi Bayar** | Programmer 3 | `feature/sprint4-midtrans-fines-payment` | **Spesifikasi Siap (`SRS4.md`)** | Perhitungan telat *grace period*, 1 tagihan/kejadian, Snap + verifikasi webhook backend, UI tagihan/riwayat persisten, dan notifikasi pembayaran. |
+| 1 | **Peran Aslab, Manajemen Lab, 3 Alur Impor Terpisah & Pemindahan Anggota** | Programmer 1 | `feature/sprint4-aslab-lab-management` | **Selesai (100%)** | Stage 0 kontrak tipe/util/rules, CRUD lab (+radius, grace & denda), 3 alur bulk/single insert + template + review list, penautan saat login, dan pindah anggota tanpa pindah jadwal. |
+| 2 | **Dashboard Keberlangsungan Lab, Jadwal Aslab, Portal Asprak & Finalisasi UI** | Programmer 2 | `feature/sprint4-dashboard-asprak-session` | **Selesai (100%)** | Dashboard filter Hari/Minggu/Bulan, jadwal Aslab (`startAt`), portal Asprak terfokus (`startedAt`), izin *excused absence*, roster presensi/manual, dan finalisasi `DESIGN.md`. |
+| 3 | **Backend Tepercaya, Denda Keterlambatan, Midtrans Sandbox & Notifikasi Bayar** | Programmer 3 | `feature/sprint4-midtrans-fines-payment` | **Selesai (100%)** | Perhitungan telat *grace period*, 1 tagihan/kejadian (`fines/{attendanceId}`), Snap + verifikasi webhook SHA-512 + Status API di backend `functions/` (Vercel), UI tagihan/riwayat persisten, dan notifikasi pembayaran. |
 
 ---
 
@@ -305,3 +365,8 @@ npx expo-doctor
 ### Skenario 4: Pengujian Persistensi Sesi & Ketahanan Perangkat
 1. **Cold-Start:** Masuk ke akun via Email/Password atau Google Sign-In, tutup paksa aplikasi (*Kill App*), lalu buka kembali -> aplikasi langsung masuk ke portal sesuai peran tanpa login ulang.
 2. **Device Resilience:** Uji mematikan GPS, menolak izin lokasi/notifikasi, atau memutus koneksi internet -> `DeviceStatusBanner` dan `LocationStatusCard` menampilkan pesan status yang jelas serta tombol **Buka Pengaturan** tanpa menyebabkan aplikasi crash.
+
+### Skenario 5: Alur Sprint 4 — Lab Aslab, Dashboard, Denda Keterlambatan & Pembayaran Midtrans Sandbox
+1. **Setup Lab & Impor oleh Aslab:** Aslab login -> buka tab **Lab** atau **Impor Lab/Praktikan/Asprak** untuk mengelola lab (radius, *grace period*, nominal denda) dan memindahkan anggota antar lab tanpa mengubah jadwal.
+2. **Sesi Asprak & Dashboard Aslab:** Aslab membuat sesi -> Asprak membuka sesi (`startedAt` tercatat sekali) dan memoderasi izin (*excused absence*, bebas denda) -> Aslab memantau status lab, jadwal, dan riwayat keuangan dengan filter Hari/Minggu/Bulan di **Dashboard**.
+3. **Keterlambatan & Pembayaran Midtrans Sandbox:** Praktikan melakukan presensi setelah batas *grace period* -> status tercatat `Terlambat` dan tepat satu tagihan `fines/{attendanceId}` terbit -> praktikan membuka tab **Tagihan**, menekan **Bayar Sekarang**, dan menyelesaikan pembayaran lewat **Midtrans Sandbox Simulator** -> webhook backend memverifikasi status menjadi **Lunas** (sementara status presensi tetap `Terlambat`) dan transaksi tercatat permanen di **Riwayat Pembayaran**.

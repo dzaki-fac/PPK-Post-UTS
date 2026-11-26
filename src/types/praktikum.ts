@@ -379,4 +379,5 @@ export type RiwayatItem = Presensi & {
   sesi?: Sesi;
   attendanceStatus?: AttendanceStatus;
   lateMinutes?: number;
+  fineId?: string;
 };

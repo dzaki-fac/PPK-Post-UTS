@@ -43,6 +43,15 @@ const DELIVERY_LABEL: Record<NotificationDocument['deliveryStatus'], string> = {
 };
 
 function targetRoute(item: NotificationDocument): Href | null {
+  if (item.relatedFineId) return `/praktikan/tagihan/${item.relatedFineId}` as Href;
+  if (
+    item.eventType === 'fine_created' ||
+    item.eventType === 'payment_success' ||
+    item.eventType === 'payment_failed' ||
+    item.eventType === 'payment_action_required'
+  ) {
+    return '/praktikan/tagihan' as Href;
+  }
   if (item.relatedSessionId) return '/praktikan/jadwal' as Href;
   if (item.relatedLeaveId) return '/praktikan/pengajuan-izin' as Href;
   return null;

@@ -1,5 +1,5 @@
 import { BarcodeScanningResult, CameraView, useCameraPermissions } from 'expo-camera';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, type Href } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -40,6 +40,7 @@ import {
   openDeviceLocationSettings,
   verifyUserLocationForLab,
 } from '@/services/location-service';
+import { requestServerLatenessEvaluation } from '@/services/payment-service';
 import { subscribeSessions } from '@/services/session-service';
 import {
   AttendanceDocument,
@@ -231,6 +232,24 @@ export default function PraktikanPresensiScreen() {
       cancelled = true;
     };
   }, [activeSession, labs, runLocationCheck]);
+
+  const activeAttendanceRecord = activeSessionId
+    ? myAttendances.find((a) => a.sessionId === activeSessionId) ?? null
+    : null;
+  const activeAttendanceId = activeAttendanceRecord?.id ?? '';
+  const activeAttendanceEvaluatedBy = activeAttendanceRecord?.lateness?.evaluatedBy;
+  const activeAttendanceStatus = activeAttendanceRecord?.attendanceStatus;
+
+  // Pemulihan otomatis: jika presensi masih dievaluasi client, picu ulang verifikasi server
+  useEffect(() => {
+    if (
+      activeAttendanceId &&
+      activeAttendanceEvaluatedBy === 'client' &&
+      activeAttendanceStatus !== 'izin'
+    ) {
+      void requestServerLatenessEvaluation(activeAttendanceId);
+    }
+  }, [activeAttendanceId, activeAttendanceEvaluatedBy, activeAttendanceStatus]);
 
   const handleRefreshLocation = async () => {
     if (!activeSession) return;
@@ -530,14 +549,38 @@ export default function PraktikanPresensiScreen() {
           </View>
 
           {/* Status & Attendance Flow */}
-          {alreadyPresensi ? (
+          {attendanceRecord?.attendanceStatus === 'izin' ? (
+            <View style={styles.leaveBlockedCard}>
+              <Text style={styles.leaveBlockedTitle}>Anda Tercatat Izin pada Sesi Ini</Text>
+              <Text style={styles.leaveBlockedDesc}>
+                Pengajuan izin Anda telah disetujui Asprak sebagai tidak hadir dengan izin (excused absence) dan dibebaskan dari denda keterlambatan.
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.push('/praktikan/riwayat')}
+                style={styles.secondaryActionBtn}>
+                <Text style={styles.secondaryActionBtnText}>Lihat Riwayat & Izin →</Text>
+              </Pressable>
+            </View>
+          ) : alreadyPresensi ? (
             <View style={styles.verifiedCard}>
               <View style={styles.verifiedBadge}>
-                <Text style={styles.verifiedBadgeText}>PRESENSI TERVERIFIKASI</Text>
+                <Text style={styles.verifiedBadgeText}>
+                  {attendanceRecord?.attendanceStatus === 'terlambat'
+                    ? 'TERCATAT TERLAMBAT'
+                    : 'HADIR TEPAT WAKTU'}
+                </Text>
               </View>
-              <Text style={styles.verifiedTitle}>Anda Sudah Melakukan Presensi</Text>
+              <Text style={styles.verifiedTitle}>
+                {attendanceRecord?.attendanceStatus === 'terlambat'
+                  ? `Terlambat ${attendanceRecord.lateness?.minutesAfterStart ?? 0} Menit`
+                  : 'Anda Sudah Melakukan Presensi'}
+              </Text>
               <Text style={styles.verifiedSub}>
-                Kehadiran tercatat pada {attendanceRecord?.waktuKehadiran ?? '-'}
+                Kehadiran tercatat pada {attendanceRecord?.waktuKehadiran ?? '-'} •{' '}
+                {attendanceRecord?.lateness?.evaluatedBy === 'server'
+                  ? 'Terverifikasi Server'
+                  : 'Memverifikasi status di server...'}
               </Text>
 
               {attendanceRecord?.locationSnapshot ? (
@@ -558,6 +601,25 @@ export default function PraktikanPresensiScreen() {
                       : 'Kode 4 Digit + GPS Geofencing'}
                   </Text>
                 </View>
+              ) : null}
+
+              {attendanceRecord?.attendanceStatus === 'terlambat' ||
+              attendanceRecord?.fineId ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() =>
+                    router.push(
+                      (attendanceRecord?.fineId
+                        ? `/praktikan/tagihan/${attendanceRecord.fineId}`
+                        : '/praktikan/tagihan') as Href
+                    )
+                  }
+                  style={({ pressed }) => [
+                    styles.secondaryActionBtn,
+                    pressed && styles.btnPressed,
+                  ]}>
+                  <Text style={styles.secondaryActionBtnText}>Lihat Tagihan Denda →</Text>
+                </Pressable>
               ) : null}
 
               <Pressable

@@ -26,13 +26,34 @@ const ALLOWED_ROUTES = [
   '/praktikan/presensi',
   '/praktikan/peta-lab',
   '/praktikan/pengajuan-izin',
+  '/praktikan/tagihan',
+  '/praktikan/riwayat-pembayaran',
   '/notifikasi',
 ];
 
+/** Rute dinamis tagihan: /praktikan/tagihan/[id] (ID = sessionId_studentId). */
+const FINE_ROUTE_PATTERN = /^\/praktikan\/tagihan\/[\w.-]+$/;
+
 function resolveRoute(data: Record<string, unknown> | undefined): Href | null {
   const candidate = typeof data?.url === 'string' ? data.url : data?.screen;
-  if (typeof candidate !== 'string' || !ALLOWED_ROUTES.includes(candidate)) return null;
+  if (typeof candidate !== 'string') return null;
+  if (!ALLOWED_ROUTES.includes(candidate) && !FINE_ROUTE_PATTERN.test(candidate)) return null;
   return candidate as Href;
+}
+
+function resolveNotificationUrl(item: {
+  eventType: string;
+  relatedFineId?: string;
+}): string {
+  if (item.relatedFineId) return `/praktikan/tagihan/${item.relatedFineId}`;
+  if (item.eventType === 'session_opened' || item.eventType === 'session_started') {
+    return '/praktikan/presensi';
+  }
+  if (item.eventType === 'schedule_updated') return '/praktikan/jadwal';
+  if (item.eventType.startsWith('payment_') || item.eventType === 'fine_created') {
+    return '/praktikan/tagihan';
+  }
+  return '/praktikan/pengajuan-izin';
 }
 
 export function useNotifications() {
@@ -102,12 +123,7 @@ export function useNotifications() {
         seenIds.add(item.id);
         if (item.isRead) continue;
 
-        const targetUrl =
-          item.eventType === 'session_opened' || item.eventType === 'session_started'
-            ? '/praktikan/presensi'
-            : item.eventType === 'schedule_updated'
-            ? '/praktikan/jadwal'
-            : '/praktikan/pengajuan-izin';
+        const targetUrl = resolveNotificationUrl(item);
 
         void presentInstantPhoneNotificationAsync({
           title: item.title,
@@ -117,6 +133,8 @@ export function useNotifications() {
             eventType: item.eventType,
             ...(item.relatedSessionId ? { relatedSessionId: item.relatedSessionId } : {}),
             ...(item.relatedLeaveId ? { relatedLeaveId: item.relatedLeaveId } : {}),
+            ...(item.relatedFineId ? { relatedFineId: item.relatedFineId } : {}),
+            ...(item.relatedPaymentId ? { relatedPaymentId: item.relatedPaymentId } : {}),
           },
         });
       }

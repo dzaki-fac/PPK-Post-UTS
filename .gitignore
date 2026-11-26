@@ -39,6 +39,15 @@ yarn-error.*
 !.env.example
 google-services.json
 
+# Cloud Functions (Sprint 4): rahasia & artefak build tidak boleh ikut repositori
+functions/node_modules/
+functions/lib/
+functions/.env
+functions/.env.*
+functions/.runtimeconfig.json
+functions/*.local
+firebase-debug.log
+firebase-debug.*.log
 # typescript
 *.tsbuildinfo
 

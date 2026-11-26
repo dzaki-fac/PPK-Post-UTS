@@ -50,20 +50,27 @@ service cloud.firestore {
     // -------------------------------------------------------------------------
     // 3. Koleksi: attendances (/attendances/{attendanceId})
     // Format ID: `${sessionId}_${studentId}`
+    // ===== P3 ===== (Sprint 4: status kehadiran final & denda ditentukan backend)
     // -------------------------------------------------------------------------
     match /attendances/{attendanceId} {
       // Praktikan dan Asisten dapat melihat rekap presensi
       allow read: if isAuthenticated();
-      
-      // Praktikan hanya dapat mencatat presensi untuk dirinya sendiri (studentId == auth.uid)
-      // Asisten juga diizinkan jika melakukan presensi manual/override
+
+      // Praktikan hanya dapat membuat presensi miliknya dengan status hadir/terlambat
+      // dan tanpa fineId (tagihan hanya diterbitkan Cloud Functions).
+      // Asisten (asprak) dapat membuat presensi manual / izin.
       allow create: if isAuthenticated() && (
-        (isPraktikan() && request.resource.data.studentId == request.auth.uid) || isAsisten()
+        (isPraktikan()
+          && request.resource.data.studentId == request.auth.uid
+          && request.resource.data.attendanceStatus in ['hadir', 'terlambat']
+          && !('fineId' in request.resource.data))
+        || isAsisten()
       );
 
-      // Tidak mengizinkan modifikasi presensi yang sudah tercatat (anti-tamper)
-      // kecuali asisten jika perlu revisi
-      allow update, delete: if isAsisten();
+      // Client tidak boleh mengubah presensi yang sudah tercatat (anti-tamper).
+      allow update: if false;
+      // Hapus hanya untuk staf (dibutuhkan hapus-sesi yang ikut menghapus presensinya).
+      allow delete: if isAsisten() || p3IsAslab();
     }
 
     // -------------------------------------------------------------------------
@@ -108,7 +115,37 @@ service cloud.firestore {
     }
 
     // -------------------------------------------------------------------------
-    // 7. Koleksi Sistem / Health Check (untuk verifikasi koneksi)
+    // 7. ===== P3 ===== Koleksi keuangan Sprint 4 (fines, payments, payment_events)
+    // Seluruh penulisan HANYA lewat Admin SDK (Cloud Functions). Client hanya membaca.
+    // -------------------------------------------------------------------------
+    function p3IsAslab() {
+      return isAuthenticated() && getUserData().peran == 'aslab';
+    }
+
+    function p3ManagesCourse(courseId) {
+      return p3IsAslab() && courseId in getUserData().get('managedCourseIds', []);
+    }
+
+    match /fines/{fineId} {
+      allow read: if isAuthenticated() && (
+        resource.data.studentId == request.auth.uid || p3ManagesCourse(resource.data.courseId)
+      );
+      allow write: if false;
+    }
+
+    match /payments/{paymentId} {
+      allow read: if isAuthenticated() && (
+        resource.data.studentId == request.auth.uid || p3ManagesCourse(resource.data.courseId)
+      );
+      allow write: if false;
+    }
+
+    match /payment_events/{eventId} {
+      allow read, write: if false;
+    }
+
+    // -------------------------------------------------------------------------
+    // 8. Koleksi Sistem / Health Check (untuk verifikasi koneksi)
     // -------------------------------------------------------------------------
     match /system_health/{docId} {
       allow read, write: if isAuthenticated();

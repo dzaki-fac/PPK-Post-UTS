@@ -47,3 +47,13 @@ example
 # generated native folders
 /ios
 /android
+
+# backend secrets & build artifacts
+functions/node_modules/
+functions/lib/
+functions/.env
+functions/.env.*
+!functions/.env.example
+functions/.runtimeconfig.json
+*firebase-adminsdk*.json
+service-account*.json

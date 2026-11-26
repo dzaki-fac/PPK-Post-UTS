@@ -30,6 +30,10 @@ const EVENT_LABEL: Record<NotificationEventType, string> = {
   schedule_updated: 'Jadwal Diubah',
   leave_approved: 'Izin Disetujui',
   leave_rejected: 'Izin Ditolak',
+  fine_created: 'Tagihan Denda',
+  payment_success: 'Pembayaran Lunas',
+  payment_failed: 'Pembayaran Gagal',
+  payment_action_required: 'Lanjutkan Pembayaran',
 };
 
 const DELIVERY_LABEL: Record<NotificationDocument['deliveryStatus'], string> = {
@@ -39,6 +43,15 @@ const DELIVERY_LABEL: Record<NotificationDocument['deliveryStatus'], string> = {
 };
 
 function targetRoute(item: NotificationDocument): Href | null {
+  if (item.relatedFineId) return `/praktikan/tagihan/${item.relatedFineId}` as Href;
+  if (
+    item.eventType === 'fine_created' ||
+    item.eventType === 'payment_success' ||
+    item.eventType === 'payment_failed' ||
+    item.eventType === 'payment_action_required'
+  ) {
+    return '/praktikan/tagihan' as Href;
+  }
   if (item.relatedSessionId) return '/praktikan/jadwal' as Href;
   if (item.relatedLeaveId) return '/praktikan/pengajuan-izin' as Href;
   return null;
@@ -51,8 +64,18 @@ export default function NotifikasiScreen() {
   const [loading, setLoading] = useState(true);
   const [permission, setPermission] = useState<string>('unavailable');
   const device = useDeviceResilience();
-  const accent = role === 'asisten' ? '#0D9488' : '#EA580C';
-  const tint = role === 'asisten' ? '#F0FDFA' : '#FFF7ED';
+  const accent =
+    role === 'aslab'
+      ? '#4F46E5'
+      : role === 'asprak' || role === 'asisten'
+      ? '#0D9488'
+      : '#EA580C';
+  const tint =
+    role === 'aslab'
+      ? '#EEF2FF'
+      : role === 'asprak' || role === 'asisten'
+      ? '#F0FDFA'
+      : '#FFF7ED';
 
   const loadPermission = useCallback(async () => {
     setPermission(await getNotificationPermissionState());

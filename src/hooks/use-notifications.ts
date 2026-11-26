@@ -26,13 +26,22 @@ const ALLOWED_ROUTES = [
   '/praktikan/presensi',
   '/praktikan/peta-lab',
   '/praktikan/pengajuan-izin',
+  '/praktikan/tagihan',
+  '/praktikan/riwayat-pembayaran',
   '/notifikasi',
 ];
 
 function resolveRoute(data: Record<string, unknown> | undefined): Href | null {
   const candidate = typeof data?.url === 'string' ? data.url : data?.screen;
-  if (typeof candidate !== 'string' || !ALLOWED_ROUTES.includes(candidate)) return null;
-  return candidate as Href;
+  if (typeof candidate !== 'string') return null;
+  if (
+    ALLOWED_ROUTES.includes(candidate) ||
+    candidate.startsWith('/praktikan/tagihan/') ||
+    candidate.startsWith('/praktikan/pembayaran-hasil')
+  ) {
+    return candidate as Href;
+  }
+  return null;
 }
 
 export function useNotifications() {
@@ -107,6 +116,13 @@ export function useNotifications() {
             ? '/praktikan/presensi'
             : item.eventType === 'schedule_updated'
             ? '/praktikan/jadwal'
+            : item.eventType === 'fine_created' ||
+              item.eventType === 'payment_success' ||
+              item.eventType === 'payment_failed' ||
+              item.eventType === 'payment_action_required'
+            ? item.relatedFineId
+              ? `/praktikan/tagihan/${item.relatedFineId}`
+              : '/praktikan/tagihan'
             : '/praktikan/pengajuan-izin';
 
         void presentInstantPhoneNotificationAsync({
@@ -117,6 +133,8 @@ export function useNotifications() {
             eventType: item.eventType,
             ...(item.relatedSessionId ? { relatedSessionId: item.relatedSessionId } : {}),
             ...(item.relatedLeaveId ? { relatedLeaveId: item.relatedLeaveId } : {}),
+            ...(item.relatedFineId ? { relatedFineId: item.relatedFineId } : {}),
+            ...(item.relatedPaymentId ? { relatedPaymentId: item.relatedPaymentId } : {}),
           },
         });
       }

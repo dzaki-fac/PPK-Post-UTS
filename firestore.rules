@@ -18,7 +18,15 @@ service cloud.firestore {
     }
 
     function isAsisten() {
-      return isAuthenticated() && getUserData().peran == 'asisten';
+      return isAuthenticated() && (
+        getUserData().peran == 'asisten'
+        || getUserData().peran == 'asprak'
+        || getUserData().peran == 'aslab'
+      );
+    }
+
+    function isAslab() {
+      return isAuthenticated() && getUserData().peran == 'aslab';
     }
 
     function isPraktikan() {
@@ -56,14 +64,22 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       
       // Praktikan hanya dapat mencatat presensi untuk dirinya sendiri (studentId == auth.uid)
-      // Asisten juga diizinkan jika melakukan presensi manual/override
+      // dan tidak dapat memalsukan status izin atau menyisipkan fineId dari client
       allow create: if isAuthenticated() && (
-        (isPraktikan() && request.resource.data.studentId == request.auth.uid) || isAsisten()
+        (
+          isPraktikan()
+          && request.resource.data.studentId == request.auth.uid
+          && (
+            !('attendanceStatus' in request.resource.data)
+            || request.resource.data.attendanceStatus in ['hadir', 'terlambat']
+          )
+          && !('fineId' in request.resource.data)
+        )
+        || isAsisten()
       );
 
-      // Tidak mengizinkan modifikasi presensi yang sudah tercatat (anti-tamper)
-      // kecuali asisten jika perlu revisi
-      allow update, delete: if isAsisten();
+      // Client tidak boleh mengubah/menghapus dokumen presensi (rekonsiliasi melalui server Admin SDK)
+      allow update, delete: if false;
     }
 
     // -------------------------------------------------------------------------
@@ -112,6 +128,28 @@ service cloud.firestore {
     // -------------------------------------------------------------------------
     match /system_health/{docId} {
       allow read, write: if isAuthenticated();
+    }
+
+    // ===== P3 =====
+    // -------------------------------------------------------------------------
+    // 8. Koleksi Denda, Pembayaran, dan Event Webhook (Server-authoritative)
+    // -------------------------------------------------------------------------
+    match /fines/{fineId} {
+      allow read: if isAuthenticated() && (
+        resource.data.studentId == request.auth.uid || isAslab()
+      );
+      allow write: if false;
+    }
+
+    match /payments/{paymentId} {
+      allow read: if isAuthenticated() && (
+        resource.data.studentId == request.auth.uid || isAslab()
+      );
+      allow write: if false;
+    }
+
+    match /payment_events/{eventId} {
+      allow read, write: if false;
     }
   }
 }

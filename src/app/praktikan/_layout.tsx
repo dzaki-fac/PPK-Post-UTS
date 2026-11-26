@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RoleHeader } from '@/components/role-header';
 import {
   TabCalendarIcon,
+  TabBillIcon,
   TabCheckinIcon,
   TabDocumentIcon,
   TabHistoryIcon,
@@ -118,10 +119,41 @@ export default function PraktikanLayout() {
           }}
         />
         <Tabs.Screen
+          name="tagihan"
+          options={{
+            title: 'Tagihan Denda',
+            tabBarLabel: 'Tagihan',
+            tabBarIcon: ({ color, focused }) => (
+              <TabBillIcon color={color} focused={focused} />
+            ),
+          }}
+        />
+        <Tabs.Screen
           name="detail-sesi/[id]"
           options={{
             href: null,
             title: 'Detail Sesi',
+          }}
+        />
+        <Tabs.Screen
+          name="tagihan/[id]"
+          options={{
+            href: null,
+            title: 'Detail Tagihan',
+          }}
+        />
+        <Tabs.Screen
+          name="pembayaran-hasil"
+          options={{
+            href: null,
+            title: 'Status Pembayaran',
+          }}
+        />
+        <Tabs.Screen
+          name="riwayat-pembayaran"
+          options={{
+            href: null,
+            title: 'Riwayat Pembayaran',
           }}
         />
       </Tabs>

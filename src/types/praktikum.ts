@@ -1,13 +1,17 @@
-export type UserRole = 'praktikan' | 'asisten';
+export type UserRole = 'praktikan' | 'asprak' | 'aslab' | 'asisten';
+export type RawUserRole = UserRole;
 
 export interface UserDocument {
   uid: string;
   email: string;
   nama: string;
-  peran: UserRole;
+  peran: RawUserRole;
   nim?: string;
   kelas?: 'A' | 'B';
   peranLab?: string;
+  labId?: string;
+  labIds?: string[];
+  managedCourseIds?: string[];
   fcmToken?: string;
   fcmTokenUpdatedAt?: string;
   expoPushToken?: string;
@@ -17,13 +21,28 @@ export interface UserDocument {
   updatedAt: string;
 }
 
-/** Jenis peristiwa yang memicu notifikasi pada Sprint 3. */
+export interface CourseDocument {
+  id: string;
+  kode: string;
+  nama: string;
+  semester?: string;
+  aslabIds: string[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Jenis peristiwa yang memicu notifikasi pada Sprint 3 & Sprint 4. */
 export type NotificationEventType =
   | 'session_opened'
   | 'session_started'
   | 'schedule_updated'
   | 'leave_approved'
-  | 'leave_rejected';
+  | 'leave_rejected'
+  | 'fine_created'
+  | 'payment_success'
+  | 'payment_failed'
+  | 'payment_action_required';
 
 export type NotificationDeliveryStatus = 'sent' | 'failed' | 'in_app_only';
 
@@ -31,12 +50,14 @@ export type NotificationDeliveryStatus = 'sent' | 'failed' | 'in_app_only';
 export interface NotificationDocument {
   id: string;
   targetUserId: string;
-  targetRole: UserRole;
+  targetRole: RawUserRole;
   eventType: NotificationEventType;
   title: string;
   body: string;
   relatedSessionId?: string;
   relatedLeaveId?: string;
+  relatedFineId?: string;
+  relatedPaymentId?: string;
   isRead: boolean;
   deliveryStatus: NotificationDeliveryStatus;
   createdAt: string;
@@ -57,6 +78,56 @@ export interface LabLocationDocument {
   updatedBy?: string;
   createdAt: string;
   updatedAt: string;
+  courseId?: string;
+  courseNama?: string;
+  kelas?: string;
+  kapasitas?: number;
+  graceMinutes?: number;
+  fineAmount?: number;
+}
+
+export interface LabMemberDocument {
+  id: string;
+  courseId: string;
+  labId: string;
+  role: 'praktikan' | 'asprak';
+  nim?: string;
+  nama: string;
+  email: string;
+  emailLower: string;
+  uid?: string | null;
+  status: 'active' | 'removed';
+  importBatchId?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LabTransferDocument {
+  id: string;
+  memberId: string;
+  role: 'praktikan' | 'asprak';
+  fromLabId: string;
+  toLabId: string;
+  courseId: string;
+  movedBy: string;
+  reason?: string;
+  createdAt: string;
+}
+
+export interface ImportBatchDocument {
+  id: string;
+  type: 'lab' | 'praktikan' | 'asprak';
+  courseId: string;
+  targetLabId?: string;
+  fileName?: string;
+  totalRows: number;
+  acceptedRows: number;
+  deniedRows: number;
+  savedRows: number;
+  failedRows: number;
+  createdBy: string;
+  createdAt: string;
 }
 
 export type LocationReadinessStatus =
@@ -115,8 +186,12 @@ export interface SessionDocument {
   kodeSesi: string;
   createdBy: string;
   labId?: string;
+  courseId?: string;
   radiusOverride?: number;
+  graceMinutesOverride?: number;
   qrPayload?: string;
+  startAt?: string;
+  startedAt?: string;
   openedAt?: string;
   closedAt?: string;
   createdAt: string;
@@ -132,6 +207,17 @@ export interface LabWithActivity {
   isUserInsideRadius?: boolean;
 }
 
+export type AttendanceStatus = 'hadir' | 'terlambat' | 'izin';
+
+export interface AttendanceLatenessInfo {
+  baselineAt: string;
+  graceMinutes: number;
+  deadlineAt: string;
+  minutesAfterStart: number;
+  isLate: boolean;
+  evaluatedBy: 'client' | 'server';
+}
+
 export interface AttendanceDocument {
   id: string;
   sessionId: string;
@@ -145,8 +231,84 @@ export interface AttendanceDocument {
   deviceInfo?: string;
   verifiedByCode: boolean;
   verifiedByLocation: boolean;
-  verificationMethod: 'code-location' | 'qr-location';
+  verificationMethod: 'code-location' | 'qr-location' | 'manual-asprak' | 'leave-approved';
   locationSnapshot?: AttendanceLocationSnapshot;
+  attendanceStatus?: AttendanceStatus;
+  checkedInAt?: unknown;
+  lateness?: AttendanceLatenessInfo;
+  fineId?: string;
+  excusedByLeaveId?: string;
+  manualEntry?: {
+    by: string;
+    note: string;
+    at: string;
+  };
+}
+
+export type FineStatus = 'unpaid' | 'pending' | 'paid';
+
+export interface FineDocument {
+  id: string;
+  invoiceNumber: string;
+  studentId: string;
+  studentName: string;
+  studentNim?: string;
+  sessionId: string;
+  attendanceId: string;
+  labId: string;
+  courseId: string;
+  praktikum: string;
+  sessionDate: string;
+  lateMinutes: number;
+  graceMinutes: number;
+  amount: number;
+  currency: 'IDR';
+  status: FineStatus;
+  activePaymentId?: string;
+  paymentAttempts: number;
+  paidAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type PaymentStatus = 'pending' | 'success' | 'failed';
+
+export interface PaymentDocument {
+  id: string;
+  fineId: string;
+  invoiceNumber: string;
+  attempt: number;
+  studentId: string;
+  sessionId: string;
+  attendanceId: string;
+  courseId: string;
+  labId: string;
+  praktikum: string;
+  amount: number;
+  status: PaymentStatus;
+  midtransStatus?: string;
+  fraudStatus?: string;
+  paymentType?: string;
+  transactionId?: string;
+  snapToken: string;
+  redirectUrl: string;
+  expiresAt: string;
+  settledAt?: string;
+  failureReason?: string;
+  lastWebhookAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaymentEventDocument {
+  id: string;
+  orderId: string;
+  signatureValid: boolean;
+  transactionStatus?: string;
+  statusCode?: string;
+  grossAmount?: string;
+  processed: boolean;
+  receivedAt: string;
 }
 
 export type Praktikan = {
@@ -187,4 +349,6 @@ export type Presensi = {
 
 export type RiwayatItem = Presensi & {
   sesi?: Sesi;
+  attendanceStatus?: AttendanceStatus;
+  fineId?: string;
 };

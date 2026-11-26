@@ -13,6 +13,7 @@ import {
   TabUsersIcon,
 } from '@/components/tab-icons';
 import { useAuth } from '@/context/auth-context';
+import { getHomeRouteByRole } from '@/utils/role';
 
 export default function AsistenLayout() {
   const { user, userDoc, loading, role } = useAuth();
@@ -31,8 +32,8 @@ export default function AsistenLayout() {
     return <Redirect href={'/login' as Href} />;
   }
 
-  if (role !== 'asisten') {
-    return <Redirect href={'/praktikan/jadwal' as Href} />;
+  if (role !== 'asprak') {
+    return <Redirect href={getHomeRouteByRole(role)} />;
   }
 
   const bottomPadding = Platform.OS === 'web' ? 8 : Math.max(insets.bottom, 14) + 8;

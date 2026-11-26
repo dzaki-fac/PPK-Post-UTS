@@ -15,10 +15,31 @@ export const Colors = {
   tint: '#EA580C',
   tintSecondary: '#0D9488',
   tintTertiary: '#EAB308',
+  aslabAccent: '#4F46E5',
+  aslabTint: '#EEF2FF',
+  aslabBorder: '#C7D2FE',
   success: '#16A34A',
   warning: '#EAB308',
   error: '#DC2626',
   info: '#0D9488',
+} as const;
+
+export const RoleThemeColors = {
+  praktikan: {
+    accent: '#EA580C',
+    tint: '#FFF7ED',
+    border: '#FFEDD5',
+  },
+  asprak: {
+    accent: '#0D9488',
+    tint: '#F0FDFA',
+    border: '#CCFBF1',
+  },
+  aslab: {
+    accent: '#4F46E5',
+    tint: '#EEF2FF',
+    border: '#C7D2FE',
+  },
 } as const;
 
 export type ThemeColor = keyof typeof Colors;

@@ -54,7 +54,7 @@ interface RosterRow {
   hadir: boolean;
   waktuHadir?: string;
   distanceMeters?: number;
-  verificationMethod?: 'code-location' | 'qr-location';
+  verificationMethod?: AttendanceDocument['verificationMethod'];
   leaveStatus?: 'menunggu' | 'disetujui' | 'ditolak';
   aiCategory?: string;
   aiConfidence?: number;

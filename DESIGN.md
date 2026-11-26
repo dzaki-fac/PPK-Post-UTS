@@ -231,3 +231,42 @@ Untuk menjaga alur aplikasi mengalir mulus tanpa jalan buntu:
 3. **DILARANG menggunakan lebar container tetap (*fixed width*):** Gunakan Flexbox dengan `width: '100%'`, `maxWidth: 960`, dan `alignSelf: 'center'`.
 4. **DILARANG menggunakan bayangan berlebih (*muddy shadows*):** Gunakan border tipis `#E2E8F0` dengan elevasi halus (`elevation: 1–2`).
 5. **DILARANG mengabaikan status kosong (*empty states*):** Setiap FlatList wajib memiliki `ListEmptyComponent` berupa `EmptyState` terstruktur.
+
+---
+
+## 9. Sprint 4 — Peran Ketiga, Status Baru & Blueprint Tambahan
+
+### 9.1 Token Identitas Peran (tambahan)
+| Portal | Primary | Tint | Border | Kegunaan |
+|---|---|---|---|---|
+| Praktikan | `#EA580C` | `#FFF7ED` | `#FED7AA` | Jadwal, presensi, tagihan, riwayat pembayaran |
+| Asprak (`/asisten/*`, rute legacy) | `#0D9488` | `#F0FDFA` | `#99F6E4` | Sesi, roster presensi, moderasi izin, Kelas Saya |
+| **Aslab (`/aslab/*`)** | `#4F46E5` | `#EEF2FF` | `#C7D2FE` | Dashboard, laboratorium, anggota, impor, jadwal |
+
+Kontras Aslab terhadap putih 6.3:1 (WCAG AA). `RoleHeader` menampilkan pill `PRAKTIKAN` / `ASPRAK` / `ASLAB` dengan warna sesuai peran.
+
+### 9.2 Badge Status Semantik Tambahan
+| Status | Teks | Warna teks | Latar | Border |
+|---|---|---|---|---|
+| Hadir / Lunas / Valid | Hijau | `#15803D` | `#DCFCE7` | `#86EFAC` |
+| Terlambat / Menunggu / Perlu Dilengkapi | Amber | `#B45309` | `#FEF3C7` | `#FDE68A` |
+| Belum Dibayar / Gagal / Ditolak / Di Luar Radius | Merah | `#B91C1C` | `#FEE2E2` | `#FCA5A5` |
+| Izin / Informasi / Sesi Berikutnya | Biru | `#1D4ED8` | `#DBEAFE` | `#93C5FD` |
+| Belum Hadir / Netral | Slate | `#475569` | `#F1F5F9` | `#E2E8F0` |
+
+Dilarang mengubah makna status: **Izin tidak pernah dihitung sebagai hadir**.
+
+### 9.3 Blueprint Layar Baru
+1. **`/` (Landing 3 portal):** kartu Praktikan/Asprak/Aslab, masing-masing primary+tint+border sesuai token; tombol "Lanjut ke Portal Saya".
+2. **`/aslab/dashboard`:** breadcrumb, judul + periode, `MetricsGrid` (Total Lab, Praktikan, Asprak, Sesi Berlangsung), segmented `Hari | Minggu | Bulan` + navigasi `← →`, status tiap lab (Berlangsung/Terjadwal/Tidak Ada Kegiatan + progress kehadiran), Sedang Berlangsung, Akan Datang, Riwayat Kegiatan, Riwayat Keuangan.
+3. **`/aslab/jadwal`:** CRUD sesi dengan `labId` wajib; tanggal `YYYY-MM-DD`, jam `HH:mm`; `startAt` dihitung otomatis (WIB → UTC); notifikasi perubahan jadwal tetap aktif.
+4. **`/aslab/peta-lab`:** peta Sprint 3 dengan aksen Indigo `#4F46E5`.
+5. **`/asisten/detail-sesi/[id]`:** roster empat status (Hadir, Terlambat, Izin, Belum Hadir), metrik kehadiran, tombol **Catat Hadir** untuk presensi manual (catatan wajib), dan **tanpa** kontrol edit/hapus sesi.
+6. **`/asisten/mahasiswa` → "Kelas Saya":** daftar anggota lab yang diampu, **baca saja** (tanpa form CRUD).
+
+### 9.4 Pola Daftar Tinjauan Impor
+Setiap baris impor adalah kartu `FlatList` dengan nomor baris, ringkasan, badge validasi, edit inline, tombol Terima/Tolak, Hapus/Duplikasi; aksi massal (Terima Semua Valid, Tolak Semua Error, Isi Kolom Kosong) dan panel ringkasan sticky. Gunakan `EmptyState` saat daftar kosong dan simbol geometris, bukan emoji.
+
+### 9.5 Format & Audit
+- Mata uang: `Rp 10.000` (`Intl.NumberFormat('id-ID')`); waktu: WIB (`Asia/Jakarta`, UTC+7).
+- Audit akhir: cari emoji pada `src`, periksa `maxWidth: 960`, `minHeight: 44`, `ListEmptyComponent` di semua daftar, dan konsistensi `MetricsGrid`/`EmptyState`/breadcrumb.

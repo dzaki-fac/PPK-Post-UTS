@@ -12,6 +12,12 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useAuth } from '@/context/auth-context';
+import type { LeaveMarker, RosterStudent } from '@/services/attendance-admin-service';
+import type { Sprint4AttendanceDocument } from '@/types/sprint4-p2';
+import { getUserLabIds, normalizeRoleP2 } from '@/utils/sprint4-p2-helpers';
+
+import { AttendanceRoster } from '@/components/attendance-roster';
 import { ConfirmationModal } from '@/components/confirmation-modal';
 import { EmptyState } from '@/components/empty-state';
 import { SessionQRCode } from '@/components/session-qr-code';
@@ -28,7 +34,6 @@ import {
   subscribeLabs,
 } from '@/services/lab-service';
 import { LeaveRequestDocument, subscribeLeaveRequests } from '@/services/leave-service';
-import { formatDistanceMeters } from '@/services/location-service';
 import {
   deleteSession,
   subscribeSessionById,
@@ -43,7 +48,6 @@ import {
 } from '@/types/praktikum';
 import { buildSessionQrPayload } from '@/utils/qr-payload';
 
-type KehadiranFilter = 'semua' | 'hadir' | 'izin' | 'belum-hadir';
 type ModalAction = 'buka' | 'tutup' | 'buka-kembali' | 'hapus';
 
 interface RosterRow {
@@ -65,6 +69,10 @@ export default function DetailSesiAsistenScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const sessionId = Array.isArray(id) ? id[0] : id;
+  const { userDoc } = useAuth();
+  // Sprint 4 FR-P2-03.1: Asprak hanya boleh membuka sesi pada lab yang diampu.
+  const labIds = useMemo(() => getUserLabIds(userDoc), [userDoc]);
+  const canManage = normalizeRoleP2(userDoc?.peran) !== 'asprak';
 
   const [sesi, setSesi] = useState<SessionDocument | null>(null);
   const [labs, setLabs] = useState<LabLocationDocument[]>([]);
@@ -77,7 +85,6 @@ export default function DetailSesiAsistenScreen() {
   const [modalAction, setModalAction] = useState<ModalAction | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
-  const [filterKehadiran, setFilterKehadiran] = useState<KehadiranFilter>('semua');
 
   // Edit Modal State
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
@@ -136,6 +143,11 @@ export default function DetailSesiAsistenScreen() {
       unsubLeaves();
     };
   }, [sessionId]);
+
+  const aksesDitolak = !!sesi?.labId && labIds.length > 0 && !labIds.includes(sesi.labId);
+  useEffect(() => {
+    if (!loadingSession && aksesDitolak) router.replace('/asisten/jadwal');
+  }, [aksesDitolak, loadingSession]);
 
   const mahasiswaKelas = useMemo(() => {
     if (!sesi) return [];
@@ -200,18 +212,27 @@ export default function DetailSesiAsistenScreen() {
     return rows;
   }, [mahasiswaKelas, presensiSesi, sessionLeaves]);
 
-  const filteredDaftar = useMemo(() => {
-    if (filterKehadiran === 'hadir') {
-      return daftarStatusPraktikan.filter((d) => d.hadir);
-    }
-    if (filterKehadiran === 'izin') {
-      return daftarStatusPraktikan.filter((d) => Boolean(d.leaveStatus));
-    }
-    if (filterKehadiran === 'belum-hadir') {
-      return daftarStatusPraktikan.filter((d) => !d.hadir && !d.leaveStatus);
-    }
-    return daftarStatusPraktikan;
-  }, [daftarStatusPraktikan, filterKehadiran]);
+  const rosterStudents = useMemo<RosterStudent[]>(
+    () =>
+      daftarStatusPraktikan.map((row) => ({
+        id: row.id,
+        nama: row.nama,
+        nim: row.nim,
+        kelas: row.kelas,
+      })),
+    [daftarStatusPraktikan]
+  );
+  const rosterLeaves = useMemo<LeaveMarker[]>(
+    () =>
+      sessionLeaves
+        .filter((leave) => leave.status === 'disetujui')
+        .map((leave) => ({
+          studentId: leave.studentId,
+          studentName: leave.studentName,
+          alasan: leave.alasan,
+        })),
+    [sessionLeaves]
+  );
 
   const totalHadir = presensiSesi.length;
   const totalIzin = daftarStatusPraktikan.filter((d) => d.leaveStatus === 'disetujui').length;
@@ -267,6 +288,19 @@ export default function DetailSesiAsistenScreen() {
         <EmptyState
           title="Sesi Tidak Ditemukan"
           message="Sesi praktikum yang Anda cari tidak terdaftar dalam jadwal Firestore."
+          actionText="Kembali ke Jadwal"
+          onAction={handleBack}
+        />
+      </View>
+    );
+  }
+
+  if (aksesDitolak) {
+    return (
+      <View style={styles.container}>
+        <EmptyState
+          title="Akses Ditolak"
+          message="Anda tidak mengampu laboratorium pada sesi ini."
           actionText="Kembali ke Jadwal"
           onAction={handleBack}
         />
@@ -559,27 +593,31 @@ export default function DetailSesiAsistenScreen() {
               </View>
             )}
 
-            {/* Secondary Controls: Edit & Hapus Sesi */}
-            <View style={styles.secondaryDivider} />
-            <View style={styles.secondaryControlsRow}>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.secondaryActionBtn,
-                  pressed && styles.buttonPressed,
-                ]}
-                onPress={handleOpenEdit}>
-                <Text style={styles.secondaryActionBtnText}>Edit Informasi Sesi</Text>
-              </Pressable>
+            {/* Sprint 4: edit/hapus sesi hanya untuk Aslab, bukan Asprak. */}
+            {canManage && (
+              <>
+                <View style={styles.secondaryDivider} />
+                <View style={styles.secondaryControlsRow}>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.secondaryActionBtn,
+                      pressed && styles.buttonPressed,
+                    ]}
+                    onPress={handleOpenEdit}>
+                    <Text style={styles.secondaryActionBtnText}>Edit Informasi Sesi</Text>
+                  </Pressable>
 
-              <Pressable
-                style={({ pressed }) => [
-                  styles.dangerOutlineBtn,
-                  pressed && styles.buttonPressed,
-                ]}
-                onPress={() => setModalAction('hapus')}>
-                <Text style={styles.dangerOutlineBtnText}>Hapus Sesi</Text>
-              </Pressable>
-            </View>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.dangerOutlineBtn,
+                      pressed && styles.buttonPressed,
+                    ]}
+                    onPress={() => setModalAction('hapus')}>
+                    <Text style={styles.dangerOutlineBtnText}>Hapus Sesi</Text>
+                  </Pressable>
+                </View>
+              </>
+            )}
           </View>
 
           {/* Attendance Roster Section (FR-5.1, FR-5.3) */}
@@ -612,146 +650,16 @@ export default function DetailSesiAsistenScreen() {
               </Pressable>
             )}
 
-            {/* Filter Tabs for Roster */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filterTabsRow}>
-              <Pressable
-                style={[
-                  styles.filterTab,
-                  filterKehadiran === 'semua' && styles.filterTabActive,
-                ]}
-                onPress={() => setFilterKehadiran('semua')}>
-                <Text
-                  style={[
-                    styles.filterTabText,
-                    filterKehadiran === 'semua' && styles.filterTabTextActive,
-                  ]}>
-                  Semua ({totalMahasiswa})
-                </Text>
-              </Pressable>
-
-              <Pressable
-                style={[
-                  styles.filterTab,
-                  filterKehadiran === 'hadir' && styles.filterTabActive,
-                ]}
-                onPress={() => setFilterKehadiran('hadir')}>
-                <Text
-                  style={[
-                    styles.filterTabText,
-                    filterKehadiran === 'hadir' && styles.filterTabTextActive,
-                  ]}>
-                  Hadir ({totalHadir})
-                </Text>
-              </Pressable>
-
-              <Pressable
-                style={[
-                  styles.filterTab,
-                  filterKehadiran === 'izin' && styles.filterTabActive,
-                ]}
-                onPress={() => setFilterKehadiran('izin')}>
-                <Text
-                  style={[
-                    styles.filterTabText,
-                    filterKehadiran === 'izin' && styles.filterTabTextActive,
-                  ]}>
-                  Izin ({sessionLeaves.length})
-                </Text>
-              </Pressable>
-
-              <Pressable
-                style={[
-                  styles.filterTab,
-                  filterKehadiran === 'belum-hadir' && styles.filterTabActive,
-                ]}
-                onPress={() => setFilterKehadiran('belum-hadir')}>
-                <Text
-                  style={[
-                    styles.filterTabText,
-                    filterKehadiran === 'belum-hadir' && styles.filterTabTextActive,
-                  ]}>
-                  Belum Hadir ({Math.max(0, totalMahasiswa - totalHadir - totalIzin)})
-                </Text>
-              </Pressable>
-            </ScrollView>
-
-            {/* Student List */}
-            {filteredDaftar.length === 0 ? (
-              <View style={styles.emptyRosterWrap}>
-                <Text style={styles.emptyRosterText}>
-                  {totalMahasiswa === 0
-                    ? 'Belum ada mahasiswa terdaftar pada kelas ini.'
-                    : filterKehadiran === 'hadir'
-                    ? 'Belum ada mahasiswa yang mencatat kehadiran.'
-                    : filterKehadiran === 'izin'
-                    ? 'Tidak ada permohonan izin untuk sesi praktikum ini.'
-                    : 'Semua mahasiswa telah hadir.'}
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.studentList}>
-                {filteredDaftar.map((item) => (
-                  <View key={item.id} style={styles.studentRow}>
-                    <View style={styles.studentAvatar}>
-                      <Text style={styles.studentAvatarText}>
-                        {item.nama.charAt(0)}
-                      </Text>
-                    </View>
-                    <View style={styles.studentMeta}>
-                      <Text style={styles.studentName}>{item.nama}</Text>
-                      <Text style={styles.studentSub}>
-                        NIM: {item.nim} • Kelas {item.kelas}
-                      </Text>
-                    </View>
-                    <View style={styles.studentStatusWrap}>
-                      {item.hadir ? (
-                        <View style={styles.hadirBadge}>
-                          <Text style={styles.hadirBadgeText}>Hadir</Text>
-                          {item.waktuHadir ? (
-                            <Text style={styles.hadirTimeText}>
-                              {item.waktuHadir.includes(',')
-                                ? item.waktuHadir.split(',')[1]?.trim()
-                                : item.waktuHadir}
-                            </Text>
-                          ) : null}
-                          {item.distanceMeters !== undefined ? (
-                            <Text style={styles.hadirGeoText}>
-                              {formatDistanceMeters(item.distanceMeters)} •{' '}
-                              {item.verificationMethod === 'qr-location' ? 'QR+GPS' : 'GPS'}
-                            </Text>
-                          ) : null}
-                        </View>
-                      ) : item.leaveStatus === 'disetujui' ? (
-                        <View style={styles.izinBadge}>
-                          <Text style={styles.izinBadgeText}>Izin Disetujui</Text>
-                          {item.aiCategory ? (
-                            <Text style={styles.izinAiSubText}>AI: {item.aiCategory}</Text>
-                          ) : null}
-                        </View>
-                      ) : item.leaveStatus === 'menunggu' ? (
-                        <Pressable
-                          onPress={() => router.push('/asisten/moderasi-izin')}
-                          style={styles.izinMenungguBadge}>
-                          <Text style={styles.izinMenungguBadgeText}>Menunggu Izin</Text>
-                          {item.aiCategory ? (
-                            <Text style={styles.izinAiSubText}>AI: {item.aiCategory}</Text>
-                          ) : null}
-                        </Pressable>
-                      ) : (
-                        <View style={styles.belumHadirBadge}>
-                          <Text style={styles.belumHadirBadgeText}>
-                            {item.leaveStatus === 'ditolak' ? 'Belum Hadir (Izin Ditolak)' : 'Belum Hadir'}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                ))}
-              </View>
-            )}
+            {/* Sprint 4 FR-P2-04: roster empat status + presensi manual oleh asprak. */}
+            <AttendanceRoster
+              sessionId={sessionId}
+              students={rosterStudents}
+              attendances={presensiSesi as unknown as Sprint4AttendanceDocument[]}
+              approvedLeaves={rosterLeaves}
+              canManage={normalizeRoleP2(userDoc?.peran) === 'asprak'}
+              asprakUid={userDoc?.uid ?? 'asprak'}
+              onRosterChange={() => setActionLoading((value) => !value)}
+            />
           </View>
         </View>
       </ScrollView>

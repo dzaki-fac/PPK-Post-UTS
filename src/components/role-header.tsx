@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ConfirmationModal } from '@/components/confirmation-modal';
 import { useAuth } from '@/context/auth-context';
-import { getDefaultRouteForRole, getRoleAccentColors } from '@/utils/role';
+import { getManagedCourseIds, getUserLabIds, normalizeRoleP2 } from '@/utils/sprint4-p2-helpers';
 
 export function RoleHeader() {
   const insets = useSafeAreaInsets();
@@ -19,19 +19,43 @@ export function RoleHeader() {
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
-  const isPraktikan = role === 'praktikan';
-  const isAslab = role === 'aslab';
-  const roleColors = getRoleAccentColors(role);
+  // Sprint 4: tiga peran. Legacy 'asisten' dinormalisasi menjadi 'asprak'.
+  const peran = normalizeRoleP2(userDoc?.peran ?? role);
+  const isPraktikan = peran === 'praktikan';
+  const isAslab = peran === 'aslab';
   const name = userDoc?.nama ?? (isPraktikan ? 'Praktikan' : isAslab ? 'Aslab' : 'Asprak');
   const subInfo = isPraktikan
     ? `Kelas ${userDoc?.kelas ?? '-'}`
     : isAslab
-      ? 'Koordinator Lab'
-      : 'Asisten Praktikum';
+      ? `${getManagedCourseIds(userDoc).length} mata kuliah`
+      : `${getUserLabIds(userDoc).length} lab diampu`;
 
   const fullSubInfo = isPraktikan
-    ? `Kelas ${userDoc?.kelas ?? '-'}`
-    : userDoc?.peranLab ?? (isAslab ? 'Koordinator Laboratorium' : 'Pengampu Lab Komputasi');
+    ? `Kelas ${userDoc?.kelas ?? '-'} · NIM ${userDoc?.nim ?? '-'}`
+    : isAslab
+      ? `Aslab · ${getManagedCourseIds(userDoc).length} mata kuliah dikelola`
+      : userDoc?.peranLab ?? `Asprak · ${getUserLabIds(userDoc).length} laboratorium`;
+
+  const homeRoute: Href = isPraktikan
+    ? ('/praktikan/jadwal' as Href)
+    : isAslab
+      ? ('/aslab/dashboard' as Href)
+      : ('/asisten/jadwal' as Href);
+  const rolePillStyle = isPraktikan
+    ? styles.userPillPraktikan
+    : isAslab
+      ? styles.userPillAslab
+      : styles.userPillAsisten;
+  const roleBadgeStyle = isPraktikan
+    ? styles.roleMiniPraktikan
+    : isAslab
+      ? styles.roleMiniAslab
+      : styles.roleMiniAsisten;
+  const roleTextStyle = isPraktikan
+    ? styles.textPraktikan
+    : isAslab
+      ? styles.textAslab
+      : styles.textAsisten;
 
   const handleConfirmLogout = async () => {
     setLoggingOut(true);
@@ -57,9 +81,7 @@ export function RoleHeader() {
         {/* Brand Group */}
         <Pressable
           style={({ pressed }) => [styles.brandRow, pressed && styles.btnPressed]}
-          onPress={() =>
-            router.replace(getDefaultRouteForRole(role ?? 'praktikan'))
-          }
+          onPress={() => router.replace(homeRoute)}
           accessibilityRole="button"
           accessibilityLabel="PPK LabPortal Beranda">
           <View style={styles.logoBadge}>
@@ -75,25 +97,10 @@ export function RoleHeader() {
 
         {/* Right Group: User Profile Badge & Logout Button */}
         <View style={styles.rightGroup}>
-          <View
-            style={[
-              styles.userPill,
-              {
-                backgroundColor: roleColors.tint,
-                borderColor: roleColors.border,
-              },
-            ]}>
-            <View
-              style={[
-                styles.roleMiniBadge,
-                { backgroundColor: roleColors.border },
-              ]}>
-              <Text
-                style={[
-                  styles.roleMiniText,
-                  { color: roleColors.accent },
-                ]}>
-                {roleColors.badgeText}
+          <View style={[styles.userPill, rolePillStyle]}>
+            <View style={[styles.roleMiniBadge, roleBadgeStyle]}>
+              <Text style={[styles.roleMiniText, roleTextStyle]}>
+                {isPraktikan ? 'PRAKTIKAN' : isAslab ? 'ASLAB' : 'ASPRAK'}
               </Text>
             </View>
             <View style={styles.userInfoWrap}>
@@ -226,6 +233,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0FDFA',
     borderColor: '#99F6E4',
   },
+  userPillAslab: {
+    backgroundColor: '#EEF2FF',
+    borderColor: '#C7D2FE',
+  },
   userInfoWrap: {
     gap: 0.5,
     flexShrink: 1,
@@ -253,6 +264,9 @@ const styles = StyleSheet.create({
   roleMiniAsisten: {
     backgroundColor: '#99F6E4',
   },
+  roleMiniAslab: {
+    backgroundColor: '#C7D2FE',
+  },
   roleMiniText: {
     fontSize: 7.5,
     fontWeight: '800',
@@ -263,6 +277,9 @@ const styles = StyleSheet.create({
   },
   textAsisten: {
     color: '#0F766E',
+  },
+  textAslab: {
+    color: '#3730A3',
   },
   logoutBtn: {
     height: 28,

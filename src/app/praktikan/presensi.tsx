@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 
 import { ConfirmationModal } from '@/components/confirmation-modal';
+import { AttendanceStatusPanel } from '@/components/attendance-status-panel';
 import { EmptyState } from '@/components/empty-state';
 import { LocationStatusCard } from '@/components/location-status-card';
 import { StatusBadge } from '@/components/status-badge';
@@ -539,6 +540,8 @@ export default function PraktikanPresensiScreen() {
               <Text style={styles.verifiedSub}>
                 Kehadiran tercatat pada {attendanceRecord?.waktuKehadiran ?? '-'}
               </Text>
+
+              <AttendanceStatusPanel attendance={attendanceRecord} />
 
               {attendanceRecord?.locationSnapshot ? (
                 <View style={styles.snapshotBox}>

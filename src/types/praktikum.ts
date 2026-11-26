@@ -1,3 +1,8 @@
+import type {
+  AttendanceLateness,
+  AttendanceStatus as FinanceAttendanceStatus,
+} from './finance';
+
 export type UserRole = 'praktikan' | 'asprak' | 'aslab';
 export type RawUserRole = UserRole | 'asisten';
 
@@ -25,7 +30,7 @@ export interface UserDocument {
   updatedAt: string;
 }
 
-/** Jenis peristiwa yang memicu notifikasi pada Sprint 3 & Sprint 4. */
+/** Jenis peristiwa yang memicu notifikasi (Sprint 3 + Sprint 4: lab, tagihan, pembayaran). */
 export type NotificationEventType =
   | 'session_opened'
   | 'session_started'
@@ -36,7 +41,11 @@ export type NotificationEventType =
   | 'payment_uploaded'
   | 'payment_verified'
   | 'payment_rejected'
-  | 'lab_transferred';
+  | 'lab_transferred'
+  | 'fine_created'
+  | 'payment_success'
+  | 'payment_failed'
+  | 'payment_action_required';
 
 export type NotificationDeliveryStatus = 'sent' | 'failed' | 'in_app_only';
 
@@ -219,6 +228,12 @@ export interface SessionDocument {
   labId?: string;
   radiusOverride?: number;
   qrPayload?: string;
+  /** Sprint 4: instant mulai terjadwal (ISO UTC, dihitung dari tanggal + waktuMulai WIB). */
+  startAt?: string;
+  /** Sprint 4: waktu PERTAMA sesi dibuka; diisi sekali dan tidak pernah ditimpa. */
+  startedAt?: string;
+  /** Sprint 4: toleransi keterlambatan khusus sesi ini (menimpa lab.graceMinutes). */
+  graceMinutesOverride?: number;
   openedAt?: string;
   closedAt?: string;
   createdAt: string;
@@ -262,7 +277,7 @@ export interface AttendanceDocument {
   verifiedByLocation: boolean;
   verificationMethod: 'code-location' | 'qr-location';
   locationSnapshot?: AttendanceLocationSnapshot;
-  // Sprint 4 additions
+  // Sprint 4 (P1)
   sesiId?: string;
   sesiJudul?: string;
   courseId?: string;
@@ -276,13 +291,19 @@ export interface AttendanceDocument {
   waktuCheckIn?: string;
   waktuCheckOut?: string;
   lateMinutes?: number;
-  fineId?: string;
   fineAmount?: number;
   jarakMeter?: number;
   latitude?: number;
   longitude?: number;
   qrToken?: string;
   createdAt?: string;
+  // Sprint 4 (P3, dari main)
+  /** hadir | terlambat | izin. Dokumen lama tanpa field dibaca sebagai 'hadir'. */
+  attendanceStatus?: FinanceAttendanceStatus;
+  /** Hasil evaluasi keterlambatan (final bila evaluatedBy == 'server'). */
+  lateness?: AttendanceLateness;
+  /** Terisi backend bila status 'terlambat'. */
+  fineId?: string;
 }
 
 export interface FineDocument {

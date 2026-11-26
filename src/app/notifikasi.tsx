@@ -30,11 +30,17 @@ const EVENT_LABEL: Record<NotificationEventType, string> = {
   schedule_updated: 'Jadwal Diubah',
   leave_approved: 'Izin Disetujui',
   leave_rejected: 'Izin Ditolak',
+  // dari branch kamu (P1)
   fine_issued: 'Denda Terbit',
   payment_uploaded: 'Bukti Diunggah',
   payment_verified: 'Pembayaran Sah',
   payment_rejected: 'Bukti Ditolak',
   lab_transferred: 'Pindah Lab',
+  // dari main (P3)
+  fine_created: 'Tagihan Denda',
+  payment_success: 'Pembayaran Berhasil',
+  payment_failed: 'Pembayaran Gagal',
+  payment_action_required: 'Selesaikan Pembayaran',
 };
 
 const DELIVERY_LABEL: Record<NotificationDocument['deliveryStatus'], string> = {
@@ -44,6 +50,8 @@ const DELIVERY_LABEL: Record<NotificationDocument['deliveryStatus'], string> = {
 };
 
 function targetRoute(item: NotificationDocument): Href | null {
+  if (item.relatedFineId) return `/praktikan/tagihan/${item.relatedFineId}` as Href;
+  if (item.relatedPaymentId) return '/praktikan/riwayat-pembayaran' as Href;
   if (item.relatedSessionId) return '/praktikan/jadwal' as Href;
   if (item.relatedLeaveId) return '/praktikan/pengajuan-izin' as Href;
   return null;
@@ -197,7 +205,7 @@ export default function NotifikasiScreen() {
             loading ? null : (
               <EmptyState
                 title="Belum Ada Notifikasi"
-                message="Pemberitahuan sesi dibuka, perubahan jadwal, dan keputusan izin akan tampil di sini."
+                message="Pemberitahuan sesi dibuka, perubahan jadwal, keputusan izin, serta tagihan dan pembayaran denda akan tampil di sini."
               />
             )
           }

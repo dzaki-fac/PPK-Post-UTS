@@ -15,6 +15,7 @@ import {
 
 import { db } from '@/lib/firebase';
 import { SessionDocument, SessionStatus } from '@/types/praktikum';
+import { parseWibDateTime } from '@/utils/sprint4-p2-helpers';
 import { buildSessionQrPayload } from '@/utils/qr-payload';
 import { notifyScheduleChanged, notifySessionOpened } from './notification-service';
 
@@ -34,6 +35,10 @@ export interface CreateSessionInput {
   kodeSesi?: string;
   labId?: string;
   radiusOverride?: number;
+  /** Sprint 4: relasi mata kuliah (wajib untuk sesi baru). */
+  courseId?: string;
+  /** Sprint 4: toleransi khusus sesi yang menimpa lab.graceMinutes. */
+  graceMinutesOverride?: number;
 }
 
 export type UpdateSessionInput = Partial<
@@ -50,6 +55,8 @@ export type UpdateSessionInput = Partial<
   >
 > & {
   radiusOverride?: number | null;
+  courseId?: string;
+  graceMinutesOverride?: number | null;
 };
 
 /**
@@ -149,6 +156,14 @@ function mapSessionSnapshot(id: string, raw: Record<string, unknown>): SessionDo
       ? { radiusOverride: radiusRaw }
       : {}),
     ...(raw.qrPayload ? { qrPayload: String(raw.qrPayload) } : {}),
+    // Sprint 4 (dibaca dengan toleransi untuk dokumen lama)
+    ...(raw.courseId ? { courseId: String(raw.courseId) } : {}),
+    ...(raw.startAt ? { startAt: String(raw.startAt) } : {}),
+    ...(raw.startedAt ? { startedAt: String(raw.startedAt) } : {}),
+    ...(raw.graceMinutesOverride !== undefined && raw.graceMinutesOverride !== null &&
+    Number.isFinite(Number(raw.graceMinutesOverride))
+      ? { graceMinutesOverride: Number(raw.graceMinutesOverride) }
+      : {}),
     createdAt: String(raw.createdAt ?? ''),
     updatedAt: String(raw.updatedAt ?? ''),
   };
@@ -226,6 +241,8 @@ export async function createSession(input: CreateSessionInput): Promise<SessionD
   const cleanLabId = input.labId?.trim();
   const hasRadiusOverride =
     input.radiusOverride !== undefined && Number.isFinite(input.radiusOverride);
+  // Sprint 4 FR-P2-02.2: startAt (ISO UTC) dihitung dari tanggal + waktuMulai WIB.
+  const startAtDate = parseWibDateTime(input.tanggal, input.waktuMulai);
 
   const payload: Omit<SessionDocument, 'id'> = {
     praktikum: input.praktikum.trim() || 'Praktikum PPK',
@@ -244,6 +261,17 @@ export async function createSession(input: CreateSessionInput): Promise<SessionD
     ...(cleanLabId ? { labId: cleanLabId } : {}),
     ...(hasRadiusOverride ? { radiusOverride: Math.round(input.radiusOverride!) } : {}),
   };
+
+  const extraSprint4: Record<string, unknown> = {};
+  if (startAtDate) extraSprint4.startAt = startAtDate.toISOString();
+  if (input.courseId?.trim()) extraSprint4.courseId = input.courseId.trim();
+  if (
+    input.graceMinutesOverride !== undefined &&
+    Number.isFinite(input.graceMinutesOverride)
+  ) {
+    extraSprint4.graceMinutesOverride = Math.round(input.graceMinutesOverride);
+  }
+  Object.assign(payload, extraSprint4);
 
   const docRef = await addDoc(collection(db, SESSIONS_COLLECTION), payload);
   const qrPayload = buildSessionQrPayload(docRef.id, kodeSesi);
@@ -282,6 +310,29 @@ export async function updateSession(
     cleanUpdates.radiusOverride = deleteField();
   } else if (updates.radiusOverride !== undefined && Number.isFinite(updates.radiusOverride)) {
     cleanUpdates.radiusOverride = Math.round(updates.radiusOverride);
+  }
+  if (updates.courseId !== undefined && updates.courseId.trim()) {
+    cleanUpdates.courseId = updates.courseId.trim();
+  }
+  if (updates.graceMinutesOverride === null) {
+    cleanUpdates.graceMinutesOverride = deleteField();
+  } else if (
+    updates.graceMinutesOverride !== undefined &&
+    Number.isFinite(updates.graceMinutesOverride)
+  ) {
+    cleanUpdates.graceMinutesOverride = Math.round(updates.graceMinutesOverride);
+  }
+
+  // Sprint 4 FR-P2-02.2: hitung ulang startAt bila tanggal/jam berubah.
+  if (updates.tanggal !== undefined || updates.waktuMulai !== undefined) {
+    const snap = await getDoc(sessionRef);
+    if (snap.exists()) {
+      const raw = snap.data();
+      const tanggalBaru = String(updates.tanggal ?? raw.tanggal ?? '');
+      const jamBaru = String(updates.waktuMulai ?? raw.waktuMulai ?? '');
+      const startAtBaru = parseWibDateTime(tanggalBaru, jamBaru);
+      if (startAtBaru) cleanUpdates.startAt = startAtBaru.toISOString();
+    }
   }
 
   await updateDoc(sessionRef, cleanUpdates);
@@ -327,6 +378,11 @@ export async function updateSessionStatus(
   if (status === 'dibuka') {
     payload.openedAt = now;
     const snap = await getDoc(sessionRef);
+    // Sprint 4 FR-P2-03.2: startedAt diisi SEKALI saat sesi pertama dibuka.
+    // "Buka Kembali" tidak boleh menimpanya (dipakai untuk baseline keterlambatan).
+    if (snap.exists() && !snap.data()?.startedAt) {
+      payload.startedAt = now;
+    }
     const existingCode = snap.exists() ? String(snap.data()?.kodeSesi ?? '').trim() : '';
     const activeCode = existingCode || generateSessionCode();
     if (!existingCode) {

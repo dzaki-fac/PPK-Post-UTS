@@ -235,14 +235,16 @@ export function subscribePaymentsByFineId(
   onData: (payments: PaymentDocument[]) => void,
   onError?: (error: Error) => void
 ): Unsubscribe {
-  if (!fineId) {
+  const uid = auth.currentUser?.uid;
+  if (!fineId || !uid) {
     onData([]);
     return () => {};
   }
 
   const q = query(
     collection(db, PAYMENTS_COLLECTION),
-    where('fineId', '==', fineId)
+    where('fineId', '==', fineId),
+    where('studentId', '==', uid)
   );
 
   return onSnapshot(

@@ -96,13 +96,19 @@ export default function PraktikanTagihanDetailScreen() {
     );
   }, [attendanceId]);
 
-  const fineSessionId = fine?.sessionId;
+  const finePayments = useMemo(
+    () => payments.filter((p) => p.fineId === fineId),
+    [payments, fineId]
+  );
+
+  const activeFine = fine?.id === fineId ? fine : null;
+  const fineSessionId = activeFine?.sessionId;
   const relatedSession = useMemo(() => {
     if (!fineSessionId) return undefined;
     return sessions.find((s) => s.id === fineSessionId);
   }, [sessions, fineSessionId]);
 
-  const fineLabId = fine?.labId || relatedSession?.labId;
+  const fineLabId = activeFine?.labId || relatedSession?.labId;
   const relatedLab = useMemo(() => {
     if (!fineLabId) return undefined;
     return labs.find((l) => l.id === fineLabId);
@@ -275,13 +281,13 @@ export default function PraktikanTagihanDetailScreen() {
 
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Riwayat Percobaan Pembayaran</Text>
-        {payments.length === 0 ? (
+        {finePayments.length === 0 ? (
           <Text style={styles.emptyAttemptText}>
             Belum ada transaksi pembayaran yang dibuat untuk tagihan ini.
           </Text>
         ) : (
           <View style={styles.attemptsList}>
-            {payments.map((payment) => (
+            {finePayments.map((payment) => (
               <Pressable
                 key={payment.id}
                 accessibilityRole="button"

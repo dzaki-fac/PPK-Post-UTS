@@ -298,7 +298,7 @@ export async function evaluateAttendanceLateness(
   });
 
   if (fineCreated && studentId) {
-    void sendToUser(studentId, {
+    await sendToUser(studentId, {
       eventType: 'fine_created',
       title: 'Tagihan Denda Keterlambatan Baru',
       body: `Anda tercatat terlambat ${minutesAfterStart} menit pada ${praktikum}. Tagihan sebesar ${formatRupiahId(

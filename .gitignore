@@ -55,5 +55,7 @@ functions/.env
 functions/.env.*
 !functions/.env.example
 functions/.runtimeconfig.json
+functions/.vercel
+.vercel
 *firebase-adminsdk*.json
 service-account*.json

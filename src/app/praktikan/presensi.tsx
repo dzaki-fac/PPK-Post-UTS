@@ -40,6 +40,7 @@ import {
   openDeviceLocationSettings,
   verifyUserLocationForLab,
 } from '@/services/location-service';
+import { requestServerLatenessEvaluation } from '@/services/payment-service';
 import { subscribeSessions } from '@/services/session-service';
 import {
   AttendanceDocument,
@@ -231,6 +232,24 @@ export default function PraktikanPresensiScreen() {
       cancelled = true;
     };
   }, [activeSession, labs, runLocationCheck]);
+
+  const activeAttendanceRecord = activeSessionId
+    ? myAttendances.find((a) => a.sessionId === activeSessionId) ?? null
+    : null;
+  const activeAttendanceId = activeAttendanceRecord?.id ?? '';
+  const activeAttendanceEvaluatedBy = activeAttendanceRecord?.lateness?.evaluatedBy;
+  const activeAttendanceStatus = activeAttendanceRecord?.attendanceStatus;
+
+  // Pemulihan otomatis: jika presensi masih dievaluasi client, picu ulang verifikasi server
+  useEffect(() => {
+    if (
+      activeAttendanceId &&
+      activeAttendanceEvaluatedBy === 'client' &&
+      activeAttendanceStatus !== 'izin'
+    ) {
+      void requestServerLatenessEvaluation(activeAttendanceId);
+    }
+  }, [activeAttendanceId, activeAttendanceEvaluatedBy, activeAttendanceStatus]);
 
   const handleRefreshLocation = async () => {
     if (!activeSession) return;

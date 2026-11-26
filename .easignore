@@ -27,3 +27,10 @@ yarn-error.*
 # Git folder
 .git/
 
+# Backend server & secrets (never needed in mobile EAS Build bundle)
+functions/
+.vercel/
+*firebase-adminsdk*.json
+service-account*.json
+
+

@@ -50,6 +50,7 @@ export async function createPaymentForStudent(params: {
   // Periksa apakah masih ada pembayaran pending yang belum kedaluwarsa -> kembalikan redirectUrl yang sama
   const activePaymentId =
     typeof fine.activePaymentId === 'string' ? fine.activePaymentId : '';
+  let expiredPendingIdToClose: string | null = null;
   if (activePaymentId) {
     const activeSnap = await adminDb.collection('payments').doc(activePaymentId).get();
     if (activeSnap.exists) {
@@ -67,6 +68,18 @@ export async function createPaymentForStudent(params: {
           redirectUrl: activePay.redirectUrl,
           reused: true,
         };
+      }
+
+      if (activePay.status === 'pending' && !Number.isNaN(expiresAtMs) && expiresAtMs <= Date.now()) {
+        const reconciled = await reconcilePaymentStatusByOrderId(activePaymentId).catch(
+          () => null
+        );
+        if (reconciled?.nextStatus === 'success') {
+          throw new Error('Tagihan denda ini sudah berstatus lunas.');
+        }
+        if (reconciled?.nextStatus !== 'failed') {
+          expiredPendingIdToClose = activePaymentId;
+        }
       }
     }
   }
@@ -128,6 +141,14 @@ export async function createPaymentForStudent(params: {
       createdAt: nowIso,
       updatedAt: nowIso,
     });
+
+    if (expiredPendingIdToClose) {
+      tx.update(adminDb.collection('payments').doc(expiredPendingIdToClose), {
+        status: 'failed',
+        failureReason: 'Transaksi kedaluwarsa melewati batas waktu.',
+        updatedAt: nowIso,
+      });
+    }
 
     tx.update(fineRef, {
       status: 'pending',
@@ -336,7 +357,7 @@ export async function applyReconciledMidtransStatus(params: {
       sessionId: string;
       fineId: string;
     };
-    void sendToUser(np.uid, {
+    await sendToUser(np.uid, {
       eventType: np.eventType,
       title: np.title,
       body: np.body,

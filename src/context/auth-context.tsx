@@ -16,7 +16,9 @@ import { Platform } from 'react-native';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
 import { GOOGLE_WEB_CLIENT_ID, auth, db, isFirebaseConfigured } from '@/lib/firebase';
+import { linkLabMembersOnLogin } from '@/services/lab-member-service';
 import { UserDocument, UserRole } from '@/types/praktikum';
+import { normalizeRole } from '@/utils/role';
 
 if (Platform.OS !== 'web') {
   GoogleSignin.configure({
@@ -109,15 +111,19 @@ function validateProfileFields(
   nim?: string,
   kelas?: 'A' | 'B'
 ): { cleanNama: string; cleanNim?: string; cleanKelas?: 'A' | 'B' } {
+  if (peran === 'aslab') {
+    throw new Error('Akun Aslab tidak dapat didaftarkan secara mandiri.');
+  }
+
   const cleanNama = nama.trim();
   if (cleanNama.length < 2) {
     throw new Error('Nama lengkap wajib diisi minimal 2 karakter.');
   }
 
-  // Baik praktikan maupun asisten keduanya memiliki NIM mahasiswa
+  // Baik praktikan maupun asprak memiliki NIM mahasiswa
   let cleanNim = (nim ?? '').replace(/\s+/g, '');
   if (!cleanNim) {
-    const prefix = peran === 'asisten' ? '240601211' : '240601241';
+    const prefix = peran === 'asprak' ? '240601211' : '240601241';
     cleanNim = `${prefix}${Math.floor(10000 + Math.random() * 90000)}`;
   } else if (!NIM_REGEX.test(cleanNim)) {
     throw new Error('NIM wajib berisi 14 digit angka format Undip (contoh: 24060122130001).');
@@ -141,12 +147,14 @@ function buildUserDocument(
   peranLab?: string
 ): UserDocument {
   const now = new Date().toISOString();
+  const normalizedEmail = email.trim().toLowerCase();
   const base: UserDocument = {
     uid,
-    email: email.trim().toLowerCase(),
+    email: normalizedEmail,
+    emailLower: normalizedEmail,
     nama: nama.trim(),
     peran,
-    nim, // Disimpan untuk semua peran (praktikan & asisten)
+    nim,
     createdAt: now,
     updatedAt: now,
   };
@@ -277,6 +285,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const snap = await getDoc(doc(db, 'users', credential.user.uid));
       if (snap.exists()) {
         const data = { ...(snap.data() as UserDocument), uid: snap.id };
+        await linkLabMembersOnLogin({
+          uid: credential.user.uid,
+          email: credential.user.email ?? data.email,
+          currentUserDoc: data,
+        });
         persistUserDoc(data);
         setNeedsProfileCompletion(false);
         return data;
@@ -334,6 +347,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         );
 
         await setDoc(doc(db, 'users', credential.user.uid), profile);
+        await linkLabMembersOnLogin({
+          uid: credential.user.uid,
+          email: profile.email,
+          currentUserDoc: profile,
+        });
         persistUserDoc(profile);
         setNeedsProfileCompletion(false);
         return profile;
@@ -378,6 +396,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (snap.exists()) {
         const data = { ...(snap.data() as UserDocument), uid: snap.id };
+        await linkLabMembersOnLogin({
+          uid: firebaseUser.uid,
+          email: firebaseUser.email ?? data.email,
+          currentUserDoc: data,
+        });
         persistUserDoc(data);
         setNeedsProfileCompletion(false);
         return { user: firebaseUser, userDoc: data, isNewUser: false };
@@ -404,6 +427,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
 
       await setDoc(doc(db, 'users', firebaseUser.uid), newProfile);
+      await linkLabMembersOnLogin({
+        uid: firebaseUser.uid,
+        email: newProfile.email,
+        currentUserDoc: newProfile,
+      });
       persistUserDoc(newProfile);
       setNeedsProfileCompletion(true);
       return { user: firebaseUser, userDoc: newProfile, isNewUser: true };
@@ -464,6 +492,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         );
 
         await setDoc(doc(db, 'users', current.uid), profile);
+        await linkLabMembersOnLogin({
+          uid: current.uid,
+          email: profile.email,
+          currentUserDoc: profile,
+        });
         persistUserDoc(profile);
         setNeedsProfileCompletion(false);
         return profile;
@@ -492,7 +525,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [persistUserDoc]);
 
-  const role: UserRole | null = userDoc?.peran ?? null;
+  const role: UserRole | null = normalizeRole(userDoc?.peran);
 
   const value = useMemo<AuthContextType>(
     () => ({

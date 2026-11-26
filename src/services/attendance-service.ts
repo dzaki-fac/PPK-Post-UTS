@@ -272,7 +272,7 @@ export function subscribeAsistenUsers(
 ): Unsubscribe {
   const q = query(
     collection(db, USERS_COLLECTION),
-    where('peran', '==', 'asisten')
+    where('peran', 'in', ['asprak', 'asisten'])
   );
 
   return onSnapshot(

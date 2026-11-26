@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GoogleProfileModal } from '@/components/google-profile-modal';
 import { UserDocument, UserRole, useAuth } from '@/context/auth-context';
+import { getDefaultRouteForRole, normalizeRole } from '@/utils/role';
 
 export default function RegisterScreen() {
   const {
@@ -43,19 +44,14 @@ export default function RegisterScreen() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   if (!loading && user && userDoc && role) {
-    return (
-      <Redirect
-        href={(role === 'asisten' ? '/asisten/jadwal' : '/praktikan/jadwal') as Href}
-      />
-    );
+    return <Redirect href={getDefaultRouteForRole(role)} />;
   }
 
   const isPraktikan = peran === 'praktikan';
 
   const navigateByProfile = (profile: UserDocument) => {
-    router.replace(
-      (profile.peran === 'asisten' ? '/asisten/jadwal' : '/praktikan/jadwal') as Href
-    );
+    const resolved = normalizeRole(profile.peran) ?? 'praktikan';
+    router.replace(getDefaultRouteForRole(resolved));
   };
 
   const handleRegister = async () => {
@@ -202,13 +198,13 @@ export default function RegisterScreen() {
                         !isPraktikan && styles.roleOptionAsisten,
                         pressed && styles.pressed,
                       ]}
-                      onPress={() => setPeran('asisten')}>
+                      onPress={() => setPeran('asprak')}>
                       <Text
                         style={[
                           styles.roleOptionTitle,
                           !isPraktikan && styles.textAsisten,
                         ]}>
-                        Asisten Lab
+                        Asprak Lab
                       </Text>
                       <Text style={styles.roleOptionMeta}>Pengampu sesi</Text>
                     </Pressable>

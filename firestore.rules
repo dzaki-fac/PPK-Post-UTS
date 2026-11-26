@@ -1,118 +1,178 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper functions
-    function isAuthenticated() {
+    // =========================================================
+    // Stage 0 Shared Helpers (SRS4.md §3.11)
+    // =========================================================
+    function isSignedIn() {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+    function userPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
     }
 
-    // Mengambil dokumen user untuk mengecek peran (Role-Based Access Control)
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    function hasUserDoc() {
+      return isSignedIn() && exists(userPath());
     }
 
-    function isAsisten() {
-      return isAuthenticated() && getUserData().peran == 'asisten';
+    function userData() {
+      return get(userPath()).data;
+    }
+
+    function isAslab() {
+      return hasUserDoc() && userData().peran == 'aslab';
+    }
+
+    function isAsprak() {
+      return hasUserDoc() && (userData().peran == 'asprak' || userData().peran == 'asisten');
     }
 
     function isPraktikan() {
-      return isAuthenticated() && getUserData().peran == 'praktikan';
+      return hasUserDoc() && userData().peran == 'praktikan';
     }
 
-    // -------------------------------------------------------------------------
-    // 1. Koleksi: users (/users/{uid})
-    // -------------------------------------------------------------------------
+    function isStaff() {
+      return isAslab() || isAsprak();
+    }
+
+    function managesCourse(courseId) {
+      return isAslab() && (
+        !(userData().keys().hasAny(['managedCourseIds'])) ||
+        userData().managedCourseIds.size() == 0 ||
+        courseId in userData().managedCourseIds
+      );
+    }
+
+    function teachesLab(labId) {
+      return isAsprak() && (
+        (userData().keys().hasAny(['labIds']) && labId in userData().labIds) ||
+        (userData().keys().hasAny(['labId']) && userData().labId == labId)
+      );
+    }
+
+    // ===== P1 =====
     match /users/{userId} {
-      // Siapapun yang login dapat membaca profil untuk keperluan identitas & roster
-      allow read: if isAuthenticated();
-      // Pengguna dapat menyunting profil miliknya sendiri, dan Asisten dapat mengelola master data praktikan
-      allow create, update: if isOwner(userId) || isAsisten();
-      // Asisten dapat menghapus akun praktikan/asisten melalui Master Data
-      allow delete: if isAsisten() || isOwner(userId);
-    }
-
-    // -------------------------------------------------------------------------
-    // 2. Koleksi: sessions (/sessions/{sessionId})
-    // -------------------------------------------------------------------------
-    match /sessions/{sessionId} {
-      // Semua pengguna terautentikasi dapat melihat jadwal praktikum
-      allow read: if isAuthenticated();
-      // Hanya Asisten Laboratorium yang dapat menambah, membuka, menutup, atau menghapus sesi
-      allow create, update, delete: if isAsisten();
-    }
-
-    // -------------------------------------------------------------------------
-    // 3. Koleksi: attendances (/attendances/{attendanceId})
-    // Format ID: `${sessionId}_${studentId}`
-    // -------------------------------------------------------------------------
-    match /attendances/{attendanceId} {
-      // Praktikan dan Asisten dapat melihat rekap presensi
-      allow read: if isAuthenticated();
-      
-      // Praktikan hanya dapat mencatat presensi untuk dirinya sendiri (studentId == auth.uid)
-      // Asisten juga diizinkan jika melakukan presensi manual/override
-      allow create: if isAuthenticated() && (
-        (isPraktikan() && request.resource.data.studentId == request.auth.uid) || isAsisten()
+      allow read: if isSignedIn();
+      // Self-registration hanya boleh sebagai praktikan atau asprak (tidak boleh aslab).
+      allow create: if isSignedIn()
+        && request.auth.uid == userId
+        && request.resource.data.peran in ['praktikan', 'asprak'];
+      // Update profil sendiri tanpa mengubah peran menjadi aslab, atau dikelola Aslab / Asprak terdaftar.
+      allow update: if isSignedIn() && (
+        (request.auth.uid == userId
+          && request.resource.data.peran == resource.data.peran)
+        || isAslab()
+        || (isAsprak() && resource.data.peran in ['praktikan', 'asprak', 'asisten'])
       );
-
-      // Tidak mengizinkan modifikasi presensi yang sudah tercatat (anti-tamper)
-      // kecuali asisten jika perlu revisi
-      allow update, delete: if isAsisten();
+      allow delete: if isAslab();
     }
 
-    // -------------------------------------------------------------------------
-    // 4. Koleksi: leave_requests (/leave_requests/{requestId})
-    // -------------------------------------------------------------------------
-    match /leave_requests/{requestId} {
-      // Pengguna terautentikasi dapat membaca pengajuan izin
-      allow read: if isAuthenticated();
-
-      // Praktikan dapat membuat pengajuan izin untuk dirinya sendiri (studentId == auth.uid)
-      // atau Asisten dapat menginputkan izin praktikan
-      allow create: if isAuthenticated() && (
-        request.resource.data.studentId == request.auth.uid || isAsisten()
-      );
-
-      // Pembaruan keputusan status (disetujui/ditolak) hanya boleh dilakukan oleh Asisten
-      allow update: if isAsisten();
-      allow delete: if isAsisten();
+    match /courses/{courseId} {
+      allow read: if isSignedIn();
+      allow create: if isAslab();
+      allow update, delete: if managesCourse(courseId);
     }
 
-    // -------------------------------------------------------------------------
-    // 5. Koleksi labs (/labs/{labId}) — Sprint 3
-    // Read untuk semua pengguna terautentikasi, tulis hanya Asisten.
-    // -------------------------------------------------------------------------
     match /labs/{labId} {
-      allow read: if isAuthenticated();
-      allow create, update, delete: if isAsisten();
+      allow read: if isSignedIn();
+      allow create: if isAslab();
+      allow update, delete: if isAslab()
+        && (!resource.data.keys().hasAny(['courseId']) || managesCourse(resource.data.courseId));
     }
 
-    // -------------------------------------------------------------------------
-    // 6. Koleksi notifications (/notifications/{notificationId}) — Sprint 3
-    // Log peristiwa dibuat oleh aplikasi, hanya pemilik yang dapat membaca
-    // dan menandai isRead.
-    // -------------------------------------------------------------------------
+    match /lab_members/{memberId} {
+      // Praktikan & Asprak bisa membaca agar proses linking saat login berjalan tanpa hambatan.
+      allow read: if isSignedIn();
+      allow create, delete: if isAslab();
+      allow update: if isAslab() || (
+        isSignedIn()
+        && resource.data.uid == null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.labId == resource.data.labId
+        && request.resource.data.courseId == resource.data.courseId
+      );
+    }
+
+    match /lab_transfers/{transferId} {
+      allow read: if isSignedIn() && (isStaff() || resource.data.memberId == request.auth.uid);
+      allow create: if isAslab();
+      allow update, delete: if false;
+    }
+
+    match /import_batches/{batchId} {
+      allow read: if isAslab();
+      allow create: if isAslab();
+      allow update, delete: if false;
+    }
+
+    // ===== P2 =====
+    match /sessions/{sessionId} {
+      allow read: if isSignedIn();
+      allow create: if isStaff();
+      allow update: if isAslab() || (isAsprak() && (
+        !resource.data.keys().hasAny(['labId']) || teachesLab(resource.data.labId) || resource.data.asistenId == request.auth.uid
+      ));
+      allow delete: if isAslab() || (isAsprak() && resource.data.asistenId == request.auth.uid);
+    }
+
+    match /leave_requests/{leaveId} {
+      allow read: if isSignedIn() && (
+        isStaff() || resource.data.mahasiswaId == request.auth.uid
+      );
+      allow create: if isSignedIn()
+        && request.resource.data.mahasiswaId == request.auth.uid;
+      allow update: if isStaff() || (
+        isSignedIn() && resource.data.mahasiswaId == request.auth.uid
+      );
+      allow delete: if isStaff();
+    }
+
+    // ===== P3 =====
+    match /attendance/{attendanceId} {
+      allow read: if isSignedIn() && (
+        isStaff() || resource.data.mahasiswaId == request.auth.uid
+      );
+      allow create: if isSignedIn() && (
+        request.resource.data.mahasiswaId == request.auth.uid || isStaff()
+      );
+      allow update: if isSignedIn() && (
+        resource.data.mahasiswaId == request.auth.uid || isStaff()
+      );
+      allow delete: if isStaff();
+    }
+
+    match /fines/{fineId} {
+      allow read: if isSignedIn() && (isStaff() || resource.data.mahasiswaId == request.auth.uid);
+      allow create, update: if isSignedIn();
+      allow delete: if isAslab();
+    }
+
+    match /payments/{paymentId} {
+      allow read: if isSignedIn() && (isStaff() || resource.data.mahasiswaId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.mahasiswaId == request.auth.uid;
+      allow update: if isStaff() || (isSignedIn() && resource.data.mahasiswaId == request.auth.uid);
+      allow delete: if isAslab();
+    }
+
+    match /payment_events/{eventId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+
     match /notifications/{notificationId} {
-      allow read: if isAuthenticated() && resource.data.targetUserId == request.auth.uid;
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated()
-        && resource.data.targetUserId == request.auth.uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
-      allow delete: if false;
-    }
-
-    // -------------------------------------------------------------------------
-    // 7. Koleksi Sistem / Health Check (untuk verifikasi koneksi)
-    // -------------------------------------------------------------------------
-    match /system_health/{docId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || isStaff()
+      );
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || isStaff()
+      );
+      allow delete: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || isAslab()
+      );
     }
   }
 }
-

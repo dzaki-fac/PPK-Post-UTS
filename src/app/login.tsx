@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { GoogleProfileModal } from '@/components/google-profile-modal';
 import { UserDocument, useAuth } from '@/context/auth-context';
 import { isFirebaseConfigured } from '@/lib/firebase';
+import { getDefaultRouteForRole, normalizeRole } from '@/utils/role';
 
 export default function LoginScreen() {
   const {
@@ -37,17 +38,12 @@ export default function LoginScreen() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   if (!loading && user && userDoc && role) {
-    return (
-      <Redirect
-        href={(role === 'asisten' ? '/asisten/jadwal' : '/praktikan/jadwal') as Href}
-      />
-    );
+    return <Redirect href={getDefaultRouteForRole(role)} />;
   }
 
   const navigateByProfile = (profile: UserDocument) => {
-    router.replace(
-      (profile.peran === 'asisten' ? '/asisten/jadwal' : '/praktikan/jadwal') as Href
-    );
+    const resolved = normalizeRole(profile.peran) ?? 'praktikan';
+    router.replace(getDefaultRouteForRole(resolved));
   };
 
   const handleLogin = async () => {

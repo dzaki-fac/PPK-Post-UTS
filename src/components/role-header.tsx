@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ConfirmationModal } from '@/components/confirmation-modal';
 import { useAuth } from '@/context/auth-context';
+import { getDefaultRouteForRole, getRoleAccentColors } from '@/utils/role';
 
 export function RoleHeader() {
   const insets = useSafeAreaInsets();
@@ -19,14 +20,18 @@ export function RoleHeader() {
   const [loggingOut, setLoggingOut] = useState(false);
 
   const isPraktikan = role === 'praktikan';
-  const name = userDoc?.nama ?? (isPraktikan ? 'Praktikan' : 'Asisten');
+  const isAslab = role === 'aslab';
+  const roleColors = getRoleAccentColors(role);
+  const name = userDoc?.nama ?? (isPraktikan ? 'Praktikan' : isAslab ? 'Aslab' : 'Asprak');
   const subInfo = isPraktikan
     ? `Kelas ${userDoc?.kelas ?? '-'}`
-    : 'Asisten Lab';
+    : isAslab
+      ? 'Koordinator Lab'
+      : 'Asisten Praktikum';
 
   const fullSubInfo = isPraktikan
     ? `Kelas ${userDoc?.kelas ?? '-'}`
-    : userDoc?.peranLab ?? 'Pengampu Lab Komputasi';
+    : userDoc?.peranLab ?? (isAslab ? 'Koordinator Laboratorium' : 'Pengampu Lab Komputasi');
 
   const handleConfirmLogout = async () => {
     setLoggingOut(true);
@@ -53,9 +58,7 @@ export function RoleHeader() {
         <Pressable
           style={({ pressed }) => [styles.brandRow, pressed && styles.btnPressed]}
           onPress={() =>
-            router.replace(
-              (isPraktikan ? '/praktikan/jadwal' : '/asisten/jadwal') as Href
-            )
+            router.replace(getDefaultRouteForRole(role ?? 'praktikan'))
           }
           accessibilityRole="button"
           accessibilityLabel="PPK LabPortal Beranda">
@@ -75,19 +78,22 @@ export function RoleHeader() {
           <View
             style={[
               styles.userPill,
-              isPraktikan ? styles.userPillPraktikan : styles.userPillAsisten,
+              {
+                backgroundColor: roleColors.tint,
+                borderColor: roleColors.border,
+              },
             ]}>
             <View
               style={[
                 styles.roleMiniBadge,
-                isPraktikan ? styles.roleMiniPraktikan : styles.roleMiniAsisten,
+                { backgroundColor: roleColors.border },
               ]}>
               <Text
                 style={[
                   styles.roleMiniText,
-                  isPraktikan ? styles.textPraktikan : styles.textAsisten,
+                  { color: roleColors.accent },
                 ]}>
-                {isPraktikan ? 'MAHASISWA' : 'ASISTEN'}
+                {roleColors.badgeText}
               </Text>
             </View>
             <View style={styles.userInfoWrap}>

@@ -30,6 +30,11 @@ const EVENT_LABEL: Record<NotificationEventType, string> = {
   schedule_updated: 'Jadwal Diubah',
   leave_approved: 'Izin Disetujui',
   leave_rejected: 'Izin Ditolak',
+  fine_issued: 'Denda Terbit',
+  payment_uploaded: 'Bukti Diunggah',
+  payment_verified: 'Pembayaran Sah',
+  payment_rejected: 'Bukti Ditolak',
+  lab_transferred: 'Pindah Lab',
 };
 
 const DELIVERY_LABEL: Record<NotificationDocument['deliveryStatus'], string> = {
@@ -51,8 +56,8 @@ export default function NotifikasiScreen() {
   const [loading, setLoading] = useState(true);
   const [permission, setPermission] = useState<string>('unavailable');
   const device = useDeviceResilience();
-  const accent = role === 'asisten' ? '#0D9488' : '#EA580C';
-  const tint = role === 'asisten' ? '#F0FDFA' : '#FFF7ED';
+  const accent = role === 'aslab' ? '#4F46E5' : role === 'asprak' ? '#0D9488' : '#EA580C';
+  const tint = role === 'aslab' ? '#EEF2FF' : role === 'asprak' ? '#F0FDFA' : '#FFF7ED';
 
   const loadPermission = useCallback(async () => {
     setPermission(await getNotificationPermissionState());

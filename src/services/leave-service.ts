@@ -14,6 +14,8 @@ import {
   where,
   onSnapshot,
   getDocs,
+  getDoc,
+  writeBatch,
   Unsubscribe,
 } from 'firebase/firestore';
 
@@ -436,9 +438,26 @@ export async function reviewLeaveRequest(
   reviewerName?: string
 ): Promise<boolean> {
   const now = new Date().toISOString();
+  const targetIndex = inMemoryStore.findIndex((r) => r.id === requestId);
+  const sourceDoc = targetIndex >= 0 ? inMemoryStore[targetIndex] : undefined;
+  const isDemo = requestId.startsWith('leave-demo-');
+
+  // Sprint 4 FR-P2-05.2: persetujuan ditolak bila presensi untuk sesi ini sudah ada
+  // (hadir/terlambat). Izin TIDAK PERNAH mengubah catatan kehadiran menjadi hadir.
+  if (decision === 'disetujui' && sourceDoc && !isDemo) {
+    const attendanceId = `${sourceDoc.sessionId}_${sourceDoc.studentId}`;
+    try {
+      const attendanceSnap = await getDoc(doc(db, 'attendances', attendanceId));
+      const statusExisting = String(attendanceSnap.data()?.attendanceStatus ?? '');
+      if (attendanceSnap.exists() && (statusExisting === 'hadir' || statusExisting === 'terlambat')) {
+        return false;
+      }
+    } catch (error) {
+      console.warn('Gagal memeriksa presensi saat menyetujui izin:', error);
+    }
+  }
 
   // 1. Perbarui state memori lokal
-  const targetIndex = inMemoryStore.findIndex((r) => r.id === requestId);
   let updatedDoc: LeaveRequestDocument | undefined;
   if (targetIndex >= 0) {
     updatedDoc = {
@@ -482,7 +501,32 @@ export async function reviewLeaveRequest(
       }
     }
 
-    await setDoc(docRef, firestorePayload, { merge: true });
+    const batch = writeBatch(db);
+    batch.set(docRef, firestorePayload, { merge: true });
+
+    // Sprint 4 FR-P2-05.1: izin = excused absence. Ditulis dalam batch yang sama
+    // dengan keputusan pengajuan, memakai ID deterministik yang sama dengan presensi.
+    if (decision === 'disetujui' && updatedDoc && !isDemo) {
+      const attendanceId = `${updatedDoc.sessionId}_${updatedDoc.studentId}`;
+      batch.set(doc(db, 'attendances', attendanceId), {
+        id: attendanceId,
+        sessionId: updatedDoc.sessionId,
+        studentId: updatedDoc.studentId,
+        studentName: updatedDoc.studentName,
+        studentNim: updatedDoc.studentNim,
+        studentClass: updatedDoc.studentClass,
+        attendanceStatus: 'izin',
+        excusedByLeaveId: requestId,
+        verificationMethod: 'leave-approved',
+        verifiedByLocation: false,
+        catatan: notes?.trim() || 'Izin disetujui asprak',
+        timestamp: Date.now(),
+        createdAt: now,
+        updatedAt: now,
+      }, { merge: true });
+    }
+
+    await batch.commit();
 
     // Peristiwa 3: keputusan izin. Non-blocking: kegagalan push tidak mengubah hasil moderasi.
     if (updatedDoc?.studentId) {

@@ -13,16 +13,19 @@ import {
   TabUsersIcon,
 } from '@/components/tab-icons';
 import { useAuth } from '@/context/auth-context';
+import { normalizeRoleP2 } from '@/utils/sprint4-p2-helpers';
 
 export default function AsistenLayout() {
   const { user, userDoc, loading, role } = useAuth();
   const insets = useSafeAreaInsets();
 
+  const peran = normalizeRoleP2(userDoc?.peran ?? role);
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#0D9488" />
-        <Text style={styles.loadingText}>Memverifikasi akses asisten...</Text>
+        <Text style={styles.loadingText}>Memverifikasi akses asprak...</Text>
       </View>
     );
   }
@@ -31,7 +34,11 @@ export default function AsistenLayout() {
     return <Redirect href={'/login' as Href} />;
   }
 
-  if (role !== 'asisten') {
+  // Sprint 4: /asisten/* adalah portal Asprak. Aslab & praktikan dialihkan.
+  if (peran === 'aslab') {
+    return <Redirect href={'/aslab/dashboard' as Href} />;
+  }
+  if (peran === 'praktikan') {
     return <Redirect href={'/praktikan/jadwal' as Href} />;
   }
 
@@ -121,8 +128,8 @@ export default function AsistenLayout() {
         <Tabs.Screen
           name="mahasiswa"
           options={{
-            title: 'Kelola Pengguna',
-            tabBarLabel: 'Pengguna',
+            title: 'Kelas Saya',
+            tabBarLabel: 'Kelas Saya',
             tabBarIcon: ({ color, focused }) => (
               <TabUsersIcon color={color} focused={focused} />
             ),

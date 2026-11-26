@@ -36,11 +36,15 @@ import {
   SessionDocument,
   SessionStatus,
 } from '@/types/praktikum';
+import { getUserLabIds, normalizeRoleP2 } from '@/utils/sprint4-p2-helpers';
 
 type FilterType = 'semua' | SessionStatus;
 
 export default function JadwalAsistenScreen() {
   const { userDoc } = useAuth();
+  // Sprint 4: Asprak tidak memiliki kewenangan CRUD sesi/konfigurasi lab.
+  const canManage = normalizeRoleP2(userDoc?.peran) !== 'asprak';
+  const labIds = useMemo(() => getUserLabIds(userDoc), [userDoc]);
   const [sesiList, setSesiList] = useState<SessionDocument[]>([]);
   const [labs, setLabs] = useState<LabLocationDocument[]>([]);
   const [attendances, setAttendances] = useState<AttendanceDocument[]>([]);
@@ -98,27 +102,36 @@ export default function JadwalAsistenScreen() {
     };
   }, []);
 
+  // Sprint 4 FR-P2-03.1: Asprak hanya melihat sesi pada laboratorium yang diampu.
+  const scopedSesiList = useMemo(
+    () =>
+      labIds.length === 0
+        ? sesiList
+        : sesiList.filter((s) => !s.labId || labIds.includes(s.labId)),
+    [sesiList, labIds]
+  );
+
   // Pemeriksaan otomatis berkala: tutup sesi yang melewati durasi 2 jam atau waktu praktikum
   useEffect(() => {
     const timer = setInterval(() => {
-      sesiList.forEach((s) => {
+      scopedSesiList.forEach((s) => {
         if (s.status === 'dibuka' && isSessionExpired(s)) {
           updateSessionStatus(s.id, 'ditutup').catch(() => {});
         }
       });
     }, 30000);
     return () => clearInterval(timer);
-  }, [sesiList]);
+  }, [scopedSesiList]);
 
   const filteredSesiList = useMemo(() => {
-    if (filter === 'semua') return sesiList;
-    return sesiList.filter((s) => s.status === filter);
-  }, [sesiList, filter]);
+    if (filter === 'semua') return scopedSesiList;
+    return scopedSesiList.filter((s) => s.status === filter);
+  }, [scopedSesiList, filter]);
 
-  const totalSesi = sesiList.length;
-  const totalDibuka = sesiList.filter((s) => s.status === 'dibuka').length;
+  const totalSesi = scopedSesiList.length;
+  const totalDibuka = scopedSesiList.filter((s) => s.status === 'dibuka').length;
   const totalPresensiMasuk = attendances.length;
-  const totalDitutup = sesiList.filter((s) => s.status === 'ditutup').length;
+  const totalDitutup = scopedSesiList.filter((s) => s.status === 'ditutup').length;
   const pendingLeaves = useMemo(
     () => leaveRequests.filter((r) => r.status === 'menunggu').length,
     [leaveRequests]
@@ -218,35 +231,41 @@ export default function JadwalAsistenScreen() {
 
       <View style={styles.titleActionRow}>
         <View style={styles.titleWrap}>
-          <Text style={styles.headerTitle}>Pengelolaan Sesi Praktikum</Text>
+          <Text style={styles.headerTitle}>Sesi Laboratorium Saya</Text>
           <Text style={styles.headerSubtitle}>
-            Buka sesi praktikum, pantau presensi kehadiran mahasiswa, atau tutup sesi setelah kegiatan selesai
+            Buka sesi, pantau presensi, dan tutup sesi pada laboratorium yang Anda ampuh.
           </Text>
         </View>
-        <View style={styles.headerActionBtns}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Kelola Lokasi Laboratorium"
-            style={({ pressed }) => [styles.labShortcutBtn, pressed && styles.chipPressed]}
-            onPress={() => router.push('/asisten/lokasi-lab' as Href)}>
-            <Text style={styles.labShortcutBtnText}>Lokasi Lab</Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Tambah Sesi Praktikum"
-            style={({ pressed }) => [styles.tambahBtn, pressed && styles.chipPressed]}
-            onPress={() => {
-              const activeLabs = labs.filter((l) => l.isActive);
-              if (activeLabs.length > 0 && !activeLabs.some((l) => l.id === newLabId)) {
-                setNewLabId(activeLabs[0].id);
-                setNewRuang(activeLabs[0].nama);
-              }
-              setFormError(null);
-              setModalTambahVisible(true);
-            }}>
-            <Text style={styles.tambahBtnText}>+ Tambah Sesi</Text>
-          </Pressable>
-        </View>
+        {canManage ? (
+          <View style={styles.headerActionBtns}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Kelola Lokasi Laboratorium"
+              style={({ pressed }) => [styles.labShortcutBtn, pressed && styles.chipPressed]}
+              onPress={() => router.push('/asisten/lokasi-lab' as Href)}>
+              <Text style={styles.labShortcutBtnText}>Lokasi Lab</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Tambah Sesi Praktikum"
+              style={({ pressed }) => [styles.tambahBtn, pressed && styles.chipPressed]}
+              onPress={() => {
+                const activeLabs = labs.filter((l) => l.isActive);
+                if (activeLabs.length > 0 && !activeLabs.some((l) => l.id === newLabId)) {
+                  setNewLabId(activeLabs[0].id);
+                  setNewRuang(activeLabs[0].nama);
+                }
+                setFormError(null);
+                setModalTambahVisible(true);
+              }}>
+              <Text style={styles.tambahBtnText}>+ Tambah Sesi</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <View style={styles.scopePill}>
+            <Text style={styles.scopePillText}>{labIds.length} lab diampu</Text>
+          </View>
+        )}
       </View>
 
       {/* Metrics Overview Cards (Matching Halaman 1 style) */}
@@ -1163,6 +1182,16 @@ const styles = StyleSheet.create({
     gap: 8,
     flexWrap: 'wrap',
   },
+  scopePill: {
+    minHeight: 44,
+    paddingHorizontal: 14,
+    justifyContent: 'center',
+    borderRadius: 22,
+    backgroundColor: '#F0FDFA',
+    borderWidth: 1,
+    borderColor: '#99F6E4',
+  },
+  scopePillText: { fontSize: 12, fontWeight: '800', color: '#0D9488' },
   labShortcutBtn: {
     minHeight: 44,
     paddingHorizontal: 14,

@@ -41,11 +41,26 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.get('/', (_req, res) => {
+  res.status(200).json({
+    ok: true,
+    service: 'ppk-labportal-backend',
+    mode: process.env.VERCEL ? 'vercel-serverless' : 'express-sandbox',
+    endpoints: [
+      'GET /health',
+      'POST /api/attendances/evaluate-lateness',
+      'POST /api/payments/create',
+      'POST /api/payments/reconcile',
+      'POST /api/payments/webhook',
+    ],
+  });
+});
+
 app.get('/health', (_req, res) => {
   res.status(200).json({
     ok: true,
     service: 'ppk-labportal-backend',
-    mode: 'express-sandbox',
+    mode: process.env.VERCEL ? 'vercel-serverless' : 'express-sandbox',
     timestamp: new Date().toISOString(),
   });
 });
@@ -131,17 +146,22 @@ app.post(
 
 app.all('/api/payments/webhook', handleMidtransWebhook);
 
-app.listen(PORT, () => {
-  console.log(`[ppk-labportal-backend] Listening on port ${PORT}`);
-  try {
-    startAttendanceWatcher();
-  } catch (err) {
-    console.warn(
-      '[ppk-labportal-backend] Watcher tidak aktif (periksa kredensial Firebase Admin):',
-      err instanceof Error ? err.message : err
-    );
-  }
-  setInterval(() => {
-    void reconcileExpiredPendingPayments().catch(() => {});
-  }, 15 * 60 * 1000);
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`[ppk-labportal-backend] Listening on port ${PORT}`);
+    try {
+      startAttendanceWatcher();
+    } catch (err) {
+      console.warn(
+        '[ppk-labportal-backend] Watcher tidak aktif (periksa kredensial Firebase Admin):',
+        err instanceof Error ? err.message : err
+      );
+    }
+    setInterval(() => {
+      void reconcileExpiredPendingPayments().catch(() => {});
+    }, 15 * 60 * 1000);
+  });
+}
+
+export { app };
+export default app;

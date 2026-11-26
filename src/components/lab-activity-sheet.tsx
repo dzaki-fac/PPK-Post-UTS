@@ -9,11 +9,11 @@ import {
   View,
 } from 'react-native';
 
-import { LabWithActivity, UserRole } from '@/types/praktikum';
+import { LabWithActivity, RawUserRole } from '@/types/praktikum';
 
 interface LabActivitySheetProps {
   activity: LabWithActivity;
-  role: UserRole;
+  role: RawUserRole;
   userClass?: 'A' | 'B';
   onClose: () => void;
   onNavigateToSession?: (sessionId: string) => void;

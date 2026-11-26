@@ -16,6 +16,7 @@ Untuk mempermudah pemahaman arsitektur dan kolaborasi pengembang, dokumentasi pr
 | **`SRS.md`** | **Spesifikasi Kebutuhan Sprint 1:** Antarmuka, tata letak Flexbox, navigasi Expo Router, simulasi alur asisten & praktikan, serta state runtime in-memory. | [Baca SRS.md](./SRS.md) |
 | **`SRS2.md`** | **Spesifikasi Kebutuhan Sprint 2:** Integrasi Firebase Authentication multi-metode, Cloud Firestore real-time, modul pengajuan izin, klasifikasi AI Model EDOM, dan pembagian tugas 2 programmer. | [Baca SRS2.md](./SRS2.md) |
 | **`SRS3.md`** | **Spesifikasi Kebutuhan Sprint 3:** Validasi lokasi presensi (*geofencing*) & QR Code, pengelolaan koordinat lab, peta laboratorium interaktif + live tracking & rute, push notification berbasis peristiwa, serta ketahanan perangkat. | [Baca SRS3.md](./SRS3.md) |
+| **`SRS4.md`** | **Spesifikasi Kebutuhan Sprint 4:** Pemisahan peran **Aslab** & **Asprak**, 3 alur *bulk/single insert* terpisah (lab, praktikan, asprak) + template & daftar tinjauan, pemindahan anggota, dashboard keberlangsungan lab, keterlambatan (*grace period*) & denda tetap, integrasi **Midtrans Sandbox** via backend tepercaya, serta notifikasi & riwayat pembayaran. | [Baca SRS4.md](./SRS4.md) |
 | **`firestore.rules`** | **Aturan Keamanan Database:** Role-Based Access Control (RBAC) resmi Cloud Firestore yang melindungi koleksi `/users`, `/sessions`, `/attendances`, `/leave_requests`, `/labs`, `/notifications`, dan `/system_health`. | [Baca firestore.rules](./firestore.rules) |
 
 ---
@@ -24,9 +25,10 @@ Untuk mempermudah pemahaman arsitektur dan kolaborasi pengembang, dokumentasi pr
 
 **PPK LabPortal** adalah aplikasi operasional laboratorium praktikum modern yang mengintegrasikan pencatatan kehadiran presensi mandiri berbasis lokasi (*geofencing*), pemetaan aktivitas laboratorium secara real-time, manajemen jadwal sesi, notifikasi berbasis peristiwa (*push notification*), serta moderasi izin ketidakhadiran berbantuan kecerdasan buatan (*Artificial Intelligence*).
 
-Aplikasi dirancang secara adaptif dari dua perspektif peran pengguna:
-1. **Praktikan (Mahasiswa Informatika):** Memantau jadwal praktikum, melakukan presensi di halaman khusus dengan validasi radius lokasi laboratorium (kode 4 digit atau QR Code), melihat peta persebaran laboratorium dan aktivitas praktikum real-time beserta rute jalan kaki, menerima notifikasi saat sesi dibuka/diubah atau izin diputuskan, mengajukan izin jika berhalangan hadir, serta memeriksa rekap riwayat kehadiran.
-2. **Asisten Laboratorium:** Menjadwalkan sesi modul baru (CRUD Sesi), mengelola koordinat dan radius laboratorium (`/labs`), membuka dan menutup sesi presensi secara real-time (termasuk kode 4 digit & QR sesi), memantau aktivitas dan keterisian laboratorium di peta interaktif, memantau roster kehadiran kelas, mengelola master data pengguna (CRUD Praktikan & Asisten), serta meninjau rekomendasi AI dan mengambil keputusan persetujuan izin ketidakhadiran.
+Aplikasi dirancang secara adaptif dari perspektif peran pengguna:
+1. **Praktikan (Mahasiswa Informatika):** Memantau jadwal praktikum, melakukan presensi di halaman khusus dengan validasi radius lokasi laboratorium (kode 4 digit atau QR Code), melihat peta persebaran laboratorium dan aktivitas praktikum real-time beserta rute jalan kaki, menerima notifikasi saat sesi dibuka/diubah atau izin diputuskan, mengajukan izin jika berhalangan hadir, serta memeriksa rekap riwayat kehadiran dan tagihan/pembayaran denda keterlambatan *(Sprint 4)*.
+2. **Asisten Praktikum / Asprak (d/h Asisten Laboratorium):** Menjalankan operasional sesi praktikum pada laboratorium yang menjadi tanggung jawabnya — membuka/menutup sesi real-time (termasuk kode 4 digit & QR sesi), memantau dan mengelola presensi roster kelas, serta meninjau rekomendasi AI dan mengambil keputusan persetujuan izin ketidakhadiran.
+3. **Asisten Laboratorium / Aslab *(Sprint 4 — dalam pengembangan)*:** Mengelola laboratorium per mata kuliah (lokasi, koordinat, radius, *grace period*, nominal denda), melakukan tiga alur *bulk/single insert* terpisah (lab, praktikan, asprak) beserta template unduhan, memindahkan praktikan/asprak antar laboratorium, menjadwalkan sesi, serta memantau dashboard keberlangsungan laboratorium dan riwayat keuangan denda.
 
 ---
 
@@ -56,6 +58,11 @@ Aplikasi dirancang secara adaptif dari dua perspektif peran pengguna:
 * **Push Notification Berbasis Peristiwa & Pusat Notifikasi (`src/app/notifikasi.tsx`):** Menggunakan Firebase Cloud Messaging (`@react-native-firebase/app`, `@react-native-firebase/messaging`) dan `expo-notifications` untuk mengirim notifikasi saat sesi dibuka/dimulai, jadwal diubah, atau izin disetujui/ditolak, sekaligus mencatat riwayat real-time di `/notifications`.
 * **Ketahanan Izin & Kondisi Perangkat (`src/hooks/use-device-resilience.ts`, `src/components/device-status-banner.tsx`):** Penanganan terpadu saat izin lokasi/notifikasi ditolak, layanan GPS nonaktif, lokasi belum tersedia, atau perangkat offline (`@react-native-community/netinfo`), lengkap dengan tombol pintasan buka pengaturan perangkat.
 
+### D. Manajemen Lab Aslab, Dashboard, Denda & Midtrans Sandbox (Sprint 4 — Spesifikasi `SRS4.md`)
+* **Manajemen Laboratorium oleh Aslab (`feature/sprint4-aslab-lab-management`):** Peran baru `aslab`, tiga alur *bulk/single insert* terpisah (laboratorium per mata kuliah, praktikan ke lab, asprak ke lab) dengan template `.csv`/`.xlsx` dan daftar tinjauan scroll fleksibel (*accept/deny/edit/isi kosong*), pemindahan anggota antar lab tanpa memindahkan jadwal, serta pengaturan radius & batas keterlambatan (*grace period*).
+* **Dashboard Lab & Sesi Asprak (`feature/sprint4-dashboard-asprak-session`):** Dashboard keberlangsungan laboratorium dengan filter Hari/Minggu/Bulan dari Firestore, pengelolaan jadwal oleh Aslab, portal Asprak terfokus pada lab yang diampu, pencatatan izin sebagai *excused absence* (bebas denda), dan finalisasi UI lintas peran.
+* **Keterlambatan, Denda & Midtrans Sandbox (`feature/sprint4-midtrans-fines-payment`):** Perhitungan keterlambatan berbasis *grace period*, penerbitan satu tagihan nominal tetap per kejadian (`fines/{attendanceId}`), integrasi pembayaran **Midtrans Sandbox** melalui backend tepercaya + verifikasi webhook (tanpa menyimpan *secret key* di aplikasi), notifikasi tagihan/pembayaran, serta riwayat pembayaran persisten.
+
 ---
 
 ## 4. Struktur Proyek
@@ -66,6 +73,7 @@ PPK-Post-UTS/
 ├── SRS.md                            # Spesifikasi kebutuhan Sprint 1
 ├── SRS2.md                           # Spesifikasi kebutuhan Sprint 2 (Firebase, AI & Matriks Tim)
 ├── SRS3.md                           # Spesifikasi kebutuhan Sprint 3 (Geofencing, Maps, Push & Resilience)
+├── SRS4.md                           # Spesifikasi kebutuhan Sprint 4 (Aslab, Dashboard, Denda & Midtrans)
 ├── README.md                         # Dokumentasi utama proyek
 ├── .env.example                      # Template variabel lingkungan (.env) untuk tim
 ├── .easignore                        # Berkas yang dikecualikan dari unggahan EAS Build
@@ -266,6 +274,14 @@ npx expo-doctor
 | 3 | **Peta Laboratorium Interaktif, Live Tracking & Rute** | Programmer 2 | **Selesai (100%)** | Peta `react-native-maps`, marker aktivitas real-time (`/labs` + `/sessions`), rute jalan kaki Google Routes API, & fallback web. |
 | 4 | **Push Notification Berbasis Peristiwa (FCM/Expo)** | Programmer 3 | **Selesai (100%)** | Notifikasi real-time saat sesi dibuka/dimulai, jadwal berubah, dan izin diputuskan, plus Pusat Notifikasi `/notifications`. |
 | 5 | **Ketahanan Izin, Kondisi Perangkat & Rules RBAC** | Programmer 3 | **Selesai (100%)** | Penanganan izin ditolak, GPS nonaktif, lokasi belum tersedia, mode offline (`NetInfo`), dan pembaruan `firestore.rules`. |
+
+### C. Sprint 4 (Aslab, Dashboard Lab, Denda & Midtrans Sandbox — Pembagian 3 Branch)
+
+| No | Modul / Fitur | Programmer Penanggung Jawab | Branch Git | Status | Keterangan Hasil |
+|---|---|:---:|---|:---:|---|
+| 1 | **Peran Aslab, Manajemen Lab, 3 Alur Impor Terpisah & Pemindahan Anggota** | Programmer 1 | `feature/sprint4-aslab-lab-management` | **Spesifikasi Siap (`SRS4.md`)** | Stage 0 kontrak tipe/util/rules, CRUD lab (+radius & grace), 3 alur bulk/single insert + template + review list, pindah anggota tanpa pindah jadwal. |
+| 2 | **Dashboard Keberlangsungan Lab, Jadwal Aslab, Portal Asprak & Finalisasi UI** | Programmer 2 | `feature/sprint4-dashboard-asprak-session` | **Spesifikasi Siap (`SRS4.md`)** | Dashboard filter Hari/Minggu/Bulan, sesi Asprak terfokus (`startedAt`), izin *excused absence*, dan audit `DESIGN.md`. |
+| 3 | **Backend Tepercaya, Denda Keterlambatan, Midtrans Sandbox & Notifikasi Bayar** | Programmer 3 | `feature/sprint4-midtrans-fines-payment` | **Spesifikasi Siap (`SRS4.md`)** | Perhitungan telat *grace period*, 1 tagihan/kejadian, Snap + verifikasi webhook backend, UI tagihan/riwayat persisten, dan notifikasi pembayaran. |
 
 ---
 

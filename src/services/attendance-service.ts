@@ -6,6 +6,7 @@ import {
   getDoc,
   onSnapshot,
   query,
+  serverTimestamp,
   setDoc,
   updateDoc,
   where,
@@ -29,6 +30,14 @@ import {
   UserDocument,
 } from '@/types/praktikum';
 import { parseSessionQrPayload } from '@/utils/qr-payload';
+import {
+  DEFAULT_FINE_AMOUNT,
+  DEFAULT_GRACE_MINUTES,
+  evaluateLateness,
+  resolveSessionStartAt,
+} from '@/utils/lateness';
+import { formatRupiah } from '@/utils/payment-format';
+import type { AttendanceLateness, AttendanceStatus } from '@/types/finance';
 
 const ATTENDANCES_COLLECTION = 'attendances';
 const SESSIONS_COLLECTION = 'sessions';
@@ -91,8 +100,29 @@ function mapLocationSnapshot(raw: unknown): AttendanceLocationSnapshot | undefin
   };
 }
 
+function mapLateness(raw: unknown): AttendanceLateness | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const obj = raw as Record<string, unknown>;
+  const minutes = Number(obj.minutesAfterStart);
+  const grace = Number(obj.graceMinutes);
+  if (!Number.isFinite(minutes) || !Number.isFinite(grace)) return undefined;
+  return {
+    baselineAt: String(obj.baselineAt ?? ''),
+    graceMinutes: grace,
+    deadlineAt: String(obj.deadlineAt ?? ''),
+    minutesAfterStart: minutes,
+    isLate: Boolean(obj.isLate),
+    evaluatedBy: obj.evaluatedBy === 'server' ? 'server' : 'client',
+  };
+}
+
 function mapAttendanceSnapshot(id: string, raw: Record<string, unknown>): AttendanceDocument {
   const locationSnapshot = mapLocationSnapshot(raw.locationSnapshot);
+  const lateness = mapLateness(raw.lateness);
+  const attendanceStatus: AttendanceStatus =
+    raw.attendanceStatus === 'terlambat' || raw.attendanceStatus === 'izin'
+      ? raw.attendanceStatus
+      : 'hadir';
   return {
     id,
     sessionId: String(raw.sessionId ?? ''),
@@ -109,6 +139,9 @@ function mapAttendanceSnapshot(id: string, raw: Record<string, unknown>): Attend
     verificationMethod:
       raw.verificationMethod === 'qr-location' ? 'qr-location' : 'code-location',
     ...(locationSnapshot ? { locationSnapshot } : {}),
+    attendanceStatus,
+    ...(lateness ? { lateness } : {}),
+    ...(raw.fineId ? { fineId: String(raw.fineId) } : {}),
   };
 }
 
@@ -402,6 +435,10 @@ export interface SubmitAttendanceResponse {
   success: boolean;
   message: string;
   locationResult?: LocationVerificationResult;
+  /** Hasil evaluasi sementara di client; status final ditentukan backend. */
+  attendanceStatus?: 'hadir' | 'terlambat';
+  lateMinutes?: number;
+  fineAmount?: number;
 }
 
 /**
@@ -445,6 +482,12 @@ export async function submitAttendance({
         ? { radiusOverride: Number(raw.radiusOverride) }
         : {}),
       ...(raw.openedAt ? { openedAt: String(raw.openedAt) } : {}),
+      ...(raw.startAt ? { startAt: String(raw.startAt) } : {}),
+      ...(raw.startedAt ? { startedAt: String(raw.startedAt) } : {}),
+      ...(raw.graceMinutesOverride !== undefined &&
+      Number.isFinite(Number(raw.graceMinutesOverride))
+        ? { graceMinutesOverride: Number(raw.graceMinutesOverride) }
+        : {}),
     };
   } catch {
     // Jika gagal membaca freshSnap karena gangguan koneksi, kembalikan pesan yang jelas
@@ -581,15 +624,42 @@ export async function submitAttendance({
 
   const existing = await getDoc(attendanceRef);
   if (existing.exists()) {
+    const alreadyExcused = existing.data()?.attendanceStatus === 'izin';
     return {
       success: false,
-      message: 'Anda sudah melakukan presensi pada sesi ini.',
+      message: alreadyExcused
+        ? 'Anda tercatat izin pada sesi ini sehingga tidak dapat melakukan presensi mandiri.'
+        : 'Anda sudah melakukan presensi pada sesi ini.',
       locationResult: verifiedLoc,
     };
   }
 
   const now = new Date();
   const cleanCatatan = catatan?.trim();
+
+  // Evaluasi keterlambatan sementara di client (final dihitung ulang backend dari waktu server)
+  const labConfig = resolvedLab as LabLocationDocument & {
+    graceMinutes?: number;
+    fineAmount?: number;
+  };
+  const graceMinutes = Number.isFinite(Number(activeSession.graceMinutesOverride))
+    ? Number(activeSession.graceMinutesOverride)
+    : Number.isFinite(Number(labConfig.graceMinutes))
+      ? Number(labConfig.graceMinutes)
+      : DEFAULT_GRACE_MINUTES;
+  const fineAmount = Number.isFinite(Number(labConfig.fineAmount))
+    ? Number(labConfig.fineAmount)
+    : DEFAULT_FINE_AMOUNT;
+  const startAt = resolveSessionStartAt(activeSession);
+  const evaluation = startAt
+    ? evaluateLateness({
+        startAt,
+        startedAt: activeSession.startedAt ?? null,
+        graceMinutes,
+        checkedInAt: now,
+      })
+    : null;
+  const provisionalStatus: 'hadir' | 'terlambat' = evaluation?.attendanceStatus ?? 'hadir';
 
   const locationSnapshot: AttendanceLocationSnapshot = {
     latitude: verifiedLoc.latitude,
@@ -617,14 +687,37 @@ export async function submitAttendance({
     locationSnapshot,
     deviceInfo: Platform.OS,
     ...(cleanCatatan ? { catatan: cleanCatatan } : {}),
+    attendanceStatus: provisionalStatus,
+    ...(evaluation
+      ? {
+          lateness: {
+            baselineAt: evaluation.baselineAt,
+            graceMinutes: evaluation.graceMinutes,
+            deadlineAt: evaluation.deadlineAt,
+            minutesAfterStart: evaluation.minutesAfterStart,
+            isLate: evaluation.isLate,
+            evaluatedBy: 'client' as const,
+          },
+        }
+      : {}),
   };
 
-  await setDoc(attendanceRef, payload);
+  // checkedInAt memakai waktu server; backend menghitung ulang status final & menerbitkan denda.
+  await setDoc(attendanceRef, { ...payload, checkedInAt: serverTimestamp() });
+
+  const locationNote = `Lokasi terverifikasi (${formatDistanceMeters(verifiedLoc.distanceMeters)} dari ${resolvedLab.nama}).`;
+  const statusNote =
+    provisionalStatus === 'terlambat'
+      ? `Terlambat ${evaluation?.minutesAfterStart ?? 0} menit — tagihan denda ${formatRupiah(fineAmount)} akan diterbitkan.`
+      : 'Hadir Tepat Waktu.';
 
   return {
     success: true,
-    message: `Presensi berhasil dicatat! Lokasi terverifikasi (${formatDistanceMeters(verifiedLoc.distanceMeters)} dari ${resolvedLab.nama}).`,
+    message: `Presensi berhasil dicatat! ${statusNote} ${locationNote}`,
     locationResult: verifiedLoc,
+    attendanceStatus: provisionalStatus,
+    lateMinutes: evaluation?.minutesAfterStart ?? 0,
+    fineAmount,
   };
 }
 

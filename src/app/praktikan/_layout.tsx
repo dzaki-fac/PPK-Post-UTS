@@ -4,6 +4,7 @@ import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-nativ
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { RoleHeader } from '@/components/role-header';
+import { TabBillIcon, TabReceiptIcon } from '@/components/payment-tab-icons';
 import {
   TabCalendarIcon,
   TabCheckinIcon,
@@ -115,6 +116,40 @@ export default function PraktikanLayout() {
             tabBarIcon: ({ color, focused }) => (
               <TabHistoryIcon color={color} focused={focused} />
             ),
+          }}
+        />
+        <Tabs.Screen
+          name="tagihan"
+          options={{
+            title: 'Tagihan Denda',
+            tabBarLabel: 'Tagihan',
+            tabBarIcon: ({ color, focused }) => (
+              <TabBillIcon color={color} focused={focused} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="riwayat-pembayaran"
+          options={{
+            title: 'Riwayat Pembayaran',
+            tabBarLabel: 'Bayar',
+            tabBarIcon: ({ color, focused }) => (
+              <TabReceiptIcon color={color} focused={focused} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="tagihan/[id]"
+          options={{
+            href: null,
+            title: 'Rincian Tagihan',
+          }}
+        />
+        <Tabs.Screen
+          name="pembayaran-hasil"
+          options={{
+            href: null,
+            title: 'Hasil Pembayaran',
           }}
         />
         <Tabs.Screen

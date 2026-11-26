@@ -4,6 +4,9 @@
 # Dependencies
 node_modules/
 
+# Cloud Functions di-deploy via Firebase CLI, bukan bagian bundel aplikasi
+functions/
+
 # Expo cache and web builds
 .expo/
 dist/

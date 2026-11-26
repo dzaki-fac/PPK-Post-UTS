@@ -1,3 +1,5 @@
+import type { AttendanceLateness, AttendanceStatus } from './finance';
+
 export type UserRole = 'praktikan' | 'asisten';
 
 export interface UserDocument {
@@ -17,13 +19,17 @@ export interface UserDocument {
   updatedAt: string;
 }
 
-/** Jenis peristiwa yang memicu notifikasi pada Sprint 3. */
+/** Jenis peristiwa yang memicu notifikasi (Sprint 3 + tagihan/pembayaran Sprint 4). */
 export type NotificationEventType =
   | 'session_opened'
   | 'session_started'
   | 'schedule_updated'
   | 'leave_approved'
-  | 'leave_rejected';
+  | 'leave_rejected'
+  | 'fine_created'
+  | 'payment_success'
+  | 'payment_failed'
+  | 'payment_action_required';
 
 export type NotificationDeliveryStatus = 'sent' | 'failed' | 'in_app_only';
 
@@ -37,6 +43,8 @@ export interface NotificationDocument {
   body: string;
   relatedSessionId?: string;
   relatedLeaveId?: string;
+  relatedFineId?: string;
+  relatedPaymentId?: string;
   isRead: boolean;
   deliveryStatus: NotificationDeliveryStatus;
   createdAt: string;
@@ -117,6 +125,12 @@ export interface SessionDocument {
   labId?: string;
   radiusOverride?: number;
   qrPayload?: string;
+  /** Sprint 4: instant mulai terjadwal (ISO UTC, dihitung dari tanggal + waktuMulai WIB). */
+  startAt?: string;
+  /** Sprint 4: waktu PERTAMA sesi dibuka; diisi sekali dan tidak pernah ditimpa. */
+  startedAt?: string;
+  /** Sprint 4: toleransi keterlambatan khusus sesi ini (menimpa lab.graceMinutes). */
+  graceMinutesOverride?: number;
   openedAt?: string;
   closedAt?: string;
   createdAt: string;
@@ -147,6 +161,12 @@ export interface AttendanceDocument {
   verifiedByLocation: boolean;
   verificationMethod: 'code-location' | 'qr-location';
   locationSnapshot?: AttendanceLocationSnapshot;
+  /** Sprint 4: hadir | terlambat | izin. Dokumen lama tanpa field dibaca sebagai 'hadir'. */
+  attendanceStatus?: AttendanceStatus;
+  /** Sprint 4: hasil evaluasi keterlambatan (final bila evaluatedBy == 'server'). */
+  lateness?: AttendanceLateness;
+  /** Sprint 4: terisi backend bila status 'terlambat'. */
+  fineId?: string;
 }
 
 export type Praktikan = {

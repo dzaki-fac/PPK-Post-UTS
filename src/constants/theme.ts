@@ -16,6 +16,7 @@ export const Colors = {
   tintSecondary: '#0D9488',
   tintTertiary: '#EAB308',
   aslabAccent: '#4F46E5',
+  aslabPrimary: '#4F46E5',
   aslabTint: '#EEF2FF',
   aslabBorder: '#C7D2FE',
   success: '#16A34A',

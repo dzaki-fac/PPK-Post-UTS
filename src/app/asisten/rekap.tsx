@@ -11,6 +11,7 @@ import {
 
 import { EmptyState } from '@/components/empty-state';
 import { StatusBadge } from '@/components/status-badge';
+import { useAuth } from '@/context/auth-context';
 import { usePraktikum } from '@/context/praktikum-context';
 import {
   normalizeClassCode,
@@ -21,7 +22,7 @@ import {
   LeaveRequestDocument,
   subscribeLeaveRequests,
 } from '@/services/leave-service';
-import { subscribeSessions } from '@/services/session-service';
+import { subscribeSessions, subscribeSessionsByLabIds } from '@/services/session-service';
 import {
   AttendanceDocument,
   Sesi,
@@ -45,6 +46,7 @@ type RekapSesiItem = {
 };
 
 export default function RekapAsistenScreen() {
+  const { userDoc } = useAuth();
   const { sesiList: dummySesi, presensiList: dummyPresensi, daftarPraktikan: dummyStudents } = usePraktikum();
   const [expandedSesiId, setExpandedSesiId] = useState<string | null>(null);
   const [approvedLeaves, setApprovedLeaves] = useState<LeaveRequestDocument[]>([]);
@@ -52,10 +54,17 @@ export default function RekapAsistenScreen() {
   const [firestoreAttendances, setFirestoreAttendances] = useState<AttendanceDocument[]>([]);
   const [firestoreStudents, setFirestoreStudents] = useState<UserDocument[]>([]);
 
+  const assignedLabIds = useMemo(() => userDoc?.labIds ?? [], [userDoc?.labIds]);
+
   useEffect(() => {
-    const unsubSessions = subscribeSessions((items) => {
-      setFirestoreSessions(items);
-    });
+    const unsubSessions =
+      assignedLabIds.length > 0
+        ? subscribeSessionsByLabIds(assignedLabIds, (items) => {
+            setFirestoreSessions(items);
+          })
+        : subscribeSessions((items) => {
+            setFirestoreSessions(items);
+          });
 
     const unsubAttendances = subscribeAllAttendances((items) => {
       setFirestoreAttendances(items);
@@ -75,7 +84,7 @@ export default function RekapAsistenScreen() {
       unsubStudents();
       unsubLeaves();
     };
-  }, []);
+  }, [assignedLabIds]);
 
   const sesiList = firestoreSessions.length > 0 ? firestoreSessions : dummySesi;
   const daftarMahasiswaMaster = useMemo(() => {
@@ -123,16 +132,18 @@ export default function RekapAsistenScreen() {
               l.sessionId === sesi.id &&
               (l.studentId === m.id || (m.nim && m.nim !== '-' && l.studentNim === m.nim))
           );
+          const isExcusedDoc =
+            record && 'attendanceStatus' in record && record.attendanceStatus === 'izin';
           return {
             praktikan: m,
-            hadir: !!record,
-            izin: !record && !!leave,
+            hadir: Boolean(record) && !isExcusedDoc,
+            izin: Boolean(isExcusedDoc) || (!record && Boolean(leave)),
             waktuHadir: record?.waktuKehadiran,
             alasanIzin: leave?.alasan,
           };
         });
 
-        const totalHadir = attendancesForSession.length;
+        const totalHadir = daftar.filter((d) => d.hadir).length;
         const totalIzin = daftar.filter((d) => d.izin).length;
         const totalKelas = mahasiswaFinal.length;
         const persentase =

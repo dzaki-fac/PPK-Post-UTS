@@ -11,6 +11,7 @@ export const MIN_FINE_AMOUNT = 1000;
 export const MAX_FINE_AMOUNT = 1000000;
 
 export const TIMEZONE = 'Asia/Jakarta';
+export const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;
 export const IMPORT_BATCH_SIZE = 200;
 
 export const DEFAULT_COURSE_ID = 'ppk-2026';

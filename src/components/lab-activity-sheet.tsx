@@ -28,9 +28,10 @@ export function LabActivitySheet({
 }: LabActivitySheetProps) {
   const { lab, ongoingSession, nextSession, distanceMeters, isUserInsideRadius } = activity;
   const isPraktikan = role === 'praktikan';
-  const accentColor = isPraktikan ? '#EA580C' : '#0D9488';
-  const accentTint = isPraktikan ? '#FFF7ED' : '#F0FDFA';
-  const accentBorder = isPraktikan ? '#FED7AA' : '#99F6E4';
+  const isAslab = role === 'aslab';
+  const accentColor = isPraktikan ? '#EA580C' : isAslab ? '#4F46E5' : '#0D9488';
+  const accentTint = isPraktikan ? '#FFF7ED' : isAslab ? '#EEF2FF' : '#F0FDFA';
+  const accentBorder = isPraktikan ? '#FED7AA' : isAslab ? '#C7D2FE' : '#99F6E4';
 
   const handleOpenSession = (sessionId: string) => {
     if (onNavigateToSession) {
@@ -39,6 +40,8 @@ export function LabActivitySheet({
     }
     if (isPraktikan) {
       router.push(`/praktikan/detail-sesi/${sessionId}` as any);
+    } else if (isAslab) {
+      router.push('/aslab/jadwal' as any);
     } else {
       router.push(`/asisten/detail-sesi/${sessionId}` as any);
     }

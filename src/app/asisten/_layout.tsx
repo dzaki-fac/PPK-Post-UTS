@@ -7,7 +7,6 @@ import { RoleHeader } from '@/components/role-header';
 import {
   TabCalendarIcon,
   TabChartIcon,
-  TabLocationPinIcon,
   TabMapIcon,
   TabModerationIcon,
   TabUsersIcon,
@@ -23,7 +22,7 @@ export default function AsistenLayout() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#0D9488" />
-        <Text style={styles.loadingText}>Memverifikasi akses asisten...</Text>
+        <Text style={styles.loadingText}>Memverifikasi akses Asprak...</Text>
       </View>
     );
   }
@@ -82,11 +81,8 @@ export default function AsistenLayout() {
         <Tabs.Screen
           name="lokasi-lab"
           options={{
+            href: null,
             title: 'Lokasi Laboratorium',
-            tabBarLabel: 'Lokasi',
-            tabBarIcon: ({ color, focused }) => (
-              <TabLocationPinIcon color={color} focused={focused} />
-            ),
           }}
         />
         <Tabs.Screen
@@ -122,8 +118,8 @@ export default function AsistenLayout() {
         <Tabs.Screen
           name="mahasiswa"
           options={{
-            title: 'Kelola Pengguna',
-            tabBarLabel: 'Pengguna',
+            title: 'Kelas Saya',
+            tabBarLabel: 'Kelas',
             tabBarIcon: ({ color, focused }) => (
               <TabUsersIcon color={color} focused={focused} />
             ),

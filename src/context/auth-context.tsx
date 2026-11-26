@@ -17,8 +17,8 @@ import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-si
 
 import { GOOGLE_WEB_CLIENT_ID, auth, db, isFirebaseConfigured } from '@/lib/firebase';
 import { linkLabMembersOnLogin } from '@/services/lab-member-service';
-import { UserDocument, UserRole } from '@/types/praktikum';
-import { tryNormalizeRole } from '@/utils/role';
+import { RawUserRole, UserDocument, UserRole } from '@/types/praktikum';
+import { normalizeRole, tryNormalizeRole } from '@/utils/role';
 
 if (Platform.OS !== 'web') {
   GoogleSignin.configure({
@@ -26,7 +26,7 @@ if (Platform.OS !== 'web') {
   });
 }
 
-export type { UserDocument, UserRole };
+export type { RawUserRole, UserDocument, UserRole };
 
 export interface GoogleLoginResult {
   user: User;
@@ -45,7 +45,7 @@ interface AuthContextType {
     email: string,
     password: string,
     nama: string,
-    peran: UserRole,
+    peran: RawUserRole,
     nim?: string,
     kelas?: 'A' | 'B',
     peranLab?: string
@@ -53,7 +53,7 @@ interface AuthContextType {
   loginWithGoogle: () => Promise<GoogleLoginResult>;
   completeGoogleProfile: (
     nama: string,
-    peran: UserRole,
+    peran: RawUserRole,
     nim?: string,
     kelas?: 'A' | 'B',
     peranLab?: string
@@ -107,7 +107,7 @@ function mapFirebaseAuthError(error: unknown): string {
 
 function validateProfileFields(
   nama: string,
-  peran: UserRole,
+  peran: RawUserRole,
   nim?: string,
   kelas?: 'A' | 'B'
 ): { cleanNama: string; cleanNim?: string; cleanKelas?: 'A' | 'B' } {
@@ -123,13 +123,14 @@ function validateProfileFields(
   // Baik praktikan maupun asprak memiliki NIM mahasiswa
   let cleanNim = (nim ?? '').replace(/\s+/g, '');
   if (!cleanNim) {
-    const prefix = peran === 'asprak' ? '240601211' : '240601241';
+    const normalized = normalizeRole(peran);
+    const prefix = normalized === 'praktikan' ? '240601241' : '240601211';
     cleanNim = `${prefix}${Math.floor(10000 + Math.random() * 90000)}`;
   } else if (!NIM_REGEX.test(cleanNim)) {
     throw new Error('NIM wajib berisi 14 digit angka format Undip (contoh: 24060122130001).');
   }
 
-  if (peran === 'praktikan') {
+  if (normalizeRole(peran) === 'praktikan') {
     const cleanKelas = (kelas === 'B' ? 'B' : 'A') as 'A' | 'B';
     return { cleanNama, cleanNim, cleanKelas };
   }
@@ -141,25 +142,26 @@ function buildUserDocument(
   uid: string,
   email: string,
   nama: string,
-  peran: UserRole,
+  peran: RawUserRole,
   nim?: string,
   kelas?: 'A' | 'B',
   peranLab?: string
 ): UserDocument {
   const now = new Date().toISOString();
   const normalizedEmail = email.trim().toLowerCase();
+  const normalizedPeran = normalizeRole(peran);
   const base: UserDocument = {
     uid,
     email: normalizedEmail,
     emailLower: normalizedEmail,
     nama: nama.trim(),
-    peran,
-    nim,
+    peran: normalizedPeran,
+    nim, // Disimpan untuk semua peran
     createdAt: now,
     updatedAt: now,
   };
 
-  if (peran === 'praktikan') {
+  if (normalizedPeran === 'praktikan') {
     base.kelas = kelas;
   } else {
     base.peranLab = peranLab?.trim() || 'Pengampu Lab Komputasi';
@@ -307,7 +309,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email: string,
       password: string,
       nama: string,
-      peran: UserRole,
+      peran: RawUserRole,
       nim?: string,
       kelas?: 'A' | 'B',
       peranLab?: string
@@ -460,7 +462,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const completeGoogleProfile = useCallback(
     async (
       nama: string,
-      peran: UserRole,
+      peran: RawUserRole,
       nim?: string,
       kelas?: 'A' | 'B',
       peranLab?: string

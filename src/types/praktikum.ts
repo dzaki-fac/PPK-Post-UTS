@@ -213,17 +213,16 @@ export interface SessionDocument {
   kodeSesi: string;
   createdBy: string;
   labId?: string;
+  courseId?: string;
   radiusOverride?: number;
+  graceMinutesOverride?: number;
   qrPayload?: string;
+  startAt?: string;
+  startedAt?: string;
   openedAt?: string;
   closedAt?: string;
   createdAt: string;
   updatedAt: string;
-  // Perluasan Sprint 4 (Bab 3.6)
-  courseId?: string;
-  startAt?: string;
-  startedAt?: string;
-  graceMinutesOverride?: number;
 }
 
 export interface LabWithActivity {
@@ -378,4 +377,6 @@ export type Presensi = {
 
 export type RiwayatItem = Presensi & {
   sesi?: Sesi;
+  attendanceStatus?: AttendanceStatus;
+  lateMinutes?: number;
 };

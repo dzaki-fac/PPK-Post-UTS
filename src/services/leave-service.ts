@@ -9,11 +9,14 @@
 import {
   collection,
   doc,
+  getDoc,
   setDoc,
   query,
   where,
   onSnapshot,
   getDocs,
+  runTransaction,
+  serverTimestamp,
   Unsubscribe,
 } from 'firebase/firestore';
 
@@ -436,13 +439,97 @@ export async function reviewLeaveRequest(
   reviewerName?: string
 ): Promise<boolean> {
   const now = new Date().toISOString();
-
-  // 1. Perbarui state memori lokal
+  const docRef = doc(db, 'leave_requests', requestId);
   const targetIndex = inMemoryStore.findIndex((r) => r.id === requestId);
-  let updatedDoc: LeaveRequestDocument | undefined;
-  if (targetIndex >= 0) {
-    updatedDoc = {
-      ...inMemoryStore[targetIndex],
+  let targetDoc: LeaveRequestDocument | undefined =
+    targetIndex >= 0 ? inMemoryStore[targetIndex] : undefined;
+
+  if (!targetDoc) {
+    try {
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        targetDoc = { id: snap.id, ...(snap.data() as Omit<LeaveRequestDocument, 'id'>) };
+      }
+    } catch {
+      // Abaikan bila offline
+    }
+  }
+
+  const firestorePayload: Record<string, unknown> = {
+    status: decision,
+    reviewNotes: notes?.trim() || '',
+    reviewedBy: reviewerUid || '',
+    reviewerName: reviewerName || '',
+    reviewedAt: now,
+    updatedAt: now,
+  };
+
+  if (targetDoc) {
+    firestorePayload.id = targetDoc.id;
+    firestorePayload.sessionId = targetDoc.sessionId;
+    firestorePayload.sessionName = targetDoc.sessionName;
+    firestorePayload.studentId = targetDoc.studentId;
+    firestorePayload.studentName = targetDoc.studentName;
+    firestorePayload.studentNim = targetDoc.studentNim;
+    firestorePayload.studentClass = targetDoc.studentClass;
+    firestorePayload.alasan = targetDoc.alasan;
+    firestorePayload.aiClassification = targetDoc.aiClassification;
+    firestorePayload.createdAt = targetDoc.createdAt;
+    if (targetDoc.lampiranUrl) {
+      firestorePayload.lampiranUrl = targetDoc.lampiranUrl;
+    }
+  }
+
+  if (decision === 'disetujui') {
+    if (!targetDoc?.sessionId || !targetDoc?.studentId) {
+      throw new Error('Data pengajuan izin tidak lengkap untuk membuat catatan izin.');
+    }
+
+    const attendanceId = `${targetDoc.sessionId}_${targetDoc.studentId}`;
+    const attendanceRef = doc(db, 'attendances', attendanceId);
+    const normalizedClass = targetDoc.studentClass.includes('B') ? 'B' : 'A';
+
+    await runTransaction(db, async (tx) => {
+      const attSnap = await tx.get(attendanceRef);
+      if (attSnap.exists()) {
+        const existingStatus = attSnap.data()?.attendanceStatus;
+        if (existingStatus === 'izin') {
+          throw new Error('Mahasiswa ini sudah tercatat izin pada sesi praktikum ini.');
+        }
+        throw new Error(
+          'Tidak dapat menyetujui izin karena mahasiswa sudah tercatat hadir atau terlambat pada sesi ini.'
+        );
+      }
+
+      tx.set(docRef, firestorePayload, { merge: true });
+      tx.set(attendanceRef, {
+        id: attendanceId,
+        sessionId: targetDoc.sessionId,
+        studentId: targetDoc.studentId,
+        studentName: targetDoc.studentName || 'Praktikan',
+        studentNim: targetDoc.studentNim || '-',
+        studentClass: normalizedClass,
+        waktuKehadiran: '-',
+        timestamp: Date.now(),
+        verifiedByCode: false,
+        verifiedByLocation: false,
+        verificationMethod: 'leave-approved',
+        attendanceStatus: 'izin',
+        excusedByLeaveId: requestId,
+        checkedInAt: serverTimestamp(),
+      });
+    });
+  } else {
+    try {
+      await setDoc(docRef, firestorePayload, { merge: true });
+    } catch (error) {
+      console.warn('Peringatan: Gagal memperbarui penolakan izin di Firestore:', error);
+    }
+  }
+
+  if (targetIndex >= 0 && targetDoc) {
+    inMemoryStore[targetIndex] = {
+      ...targetDoc,
       status: decision,
       reviewNotes: notes?.trim() || '',
       reviewedBy: reviewerUid || '',
@@ -450,58 +537,23 @@ export async function reviewLeaveRequest(
       reviewedAt: now,
       updatedAt: now,
     };
-    inMemoryStore[targetIndex] = updatedDoc;
     notifyLocalListeners();
   }
 
-  // 2. Perbarui dokumen di Cloud Firestore (menggunakan setDoc merge untuk menjamin tersimpan)
-  try {
-    const docRef = doc(db, 'leave_requests', requestId);
-    const firestorePayload: Record<string, unknown> = {
-      status: decision,
-      reviewNotes: notes?.trim() || '',
-      reviewedBy: reviewerUid || '',
-      reviewerName: reviewerName || '',
-      reviewedAt: now,
-      updatedAt: now,
-    };
-
-    if (updatedDoc) {
-      firestorePayload.id = updatedDoc.id;
-      firestorePayload.sessionId = updatedDoc.sessionId;
-      firestorePayload.sessionName = updatedDoc.sessionName;
-      firestorePayload.studentId = updatedDoc.studentId;
-      firestorePayload.studentName = updatedDoc.studentName;
-      firestorePayload.studentNim = updatedDoc.studentNim;
-      firestorePayload.studentClass = updatedDoc.studentClass;
-      firestorePayload.alasan = updatedDoc.alasan;
-      firestorePayload.aiClassification = updatedDoc.aiClassification;
-      firestorePayload.createdAt = updatedDoc.createdAt;
-      if (updatedDoc.lampiranUrl) {
-        firestorePayload.lampiranUrl = updatedDoc.lampiranUrl;
-      }
-    }
-
-    await setDoc(docRef, firestorePayload, { merge: true });
-
-    // Peristiwa 3: keputusan izin. Non-blocking: kegagalan push tidak mengubah hasil moderasi.
-    if (updatedDoc?.studentId) {
-      void notifyLeaveDecision(
-        {
-          id: requestId,
-          studentId: updatedDoc.studentId,
-          sessionName: updatedDoc.sessionName,
-          reviewNotes: notes,
-        },
-        decision,
-        notes
-      ).catch((error) => console.warn('Gagal menyiapkan notifikasi keputusan izin:', error));
-    }
-    return true;
-  } catch (error) {
-    console.warn('Peringatan: Gagal memperbarui izin di Firestore, tersimpan di lokal:', error);
-    return true;
+  if (targetDoc?.studentId) {
+    void notifyLeaveDecision(
+      {
+        id: requestId,
+        studentId: targetDoc.studentId,
+        sessionName: targetDoc.sessionName,
+        reviewNotes: notes,
+      },
+      decision,
+      notes
+    ).catch((error) => console.warn('Gagal menyiapkan notifikasi keputusan izin:', error));
   }
+
+  return true;
 }
 
 /**

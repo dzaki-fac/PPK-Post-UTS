@@ -10,7 +10,9 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ConfirmationModal } from '@/components/confirmation-modal';
+import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
+import { getHomeRouteByRole, getRoleDisplayLabel } from '@/utils/role';
 
 export function RoleHeader() {
   const insets = useSafeAreaInsets();
@@ -19,14 +21,21 @@ export function RoleHeader() {
   const [loggingOut, setLoggingOut] = useState(false);
 
   const isPraktikan = role === 'praktikan';
-  const name = userDoc?.nama ?? (isPraktikan ? 'Praktikan' : 'Asisten');
+  const isAslab = role === 'aslab';
+  const roleLabel = getRoleDisplayLabel(role);
+  const name =
+    userDoc?.nama ?? (isPraktikan ? 'Praktikan' : isAslab ? 'Aslab' : 'Asprak');
   const subInfo = isPraktikan
     ? `Kelas ${userDoc?.kelas ?? '-'}`
-    : 'Asisten Lab';
+    : isAslab
+    ? 'Pengelola Lab'
+    : 'Asprak Sesi';
 
   const fullSubInfo = isPraktikan
     ? `Kelas ${userDoc?.kelas ?? '-'}`
-    : userDoc?.peranLab ?? 'Pengampu Lab Komputasi';
+    : isAslab
+    ? userDoc?.peranLab ?? 'Asisten Laboratorium (Aslab)'
+    : userDoc?.peranLab ?? 'Asisten Praktikum (Asprak)';
 
   const handleConfirmLogout = async () => {
     setLoggingOut(true);
@@ -52,11 +61,7 @@ export function RoleHeader() {
         {/* Brand Group */}
         <Pressable
           style={({ pressed }) => [styles.brandRow, pressed && styles.btnPressed]}
-          onPress={() =>
-            router.replace(
-              (isPraktikan ? '/praktikan/jadwal' : '/asisten/jadwal') as Href
-            )
-          }
+          onPress={() => router.replace(getHomeRouteByRole(role) as Href)}
           accessibilityRole="button"
           accessibilityLabel="PPK LabPortal Beranda">
           <View style={styles.logoBadge}>
@@ -65,7 +70,7 @@ export function RoleHeader() {
           <View>
             <Text style={styles.brandTitle}>LabPortal</Text>
             {Platform.OS === 'web' && (
-              <Text style={styles.brandSubtitle}>Presensi & Manajemen Sesi</Text>
+              <Text style={styles.brandSubtitle}>Presensi & Manajemen Lab</Text>
             )}
           </View>
         </Pressable>
@@ -75,19 +80,31 @@ export function RoleHeader() {
           <View
             style={[
               styles.userPill,
-              isPraktikan ? styles.userPillPraktikan : styles.userPillAsisten,
+              isPraktikan
+                ? styles.userPillPraktikan
+                : isAslab
+                ? styles.userPillAslab
+                : styles.userPillAsisten,
             ]}>
             <View
               style={[
                 styles.roleMiniBadge,
-                isPraktikan ? styles.roleMiniPraktikan : styles.roleMiniAsisten,
+                isPraktikan
+                  ? styles.roleMiniPraktikan
+                  : isAslab
+                  ? styles.roleMiniAslab
+                  : styles.roleMiniAsisten,
               ]}>
               <Text
                 style={[
                   styles.roleMiniText,
-                  isPraktikan ? styles.textPraktikan : styles.textAsisten,
+                  isPraktikan
+                    ? styles.textPraktikan
+                    : isAslab
+                    ? styles.textAslab
+                    : styles.textAsisten,
                 ]}>
-                {isPraktikan ? 'MAHASISWA' : 'ASISTEN'}
+                {roleLabel}
               </Text>
             </View>
             <View style={styles.userInfoWrap}>
@@ -220,6 +237,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0FDFA',
     borderColor: '#99F6E4',
   },
+  userPillAslab: {
+    backgroundColor: Colors.aslabTint,
+    borderColor: Colors.aslabBorder,
+  },
   userInfoWrap: {
     gap: 0.5,
     flexShrink: 1,
@@ -247,6 +268,9 @@ const styles = StyleSheet.create({
   roleMiniAsisten: {
     backgroundColor: '#99F6E4',
   },
+  roleMiniAslab: {
+    backgroundColor: Colors.aslabBorder,
+  },
   roleMiniText: {
     fontSize: 7.5,
     fontWeight: '800',
@@ -257,6 +281,9 @@ const styles = StyleSheet.create({
   },
   textAsisten: {
     color: '#0F766E',
+  },
+  textAslab: {
+    color: Colors.aslabPrimary,
   },
   logoutBtn: {
     height: 28,

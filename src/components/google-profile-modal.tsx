@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 
 import { UserDocument, UserRole, useAuth } from '@/context/auth-context';
+import { normalizeRole } from '@/utils/role';
 
 interface GoogleProfileModalProps {
   visible: boolean;
@@ -37,9 +38,9 @@ function GoogleProfileModalContent({
   const { user, userDoc, completeGoogleProfile } = useAuth();
 
   const [nama, setNama] = useState(userDoc?.nama || user?.displayName || '');
-  const initialRole: UserRole =
-    userDoc?.peran === 'asprak' || userDoc?.peran === 'asisten' ? 'asprak' : 'praktikan';
-  const [peran, setPeran] = useState<UserRole>(initialRole);
+  const [peran, setPeran] = useState<UserRole>(
+    userDoc?.peran ? normalizeRole(userDoc.peran) : 'praktikan'
+  );
   const [nim, setNim] = useState(userDoc?.nim || '');
   const [kelas, setKelas] = useState<'A' | 'B'>((userDoc?.kelas as 'A' | 'B') || 'A');
   const [peranLab, setPeranLab] = useState(userDoc?.peranLab || 'Pengampu Lab Komputasi');

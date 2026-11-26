@@ -1,16 +1,22 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { SesiStatus } from '@/types/praktikum';
+import { AttendanceStatus, FineStatus, PaymentStatus, SesiStatus } from '@/types/praktikum';
+
+export type BadgeStatusType =
+  | SesiStatus
+  | AttendanceStatus
+  | FineStatus
+  | PaymentStatus
+  | 'belum-hadir';
 
 interface StatusBadgeProps {
-  status: SesiStatus | 'hadir' | 'belum-hadir';
+  status: BadgeStatusType;
   size?: 'small' | 'medium';
 }
 
 export function StatusBadge({ status, size = 'medium' }: StatusBadgeProps) {
   const config = getStatusConfig(status);
-
   const isSmall = size === 'small';
 
   return (
@@ -32,28 +38,28 @@ export function StatusBadge({ status, size = 'medium' }: StatusBadgeProps) {
   );
 }
 
-function getStatusConfig(status: SesiStatus | 'hadir' | 'belum-hadir') {
+function getStatusConfig(status: BadgeStatusType) {
   switch (status) {
     case 'dibuka':
       return {
         label: 'Dibuka',
-        bg: '#DCFCE7', // Tailwind green-100
-        border: '#86EFAC', // Tailwind green-300
-        text: '#15803D', // Tailwind green-700
+        bg: '#DCFCE7',
+        border: '#86EFAC',
+        text: '#15803D',
       };
     case 'belum-dibuka':
       return {
         label: 'Belum Dibuka',
-        bg: '#FEF3C7', // Tailwind amber-100
-        border: '#FDE68A', // Tailwind amber-300
-        text: '#B45309', // Tailwind amber-700
+        bg: '#FEF3C7',
+        border: '#FDE68A',
+        text: '#B45309',
       };
     case 'ditutup':
       return {
         label: 'Ditutup',
-        bg: '#FEE2E2', // Tailwind red-100
-        border: '#FCA5A5', // Tailwind red-300
-        text: '#B91C1C', // Tailwind red-700
+        bg: '#FEE2E2',
+        border: '#FCA5A5',
+        text: '#B91C1C',
       };
     case 'hadir':
       return {
@@ -62,12 +68,61 @@ function getStatusConfig(status: SesiStatus | 'hadir' | 'belum-hadir') {
         border: '#86EFAC',
         text: '#15803D',
       };
+    case 'terlambat':
+      return {
+        label: 'Terlambat',
+        bg: '#FEF3C7',
+        border: '#FDE68A',
+        text: '#B45309',
+      };
+    case 'izin':
+      return {
+        label: 'Izin',
+        bg: '#DBEAFE',
+        border: '#93C5FD',
+        text: '#1D4ED8',
+      };
+    case 'unpaid':
+      return {
+        label: 'Belum Dibayar',
+        bg: '#FEE2E2',
+        border: '#FCA5A5',
+        text: '#B91C1C',
+      };
+    case 'pending':
+      return {
+        label: 'Menunggu Pembayaran',
+        bg: '#FEF3C7',
+        border: '#FDE68A',
+        text: '#B45309',
+      };
+    case 'paid':
+      return {
+        label: 'Lunas',
+        bg: '#DCFCE7',
+        border: '#86EFAC',
+        text: '#15803D',
+      };
+    case 'success':
+      return {
+        label: 'Berhasil',
+        bg: '#DCFCE7',
+        border: '#86EFAC',
+        text: '#15803D',
+      };
+    case 'failed':
+      return {
+        label: 'Gagal',
+        bg: '#FEE2E2',
+        border: '#FCA5A5',
+        text: '#B91C1C',
+      };
     case 'belum-hadir':
       return {
         label: 'Belum Hadir',
-        bg: '#F3F4F6',
-        border: '#E5E7EB',
-        text: '#6B7280',
+        bg: '#F1F5F9',
+        border: '#CBD5E1',
+        text: '#64748B',
       };
   }
 }

@@ -12,7 +12,7 @@ interface SesiCardProps {
   totalIzin?: number;
   leaveStatus?: 'menunggu' | 'disetujui' | 'ditolak';
   leaveCategory?: string;
-  role?: 'praktikan' | 'asisten';
+  role?: 'praktikan' | 'asisten' | 'asprak' | 'aslab';
   onPress: () => void;
   onPresensiPress?: () => void;
 }
@@ -29,7 +29,7 @@ export function SesiCard({
   onPress,
   onPresensiPress,
 }: SesiCardProps) {
-  const isAsisten = role === 'asisten';
+  const isAsisten = role === 'asisten' || role === 'asprak' || role === 'aslab';
 
   return (
     <Pressable

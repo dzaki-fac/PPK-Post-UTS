@@ -16,6 +16,7 @@ import {
 import { db } from '@/lib/firebase';
 import { SessionDocument, SessionStatus } from '@/types/praktikum';
 import { buildSessionQrPayload } from '@/utils/qr-payload';
+import { parseWibDateTime } from '@/utils/wib';
 import { notifyScheduleChanged, notifySessionOpened } from './notification-service';
 
 const SESSIONS_COLLECTION = 'sessions';
@@ -33,7 +34,9 @@ export interface CreateSessionInput {
   status?: SessionStatus;
   kodeSesi?: string;
   labId?: string;
+  courseId?: string;
   radiusOverride?: number;
+  graceMinutesOverride?: number;
 }
 
 export type UpdateSessionInput = Partial<
@@ -47,9 +50,11 @@ export type UpdateSessionInput = Partial<
     | 'waktuSelesai'
     | 'ruang'
     | 'labId'
+    | 'courseId'
   >
 > & {
   radiusOverride?: number | null;
+  graceMinutesOverride?: number | null;
 };
 
 /**
@@ -57,6 +62,14 @@ export type UpdateSessionInput = Partial<
  */
 export function generateSessionCode(): string {
   return String(Math.floor(1000 + Math.random() * 9000));
+}
+
+/**
+ * Menghitung startAt (ISO 8601 UTC) dari tanggal dan waktuMulai (WIB).
+ */
+export function computeSessionStartAtIso(tanggal: string, waktuMulai: string): string | undefined {
+  const dt = parseWibDateTime(tanggal, waktuMulai);
+  return dt ? dt.toISOString() : undefined;
 }
 
 /**
@@ -77,45 +90,26 @@ export function isSessionExpired(session: {
   }
 
   const now = Date.now();
-  const TWO_HOURS_MS = 2 * 60 * 60 * 1000; // 2 jam praktikum = 7.200.000 ms
+  const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 
-  // 1. Cek durasi sejak sesi dibuka (openedAt)
   if (session.openedAt) {
     const openedTime = new Date(session.openedAt).getTime();
-    if (!isNaN(openedTime) && now - openedTime >= TWO_HOURS_MS) {
+    if (!Number.isNaN(openedTime) && now - openedTime >= TWO_HOURS_MS) {
       return true;
     }
   }
 
-  // 2. Cek apakah jam selesai praktikum (waktuSelesai) telah terlampaui
-  if (session.waktuSelesai) {
-    try {
-      const cleanTime = session.waktuSelesai.replace('.', ':').trim();
-      const parts = cleanTime.split(':');
-      if (parts.length >= 2) {
-        const endHour = parseInt(parts[0], 10);
-        const endMin = parseInt(parts[1], 10);
-
-        if (!isNaN(endHour) && !isNaN(endMin)) {
-          if (session.tanggal) {
-            const parsedDate = new Date(session.tanggal);
-            if (!isNaN(parsedDate.getTime())) {
-              parsedDate.setHours(endHour, endMin, 0, 0);
-              if (now >= parsedDate.getTime()) {
-                return true;
-              }
-            }
-          }
-        }
-      }
-    } catch {}
+  if (session.tanggal && session.waktuSelesai) {
+    const endDt = parseWibDateTime(session.tanggal, session.waktuSelesai);
+    if (endDt && now >= endDt.getTime()) {
+      return true;
+    }
   }
 
-  // 3. Fallback jika dibuka tanpa openedAt: periksa updatedAt/createdAt
   const refTime = session.openedAt || session.updatedAt || session.createdAt;
   if (refTime) {
     const t = new Date(refTime).getTime();
-    if (!isNaN(t) && now - t >= TWO_HOURS_MS) {
+    if (!Number.isNaN(t) && now - t >= TWO_HOURS_MS) {
       return true;
     }
   }
@@ -123,10 +117,14 @@ export function isSessionExpired(session: {
   return false;
 }
 
-function mapSessionSnapshot(id: string, raw: Record<string, unknown>): SessionDocument {
+export function mapSessionSnapshot(id: string, raw: Record<string, unknown>): SessionDocument {
   const radiusRaw =
     raw.radiusOverride !== undefined && raw.radiusOverride !== null
       ? Number(raw.radiusOverride)
+      : undefined;
+  const graceRaw =
+    raw.graceMinutesOverride !== undefined && raw.graceMinutesOverride !== null
+      ? Number(raw.graceMinutesOverride)
       : undefined;
 
   return {
@@ -144,9 +142,15 @@ function mapSessionSnapshot(id: string, raw: Record<string, unknown>): SessionDo
     createdBy: String(raw.createdBy ?? ''),
     ...(raw.openedAt ? { openedAt: String(raw.openedAt) } : {}),
     ...(raw.closedAt ? { closedAt: String(raw.closedAt) } : {}),
+    ...(raw.startAt ? { startAt: String(raw.startAt) } : {}),
+    ...(raw.startedAt ? { startedAt: String(raw.startedAt) } : {}),
     ...(raw.labId ? { labId: String(raw.labId) } : {}),
+    ...(raw.courseId ? { courseId: String(raw.courseId) } : {}),
     ...(radiusRaw !== undefined && Number.isFinite(radiusRaw)
       ? { radiusOverride: radiusRaw }
+      : {}),
+    ...(graceRaw !== undefined && Number.isFinite(graceRaw)
+      ? { graceMinutesOverride: graceRaw }
       : {}),
     ...(raw.qrPayload ? { qrPayload: String(raw.qrPayload) } : {}),
     createdAt: String(raw.createdAt ?? ''),
@@ -156,21 +160,21 @@ function mapSessionSnapshot(id: string, raw: Record<string, unknown>): SessionDo
 
 /**
  * Listener real-time seluruh dokumen pada koleksi /sessions.
- * Otomatis menutup sesi yang telah berjalan lebih dari 2 jam.
  */
 export function subscribeSessions(
   onData: (sessions: SessionDocument[]) => void,
-  onError?: (error: Error) => void
+  onError?: (error: Error) => void,
+  options?: { autoCloseExpired?: boolean }
 ): Unsubscribe {
   const sessionsRef = collection(db, SESSIONS_COLLECTION);
+  const allowAutoClose = options?.autoCloseExpired !== false;
 
   return onSnapshot(
     sessionsRef,
     (snapshot) => {
       const items = snapshot.docs.map((d) => {
         const item = mapSessionSnapshot(d.id, d.data() as Record<string, unknown>);
-        if (item.status === 'dibuka' && isSessionExpired(item)) {
-          // Tutup sesi otomatis di Cloud Firestore
+        if (allowAutoClose && item.status === 'dibuka' && isSessionExpired(item)) {
           updateSessionStatus(item.id, 'ditutup').catch(() => {});
           item.status = 'ditutup';
         }
@@ -186,15 +190,77 @@ export function subscribeSessions(
 }
 
 /**
+ * Listener real-time sesi praktikum yang terikat ke daftar labId tertentu (chunked max 30 ID per query).
+ */
+export function subscribeSessionsByLabIds(
+  labIds: string[],
+  onData: (sessions: SessionDocument[]) => void,
+  onError?: (error: Error) => void
+): Unsubscribe {
+  const cleanIds = Array.from(new Set(labIds.map((id) => id.trim()).filter(Boolean)));
+  if (cleanIds.length === 0) {
+    onData([]);
+    return () => {};
+  }
+
+  const chunks: string[][] = [];
+  for (let i = 0; i < cleanIds.length; i += 30) {
+    chunks.push(cleanIds.slice(i, i + 30));
+  }
+
+  const chunkMap = new Map<number, SessionDocument[]>();
+  const unsubscribes: Unsubscribe[] = [];
+
+  const emitMerged = () => {
+    const merged = new Map<string, SessionDocument>();
+    chunkMap.forEach((list) => {
+      list.forEach((s) => merged.set(s.id, s));
+    });
+    const result = Array.from(merged.values()).sort((a, b) =>
+      b.createdAt.localeCompare(a.createdAt)
+    );
+    onData(result);
+  };
+
+  chunks.forEach((chunk, index) => {
+    const q = query(collection(db, SESSIONS_COLLECTION), where('labId', 'in', chunk));
+    const unsub = onSnapshot(
+      q,
+      (snapshot) => {
+        const items = snapshot.docs.map((d) => {
+          const item = mapSessionSnapshot(d.id, d.data() as Record<string, unknown>);
+          if (item.status === 'dibuka' && isSessionExpired(item)) {
+            updateSessionStatus(item.id, 'ditutup').catch(() => {});
+            item.status = 'ditutup';
+          }
+          return item;
+        });
+        chunkMap.set(index, items);
+        emitMerged();
+      },
+      (err) => {
+        if (onError) onError(err);
+      }
+    );
+    unsubscribes.push(unsub);
+  });
+
+  return () => {
+    unsubscribes.forEach((u) => u());
+  };
+}
+
+/**
  * Listener real-time untuk satu dokumen sesi pada /sessions/{sessionId}.
- * Otomatis menutup sesi jika telah berjalan lebih dari 2 jam.
  */
 export function subscribeSessionById(
   sessionId: string,
   onData: (session: SessionDocument | null) => void,
-  onError?: (error: Error) => void
+  onError?: (error: Error) => void,
+  options?: { autoCloseExpired?: boolean }
 ): Unsubscribe {
   const sessionRef = doc(db, SESSIONS_COLLECTION, sessionId);
+  const allowAutoClose = options?.autoCloseExpired !== false;
 
   return onSnapshot(
     sessionRef,
@@ -204,7 +270,7 @@ export function subscribeSessionById(
         return;
       }
       const item = mapSessionSnapshot(snapshot.id, snapshot.data() as Record<string, unknown>);
-      if (item.status === 'dibuka' && isSessionExpired(item)) {
+      if (allowAutoClose && item.status === 'dibuka' && isSessionExpired(item)) {
         updateSessionStatus(item.id, 'ditutup').catch(() => {});
         item.status = 'ditutup';
       }
@@ -217,22 +283,28 @@ export function subscribeSessionById(
 }
 
 /**
- * Membuat sesi praktikum baru di koleksi /sessions dengan kode 4 digit otomatis.
+ * Membuat sesi praktikum baru di koleksi /sessions (kewenangan Aslab).
  */
 export async function createSession(input: CreateSessionInput): Promise<SessionDocument> {
   const now = new Date().toISOString();
   const status: SessionStatus = input.status ?? 'belum-dibuka';
   const kodeSesi = input.kodeSesi?.trim() || generateSessionCode();
   const cleanLabId = input.labId?.trim();
+  const cleanCourseId = input.courseId?.trim();
+  const cleanTanggal = input.tanggal.trim();
+  const cleanWaktuMulai = input.waktuMulai.trim();
+  const startAt = computeSessionStartAtIso(cleanTanggal, cleanWaktuMulai);
   const hasRadiusOverride =
     input.radiusOverride !== undefined && Number.isFinite(input.radiusOverride);
+  const hasGraceOverride =
+    input.graceMinutesOverride !== undefined && Number.isFinite(input.graceMinutesOverride);
 
   const payload: Omit<SessionDocument, 'id'> = {
     praktikum: input.praktikum.trim() || 'Praktikum PPK',
     kelas: input.kelas,
     materi: input.materi.trim(),
-    tanggal: input.tanggal.trim(),
-    waktuMulai: input.waktuMulai.trim(),
+    tanggal: cleanTanggal,
+    waktuMulai: cleanWaktuMulai,
     waktuSelesai: input.waktuSelesai.trim(),
     ruang: input.ruang.trim() || 'Lab Komputasi 1',
     status,
@@ -240,9 +312,12 @@ export async function createSession(input: CreateSessionInput): Promise<SessionD
     createdBy: input.createdBy,
     createdAt: now,
     updatedAt: now,
-    ...(status === 'dibuka' ? { openedAt: now } : {}),
+    ...(startAt ? { startAt } : {}),
+    ...(status === 'dibuka' ? { openedAt: now, startedAt: now } : {}),
     ...(cleanLabId ? { labId: cleanLabId } : {}),
+    ...(cleanCourseId ? { courseId: cleanCourseId } : {}),
     ...(hasRadiusOverride ? { radiusOverride: Math.round(input.radiusOverride!) } : {}),
+    ...(hasGraceOverride ? { graceMinutesOverride: Math.round(input.graceMinutesOverride!) } : {}),
   };
 
   const docRef = await addDoc(collection(db, SESSIONS_COLLECTION), payload);
@@ -257,7 +332,7 @@ export async function createSession(input: CreateSessionInput): Promise<SessionD
 }
 
 /**
- * Memperbarui informasi metadata sesi praktikum di Firestore.
+ * Memperbarui informasi metadata sesi praktikum di Firestore (kewenangan Aslab).
  */
 export async function updateSession(
   sessionId: string,
@@ -278,15 +353,36 @@ export async function updateSession(
   if (updates.labId !== undefined && updates.labId.trim()) {
     cleanUpdates.labId = updates.labId.trim();
   }
+  if (updates.courseId !== undefined && updates.courseId.trim()) {
+    cleanUpdates.courseId = updates.courseId.trim();
+  }
   if (updates.radiusOverride === null) {
     cleanUpdates.radiusOverride = deleteField();
   } else if (updates.radiusOverride !== undefined && Number.isFinite(updates.radiusOverride)) {
     cleanUpdates.radiusOverride = Math.round(updates.radiusOverride);
   }
+  if (updates.graceMinutesOverride === null) {
+    cleanUpdates.graceMinutesOverride = deleteField();
+  } else if (
+    updates.graceMinutesOverride !== undefined &&
+    Number.isFinite(updates.graceMinutesOverride)
+  ) {
+    cleanUpdates.graceMinutesOverride = Math.round(updates.graceMinutesOverride);
+  }
+
+  if (updates.tanggal !== undefined || updates.waktuMulai !== undefined) {
+    const snap = await getDoc(sessionRef);
+    const prev = snap.exists() ? (snap.data() as Record<string, unknown>) : {};
+    const targetTanggal = updates.tanggal?.trim() || String(prev.tanggal ?? '');
+    const targetWaktuMulai = updates.waktuMulai?.trim() || String(prev.waktuMulai ?? '');
+    const computedStartAt = computeSessionStartAtIso(targetTanggal, targetWaktuMulai);
+    if (computedStartAt) {
+      cleanUpdates.startAt = computedStartAt;
+    }
+  }
 
   await updateDoc(sessionRef, cleanUpdates);
 
-  // Peristiwa 2: jadwal diubah. Notifikasi non-blocking, tidak menggagalkan update Firestore.
   const scheduleChanges: string[] = [];
   if (updates.tanggal !== undefined) scheduleChanges.push(`Tanggal: ${updates.tanggal}`);
   if (updates.waktuMulai !== undefined || updates.waktuSelesai !== undefined) {
@@ -312,6 +408,7 @@ export async function updateSession(
 
 /**
  * Mengubah status siklus hidup sesi ('belum-dibuka' | 'dibuka' | 'ditutup').
+ * Saat pertama kali dibuka, mengisi `startedAt` dan tidak pernah menimpanya lagi (termasuk saat Buka Kembali).
  */
 export async function updateSessionStatus(
   sessionId: string,
@@ -327,10 +424,14 @@ export async function updateSessionStatus(
   if (status === 'dibuka') {
     payload.openedAt = now;
     const snap = await getDoc(sessionRef);
-    const existingCode = snap.exists() ? String(snap.data()?.kodeSesi ?? '').trim() : '';
+    const data = snap.exists() ? (snap.data() as Record<string, unknown>) : {};
+    const existingCode = String(data.kodeSesi ?? '').trim();
     const activeCode = existingCode || generateSessionCode();
     if (!existingCode) {
       payload.kodeSesi = activeCode;
+    }
+    if (!data.startedAt) {
+      payload.startedAt = now;
     }
     payload.qrPayload = buildSessionQrPayload(sessionId, activeCode);
   } else if (status === 'ditutup') {
@@ -339,7 +440,6 @@ export async function updateSessionStatus(
 
   await updateDoc(sessionRef, payload);
 
-  // Peristiwa 1: sesi dibuka. Kirim ke praktikan kelas terkait tanpa menahan operasi utama.
   if (status === 'dibuka') {
     getDoc(sessionRef)
       .then((snap) => {
@@ -369,4 +469,3 @@ export async function deleteSession(sessionId: string): Promise<void> {
   batch.delete(doc(db, SESSIONS_COLLECTION, sessionId));
   await batch.commit();
 }
-

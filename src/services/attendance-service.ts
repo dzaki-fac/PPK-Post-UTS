@@ -705,6 +705,24 @@ export async function submitAttendance({
   // checkedInAt memakai waktu server; backend menghitung ulang status final & menerbitkan denda.
   await setDoc(attendanceRef, { ...payload, checkedInAt: serverTimestamp() });
 
+  const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL?.trim().replace(/\/+$/, '');
+  if (backendUrl) {
+    import('firebase/auth')
+      .then(({ getAuth }) => getAuth().currentUser?.getIdToken())
+      .then((idToken) => {
+        if (!idToken) return;
+        return fetch(`${backendUrl}/api/fines/evaluate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({ attendanceId: attendanceRef.id }),
+        });
+      })
+      .catch(() => undefined);
+  }
+
   const locationNote = `Lokasi terverifikasi (${formatDistanceMeters(verifiedLoc.distanceMeters)} dari ${resolvedLab.nama}).`;
   const statusNote =
     provisionalStatus === 'terlambat'

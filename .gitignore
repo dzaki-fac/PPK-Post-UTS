@@ -56,3 +56,9 @@ example
 # generated native folders
 /ios
 /android
+
+# Backend Express
+backend/.env*
+!backend/.env.example
+backend/dist/
+backend/node_modules/

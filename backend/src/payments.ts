@@ -1,0 +1,133 @@
+import {
+  COLLECTIONS,
+  PAYMENT_EXPIRY_HOURS,
+  PAYMENT_FINISH_REDIRECT_URL,
+  db,
+} from './config';
+import { createSnapTransaction } from './midtrans';
+
+export class HttpError extends Error {
+  constructor(
+    public readonly statusCode: number,
+    message: string
+  ) {
+    super(message);
+  }
+}
+
+const GENERIC_ERROR = 'Pembayaran belum dapat diproses. Silakan coba lagi beberapa saat lagi.';
+
+export async function createPaymentForUser(params: {
+  uid: string;
+  email?: string;
+  fineId: string;
+}): Promise<{ paymentId: string; redirectUrl: string }> {
+  const { uid, email, fineId } = params;
+  const cleanFineId = fineId.trim();
+  if (!cleanFineId) {
+    throw new HttpError(400, 'ID tagihan tidak valid.');
+  }
+
+  const fineRef = db.collection(COLLECTIONS.fines).doc(cleanFineId);
+  const fineSnap = await fineRef.get();
+  if (!fineSnap.exists) {
+    throw new HttpError(404, 'Tagihan tidak ditemukan.');
+  }
+  const fine = fineSnap.data() ?? {};
+
+  if (fine.studentId !== uid) {
+    throw new HttpError(403, 'Tagihan ini bukan milik Anda.');
+  }
+  if (fine.status !== 'unpaid' && fine.status !== 'pending') {
+    throw new HttpError(409, 'Tagihan ini sudah lunas.');
+  }
+
+  if (fine.status === 'pending' && typeof fine.activePaymentId === 'string') {
+    const activeSnap = await db.collection(COLLECTIONS.payments).doc(fine.activePaymentId).get();
+    const active = activeSnap.data();
+    if (
+      active &&
+      active.status === 'pending' &&
+      typeof active.redirectUrl === 'string' &&
+      typeof active.expiresAt === 'string' &&
+      new Date(active.expiresAt).getTime() > Date.now()
+    ) {
+      return { paymentId: activeSnap.id, redirectUrl: active.redirectUrl };
+    }
+  }
+
+  const previousAttempts = Number(fine.paymentAttempts ?? 0);
+  const attempt = previousAttempts + 1;
+  const orderId = `${String(fine.invoiceNumber)}-${attempt}`;
+  if (orderId.length > 50) {
+    throw new HttpError(500, GENERIC_ERROR);
+  }
+
+  const amount = Math.round(Number(fine.amount));
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new HttpError(400, 'Nominal tagihan tidak valid.');
+  }
+
+  let snap: { token: string; redirectUrl: string };
+  try {
+    snap = await createSnapTransaction({
+      orderId,
+      grossAmount: amount,
+      itemId: cleanFineId,
+      itemName: `Denda Terlambat ${String(fine.praktikum ?? 'Praktikum')}`,
+      customerName: String(fine.studentName ?? 'Praktikan'),
+      customerEmail: email,
+      expiryHours: PAYMENT_EXPIRY_HOURS,
+      finishUrl: PAYMENT_FINISH_REDIRECT_URL || undefined,
+    });
+  } catch (error) {
+    console.error('Pembuatan transaksi Snap gagal:', error instanceof Error ? error.message : 'unknown');
+    throw new HttpError(502, GENERIC_ERROR);
+  }
+
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + PAYMENT_EXPIRY_HOURS * 60 * 60 * 1000).toISOString();
+  const nowIso = now.toISOString();
+
+  await db.runTransaction(async (tx) => {
+    const freshFine = await tx.get(fineRef);
+    const data = freshFine.data();
+    if (
+      !data ||
+      data.studentId !== uid ||
+      (data.status !== 'unpaid' && data.status !== 'pending') ||
+      Number(data.paymentAttempts ?? 0) !== previousAttempts
+    ) {
+      throw new HttpError(409, 'Status tagihan berubah. Silakan coba lagi.');
+    }
+
+    tx.create(db.collection(COLLECTIONS.payments).doc(orderId), {
+      id: orderId,
+      fineId: cleanFineId,
+      invoiceNumber: String(fine.invoiceNumber),
+      attempt,
+      studentId: uid,
+      sessionId: String(fine.sessionId),
+      attendanceId: String(fine.attendanceId),
+      courseId: String(fine.courseId ?? ''),
+      labId: String(fine.labId ?? ''),
+      praktikum: String(fine.praktikum ?? ''),
+      amount,
+      status: 'pending',
+      snapToken: snap.token,
+      redirectUrl: snap.redirectUrl,
+      expiresAt,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    });
+
+    tx.update(fineRef, {
+      status: 'pending',
+      activePaymentId: orderId,
+      paymentAttempts: attempt,
+      updatedAt: nowIso,
+    });
+  });
+
+  return { paymentId: orderId, redirectUrl: snap.redirectUrl };
+}

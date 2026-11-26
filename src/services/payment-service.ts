@@ -4,6 +4,7 @@
  * Status pembayaran tidak pernah ditulis dari sini (hanya backend setelah webhook valid).
  */
 
+import { getAuth } from 'firebase/auth';
 import {
   Unsubscribe,
   collection,
@@ -13,7 +14,6 @@ import {
   query,
   where,
 } from 'firebase/firestore';
-import { getFunctions, httpsCallable } from 'firebase/functions';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 
@@ -22,9 +22,14 @@ import type { FineDocument, PaymentDocument } from '@/types/finance';
 
 const FINES_COLLECTION = 'fines';
 const PAYMENTS_COLLECTION = 'payments';
-const FUNCTIONS_REGION = 'asia-southeast2';
 
-const functionsClient = getFunctions(app, FUNCTIONS_REGION);
+function getBackendUrl(): string {
+  const url = process.env.EXPO_PUBLIC_BACKEND_URL?.trim().replace(/\/+$/, '');
+  if (!url) {
+    throw new Error('URL backend (EXPO_PUBLIC_BACKEND_URL) belum dikonfigurasi.');
+  }
+  return url;
+}
 
 function mapFine(id: string, raw: Record<string, unknown>): FineDocument {
   return {
@@ -189,22 +194,36 @@ export interface CreatePaymentResult {
   redirectUrl: string;
 }
 
-/** Memanggil backend (callable) yang membuat transaksi Snap. Hanya mengirim ID tagihan. */
+/** Memanggil backend Express yang membuat transaksi Snap. Hanya mengirim ID tagihan. */
 export async function createPaymentSession(fineId: string): Promise<CreatePaymentResult> {
   try {
-    const callable = httpsCallable<{ fineId: string }, CreatePaymentResult>(
-      functionsClient,
-      'createPayment'
-    );
-    const response = await callable({ fineId });
-    const data = response.data;
-    if (!data?.paymentId || !data.redirectUrl) {
+    const user = getAuth(app).currentUser;
+    if (!user) {
+      throw new Error('Anda harus masuk untuk membayar tagihan.');
+    }
+    const idToken = await user.getIdToken();
+    const response = await fetch(`${getBackendUrl()}/api/payments/create`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${idToken}`,
+      },
+      body: JSON.stringify({ fineId }),
+    });
+
+    const data = (await response.json().catch(() => ({}))) as Partial<CreatePaymentResult> & {
+      error?: string;
+    };
+    if (!response.ok) {
+      throw new Error(data.error || 'Pembayaran belum dapat diproses. Silakan coba lagi.');
+    }
+    if (!data.paymentId || !data.redirectUrl) {
       throw new Error('Respons pembayaran tidak lengkap.');
     }
-    return data;
+    return { paymentId: data.paymentId, redirectUrl: data.redirectUrl };
   } catch (error) {
     const message =
-      error instanceof Error && error.message && !/internal|functions\//i.test(error.message)
+      error instanceof Error && error.message
         ? error.message
         : 'Pembayaran belum dapat diproses. Periksa koneksi internet lalu coba lagi.';
     throw new Error(message);

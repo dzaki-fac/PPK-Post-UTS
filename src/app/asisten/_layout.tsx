@@ -7,12 +7,12 @@ import { RoleHeader } from '@/components/role-header';
 import {
   TabCalendarIcon,
   TabChartIcon,
-  TabLocationPinIcon,
   TabMapIcon,
   TabModerationIcon,
   TabUsersIcon,
 } from '@/components/tab-icons';
 import { useAuth } from '@/context/auth-context';
+import { getHomeRouteByRole } from '@/utils/role';
 
 export default function AsistenLayout() {
   const { user, userDoc, loading, role } = useAuth();
@@ -22,7 +22,7 @@ export default function AsistenLayout() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#0D9488" />
-        <Text style={styles.loadingText}>Memverifikasi akses asisten...</Text>
+        <Text style={styles.loadingText}>Memverifikasi akses Asprak...</Text>
       </View>
     );
   }
@@ -31,8 +31,8 @@ export default function AsistenLayout() {
     return <Redirect href={'/login' as Href} />;
   }
 
-  if (role !== 'asisten') {
-    return <Redirect href={'/praktikan/jadwal' as Href} />;
+  if (role !== 'asprak') {
+    return <Redirect href={getHomeRouteByRole(role) as Href} />;
   }
 
   const bottomPadding = Platform.OS === 'web' ? 8 : Math.max(insets.bottom, 14) + 8;
@@ -81,11 +81,8 @@ export default function AsistenLayout() {
         <Tabs.Screen
           name="lokasi-lab"
           options={{
+            href: null,
             title: 'Lokasi Laboratorium',
-            tabBarLabel: 'Lokasi',
-            tabBarIcon: ({ color, focused }) => (
-              <TabLocationPinIcon color={color} focused={focused} />
-            ),
           }}
         />
         <Tabs.Screen
@@ -121,8 +118,8 @@ export default function AsistenLayout() {
         <Tabs.Screen
           name="mahasiswa"
           options={{
-            title: 'Kelola Pengguna',
-            tabBarLabel: 'Pengguna',
+            title: 'Kelas Saya',
+            tabBarLabel: 'Kelas',
             tabBarIcon: ({ color, focused }) => (
               <TabUsersIcon color={color} focused={focused} />
             ),

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 
 import { UserDocument, UserRole, useAuth } from '@/context/auth-context';
+import { normalizeRole } from '@/utils/role';
 
 interface GoogleProfileModalProps {
   visible: boolean;
@@ -37,7 +38,9 @@ function GoogleProfileModalContent({
   const { user, userDoc, completeGoogleProfile } = useAuth();
 
   const [nama, setNama] = useState(userDoc?.nama || user?.displayName || '');
-  const [peran, setPeran] = useState<UserRole>(userDoc?.peran || 'praktikan');
+  const [peran, setPeran] = useState<UserRole>(
+    userDoc?.peran ? normalizeRole(userDoc.peran) : 'praktikan'
+  );
   const [nim, setNim] = useState(userDoc?.nim || '');
   const [kelas, setKelas] = useState<'A' | 'B'>((userDoc?.kelas as 'A' | 'B') || 'A');
   const [peranLab, setPeranLab] = useState(userDoc?.peranLab || 'Pengampu Lab Komputasi');
@@ -118,13 +121,13 @@ function GoogleProfileModalContent({
                     !isPraktikan && styles.roleBtnAsisten,
                     pressed && styles.pressed,
                   ]}
-                  onPress={() => setPeran('asisten')}>
+                  onPress={() => setPeran('asprak')}>
                   <Text
                     style={[
                       styles.roleBtnText,
                       !isPraktikan && styles.roleBtnTextAsisten,
                     ]}>
-                    Asisten Lab
+                    Asprak
                   </Text>
                 </Pressable>
               </View>

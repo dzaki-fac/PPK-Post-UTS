@@ -35,18 +35,24 @@ Sistem warna membedakan peran secara fungsional: **Terracotta Orange** untuk Por
 | `praktikan.primary` | `#EA580C` | Aksen tombol utama praktikan, badge aktif, breadcrumb | **4.9:1** thd surface (WCAG AA) |
 | `praktikan.tint` | `#FFF7ED` | Latar badge praktikan, highlight kartu terpilih | Lembut |
 | `praktikan.border` | `#FED7AA` | Garis pembatas kartu & badge mahasiswa | Lembut |
-| `asisten.primary` | `#0D9488` | Aksen tombol asisten, badge pengampu, header filter | **4.7:1** thd surface (WCAG AA) |
-| `asisten.tint` | `#F0FDFA` | Latar badge asisten, kartu kontrol sesi | Lembut |
-| `asisten.border` | `#99F6E4` | Garis pembatas kartu asisten | Lembut |
-| `status.open.dot` | `#16A34A` | Titik indikator sesi dibuka / hadir | — |
-| `status.open.bg` | `#DCFCE7` | Latar badge sesi dibuka / hadir | — |
-| `status.open.text` | `#15803D` | Teks badge sesi dibuka / hadir | **5.4:1** thd badge bg |
-| `status.wait.dot` | `#EAB308` | Titik indikator sesi belum dibuka | — |
-| `status.wait.bg` | `#FEF3C7` | Latar badge sesi belum dibuka | — |
-| `status.wait.text` | `#B45309` | Teks badge sesi belum dibuka | **5.1:1** thd badge bg |
-| `status.close.dot` | `#DC2626` | Titik indikator sesi ditutup / aksi hapus | — |
-| `status.close.bg` | `#FEE2E2` | Latar badge sesi ditutup | — |
-| `status.close.text` | `#B91C1C` | Teks badge sesi ditutup | **5.8:1** thd badge bg |
+| `asisten.primary` | `#0D9488` | Aksen tombol asprak/asisten, badge pengampu, header filter | **4.7:1** thd surface (WCAG AA) |
+| `asisten.tint` | `#F0FDFA` | Latar badge asprak/asisten, kartu kontrol sesi | Lembut |
+| `asisten.border` | `#99F6E4` | Garis pembatas kartu asprak/asisten | Lembut |
+| `aslab.primary` | `#4F46E5` | Aksen utama Portal Aslab (Indigo), tombol & filter aktif | **6.3:1** thd surface (WCAG AA) |
+| `aslab.tint` | `#EEF2FF` | Latar badge ASLAB, kartu highlight Aslab | Lembut |
+| `aslab.border` | `#C7D2FE` | Garis pembatas kartu & chip Aslab | Lembut |
+| `status.open.dot` | `#16A34A` | Titik indikator sesi dibuka / hadir / lunas / berhasil | — |
+| `status.open.bg` | `#DCFCE7` | Latar badge sesi dibuka / hadir / lunas / berhasil | — |
+| `status.open.text` | `#15803D` | Teks badge sesi dibuka / hadir / lunas / berhasil | **5.4:1** thd badge bg |
+| `status.wait.dot` | `#EAB308` | Titik indikator belum dibuka / terlambat / pending | — |
+| `status.wait.bg` | `#FEF3C7` | Latar badge belum dibuka / terlambat / pending | — |
+| `status.wait.text` | `#B45309` | Teks badge belum dibuka / terlambat / pending | **5.1:1** thd badge bg |
+| `status.excused.dot` | `#2563EB` | Titik indikator izin (*excused absence*) / terjadwal | — |
+| `status.excused.bg` | `#DBEAFE` | Latar badge izin (*excused absence*) / terjadwal | — |
+| `status.excused.text` | `#1D4ED8` | Teks badge izin (*excused absence*) / terjadwal | **5.9:1** thd badge bg |
+| `status.close.dot` | `#DC2626` | Titik indikator ditutup / belum dibayar / gagal / hapus | — |
+| `status.close.bg` | `#FEE2E2` | Latar badge ditutup / belum dibayar / gagal | — |
+| `status.close.text` | `#B91C1C` | Teks badge ditutup / belum dibayar / gagal | **5.8:1** thd badge bg |
 
 ---
 
@@ -91,8 +97,8 @@ export const themeLayout = {
   - Teks institusi: `PPK LabPortal` (14–15pt ExtraBold) dan `Presensi & Manajemen Sesi` (10–11pt Muted).
   - Keseluruhan logo sisi kiri dapat ditekan untuk navigasi kembali ke Portal Utama (`/`).
 - **Struktur Kanan:**
-  - Pill identitas pengguna aktif: menampilkan inisial peran (`MAHASISWA` / `ASISTEN`), nama pengguna (dibatasi `maxWidth: 100–140` dengan `numberOfLines={1}`), dan info kelas/pengampu.
-  - Tombol `Ganti Akun`: memicu **Centered Popup Modal** untuk beralih identitas atau keluar ke portal pemilihan peran.
+  - Pill identitas pengguna aktif: menampilkan inisial peran (`PRAKTIKAN` / `ASPRAK` / `ASLAB`) dengan palet warna peran masing-masing, nama pengguna (dibatasi `maxWidth: 160–180` dengan `numberOfLines={1}`), dan info kelas/peran lab.
+  - Tombol `Notifikasi` & `Keluar`: memicu navigasi ke `/notifikasi` atau **Centered Popup Modal** konfirmasi keluar akun.
 - **Penyelarasan:**
   - `paddingHorizontal: Platform.OS === 'web' ? 20 : 14`.
   - Terkoneksi dengan Safe-Area Insets pada Android/iOS.
@@ -203,8 +209,19 @@ export const themeLayout = {
 4. Modal Konfirmasi Presensi, Modal Error jika kode/kelas tidak cocok, & Modal Sukses (dengan redirect langsung ke tab Riwayat).
 
 ### 6.7 Riwayat Presensi Praktikan (`/praktikan/riwayat`)
-1. Header Riwayat dengan banner persentase kehadiran pribadi.
-2. Kartu Riwayat per-sesi lengkap dengan timestamp resmi kehadiran WIB.
+1. Header Riwayat dengan banner persentase kehadiran pribadi (tidak menghitung `izin` sebagai hadir).
+2. Kartu Riwayat per-sesi lengkap dengan timestamp resmi kehadiran WIB dan `StatusBadge` (`Hadir`, `Terlambat`, atau `Izin`).
+
+### 6.8 Blueprint Layar Sprint 4 (Aslab & Tagihan Midtrans)
+1. **Dashboard Keberlangsungan Lab (`/aslab/dashboard`, Aksen Indigo `#4F46E5`):**
+   - `MetricsGrid` 4 ubin (Total Lab, Total Praktikan, Total Asprak, Sesi Berlangsung).
+   - `PeriodFilterBar` segmented (`Hari | Minggu | Bulan`) dengan navigasi `←` / `→` dan tombol `Hari Ini`.
+   - Daftar kartu `LabStatusCard` (status `Berlangsung` / `Terjadwal` / `Tidak Ada Kegiatan`), daftar Sesi Berlangsung & Akan Datang, Riwayat Kegiatan Lab, dan Riwayat Keuangan Denda (`Rp 10.000`).
+2. **Jadwal Sesi & Manajemen Lab Aslab (`/aslab/jadwal`, `/aslab/laboratorium`, `/aslab/anggota`):**
+   - Form modal CRUD sesi dengan pemilihan `labId` wajib; konfigurasi lab dengan `radiusMeter`, `graceMinutes`, dan `fineAmount`.
+   - Tiga alur impor terpisah (`impor-lab`, `impor-praktikan`, `impor-asprak`) memakai `ImportReviewList` (kartu scroll per baris dengan edit inline, badge status validasi, aksi Terima/Tolak, dan panel ringkasan sticky).
+3. **Tagihan & Pembayaran Denda Praktikan (`/praktikan/tagihan`, `/praktikan/tagihan/[id]`, `/praktikan/pembayaran-hasil`, `/praktikan/riwayat-pembayaran`):**
+   - Menggunakan aksen Terracotta `#EA580C`, `MetricsGrid`, format `Rp`, `EmptyState`, dan `StatusBadge` (`Belum Dibayar`, `Menunggu Pembayaran`, `Lunas`, `Berhasil`, `Gagal`).
 
 ---
 

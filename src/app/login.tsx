@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { GoogleProfileModal } from '@/components/google-profile-modal';
 import { UserDocument, useAuth } from '@/context/auth-context';
 import { isFirebaseConfigured } from '@/lib/firebase';
+import { getHomeRouteByRole } from '@/utils/role';
 
 export default function LoginScreen() {
   const {
@@ -37,17 +38,11 @@ export default function LoginScreen() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   if (!loading && user && userDoc && role) {
-    return (
-      <Redirect
-        href={(role === 'asisten' ? '/asisten/jadwal' : '/praktikan/jadwal') as Href}
-      />
-    );
+    return <Redirect href={getHomeRouteByRole(role) as Href} />;
   }
 
   const navigateByProfile = (profile: UserDocument) => {
-    router.replace(
-      (profile.peran === 'asisten' ? '/asisten/jadwal' : '/praktikan/jadwal') as Href
-    );
+    router.replace(getHomeRouteByRole(profile.peran) as Href);
   };
 
   const handleLogin = async () => {
@@ -255,7 +250,10 @@ export default function LoginScreen() {
                   <Text style={[styles.legendText, styles.legendPraktikanText]}>Portal Praktikan</Text>
                 </View>
                 <View style={[styles.legendItem, styles.legendAsisten]}>
-                  <Text style={[styles.legendText, styles.legendAsistenText]}>Portal Asisten Lab</Text>
+                  <Text style={[styles.legendText, styles.legendAsistenText]}>Portal Asprak</Text>
+                </View>
+                <View style={[styles.legendItem, styles.legendAslab]}>
+                  <Text style={[styles.legendText, styles.legendAslabText]}>Portal Aslab</Text>
                 </View>
               </View>
             </View>
@@ -520,8 +518,9 @@ const styles = StyleSheet.create({
   },
   roleLegend: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: 12,
+    gap: 8,
     marginTop: 8,
     paddingBottom: 4,
   },
@@ -539,6 +538,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0FDFA',
     borderColor: '#99F6E4',
   },
+  legendAslab: {
+    backgroundColor: '#EEF2FF',
+    borderColor: '#C7D2FE',
+  },
   legendText: {
     fontSize: 11.5,
     fontWeight: '700',
@@ -548,6 +551,9 @@ const styles = StyleSheet.create({
   },
   legendAsistenText: {
     color: '#0D9488',
+  },
+  legendAslabText: {
+    color: '#4F46E5',
   },
   pressed: {
     opacity: 0.85,

@@ -240,6 +240,27 @@ export function TabLocationPinIcon({ color, focused }: TabIconProps) {
 }
 
 /**
+ * TabDashboardIcon — Ikon Dashboard Ringkasan 4 Panel (Aslab)
+ */
+export function TabDashboardIcon({ color, focused }: TabIconProps) {
+  const tileStyle = {
+    borderColor: color,
+    borderWidth: focused ? 1.8 : 1.5,
+    backgroundColor: focused ? color : 'transparent',
+  };
+  return (
+    <View style={styles.iconContainer}>
+      <View style={styles.dashGrid}>
+        <View style={[styles.dashTile, tileStyle]} />
+        <View style={[styles.dashTile, tileStyle]} />
+        <View style={[styles.dashTile, tileStyle]} />
+        <View style={[styles.dashTile, tileStyle]} />
+      </View>
+    </View>
+  );
+}
+
+/**
  * TabCheckinIcon — Ikon Presensi Geofencing (Target Radius)
  */
 export function TabCheckinIcon({ color, focused }: TabIconProps) {
@@ -471,6 +492,21 @@ const styles = StyleSheet.create({
     height: 1.8,
     borderRadius: 1,
     marginTop: 1,
+  },
+  /* Dashboard Grid */
+  dashGrid: {
+    width: 19,
+    height: 19,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dashTile: {
+    width: 8,
+    height: 8,
+    borderRadius: 2,
   },
   /* Checkin Target */
   targetOuter: {

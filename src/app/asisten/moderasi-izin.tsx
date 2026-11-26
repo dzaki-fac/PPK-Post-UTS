@@ -35,8 +35,9 @@ export default function ModerasiIzinScreen() {
   const [activeFilter, setActiveFilter] = useState<FilterType>('semua');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
-  // State Modal Konfirmasi Persetujuan
+  // State Modal Konfirmasi Persetujuan & Error
   const [approveTarget, setApproveTarget] = useState<LeaveRequestDocument | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // State Modal Konfirmasi Penolakan
   const [rejectTarget, setRejectTarget] = useState<LeaveRequestDocument | null>(null);
@@ -74,17 +75,21 @@ export default function ModerasiIzinScreen() {
     if (!approveTarget) return;
 
     setIsProcessing(true);
+    setActionError(null);
     try {
       await reviewLeaveRequest(
         approveTarget.id,
         'disetujui',
-        'Izin telah disetujui oleh asisten laboratorium.',
+        'Izin telah disetujui oleh Asprak sebagai tidak hadir dengan izin.',
         reviewerUid,
         reviewerName
       );
       setApproveTarget(null);
     } catch (err) {
-      console.warn('Gagal menyetujui izin:', err);
+      setApproveTarget(null);
+      setActionError(
+        err instanceof Error ? err.message : 'Gagal menyetujui pengajuan izin.'
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -123,7 +128,7 @@ export default function ModerasiIzinScreen() {
     <View style={styles.header}>
       <View style={styles.eyebrowRow}>
         <View style={styles.eyebrowBadge}>
-          <Text style={styles.eyebrowText}>PANEL ASISTEN LABORATORIUM</Text>
+          <Text style={styles.eyebrowText}>PANEL ASPRAK</Text>
         </View>
         <View style={styles.liveTag}>
           <Text style={styles.liveTagText}>Sinkronisasi Real-Time</Text>
@@ -136,6 +141,12 @@ export default function ModerasiIzinScreen() {
         Pengajar (Model EDOM on-device).
       </Text>
 
+      {actionError ? (
+        <View style={{ backgroundColor: '#FEE2E2', borderColor: '#FECACA', borderWidth: 1, borderRadius: 12, padding: 12 }}>
+          <Text style={{ fontSize: 12.5, fontWeight: '700', color: '#B91C1C' }}>{actionError}</Text>
+        </View>
+      ) : null}
+
       {/* Banner Human-in-the-Loop */}
       <View style={styles.hitlBanner}>
         <View style={styles.hitlIconCircle}>
@@ -145,7 +156,7 @@ export default function ModerasiIzinScreen() {
           <Text style={styles.hitlTitle}>Prinsip Human-in-the-Loop (Regulasi AI):</Text>
           <Text style={styles.hitlDesc}>
             Hasil inferensi model AI bertindak semata-mata sebagai pendukung keputusan (decision support).
-            Hak persetujuan maupun penolakan izin mutlak berada pada keputusan Asisten Laboratorium.
+            Izin disetujui dicatat sebagai tidak hadir dengan izin (excused absence), bebas denda, dan tidak berubah menjadi hadir.
           </Text>
         </View>
       </View>

@@ -3,6 +3,7 @@ import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { useAuth } from '@/context/auth-context';
+import { getHomeRouteByRole } from '@/utils/role';
 
 export default function IndexScreen() {
   const { user, userDoc, loading, role } = useAuth();
@@ -19,12 +20,8 @@ export default function IndexScreen() {
     );
   }
 
-  if (user && userDoc && role === 'asisten') {
-    return <Redirect href={'/asisten/jadwal' as Href} />;
-  }
-
-  if (user && userDoc && role === 'praktikan') {
-    return <Redirect href={'/praktikan/jadwal' as Href} />;
+  if (user && userDoc && role) {
+    return <Redirect href={getHomeRouteByRole(role) as Href} />;
   }
 
   return <Redirect href={'/login' as Href} />;

@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GoogleProfileModal } from '@/components/google-profile-modal';
 import { UserDocument, UserRole, useAuth } from '@/context/auth-context';
+import { getHomeRouteByRole } from '@/utils/role';
 
 export default function RegisterScreen() {
   const {
@@ -43,19 +44,13 @@ export default function RegisterScreen() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   if (!loading && user && userDoc && role) {
-    return (
-      <Redirect
-        href={(role === 'asisten' ? '/asisten/jadwal' : '/praktikan/jadwal') as Href}
-      />
-    );
+    return <Redirect href={getHomeRouteByRole(role) as Href} />;
   }
 
   const isPraktikan = peran === 'praktikan';
 
   const navigateByProfile = (profile: UserDocument) => {
-    router.replace(
-      (profile.peran === 'asisten' ? '/asisten/jadwal' : '/praktikan/jadwal') as Href
-    );
+    router.replace(getHomeRouteByRole(profile.peran) as Href);
   };
 
   const handleRegister = async () => {
@@ -159,7 +154,7 @@ export default function RegisterScreen() {
                         styles.roleEyebrowText,
                         isPraktikan ? styles.textPraktikan : styles.textAsisten,
                       ]}>
-                      {isPraktikan ? 'REGISTRASI PRAKTIKAN' : 'REGISTRASI ASISTEN LAB'}
+                      {isPraktikan ? 'REGISTRASI PRAKTIKAN' : 'REGISTRASI ASPRAK'}
                     </Text>
                   </View>
                 </View>
@@ -202,13 +197,13 @@ export default function RegisterScreen() {
                         !isPraktikan && styles.roleOptionAsisten,
                         pressed && styles.pressed,
                       ]}
-                      onPress={() => setPeran('asisten')}>
+                      onPress={() => setPeran('asprak')}>
                       <Text
                         style={[
                           styles.roleOptionTitle,
                           !isPraktikan && styles.textAsisten,
                         ]}>
-                        Asisten Lab
+                        Asprak
                       </Text>
                       <Text style={styles.roleOptionMeta}>Pengampu sesi</Text>
                     </Pressable>

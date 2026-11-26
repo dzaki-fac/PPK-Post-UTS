@@ -12,6 +12,7 @@ import {
   TabMapIcon,
 } from '@/components/tab-icons';
 import { useAuth } from '@/context/auth-context';
+import { getHomeRouteByRole } from '@/utils/role';
 
 export default function PraktikanLayout() {
   const { user, userDoc, loading, role } = useAuth();
@@ -31,7 +32,7 @@ export default function PraktikanLayout() {
   }
 
   if (role !== 'praktikan') {
-    return <Redirect href={'/asisten/jadwal' as Href} />;
+    return <Redirect href={getHomeRouteByRole(role) as Href} />;
   }
 
   const bottomPadding = Platform.OS === 'web' ? 8 : Math.max(insets.bottom, 14) + 8;

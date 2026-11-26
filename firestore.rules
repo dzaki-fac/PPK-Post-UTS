@@ -12,92 +12,162 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Mengambil dokumen user untuk mengecek peran (Role-Based Access Control)
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
+    function isAslab() {
+      return isAuthenticated() && getUserData().peran == 'aslab';
+    }
+
+    // Menerima 'asprak' dan nilai legacy 'asisten'
+    function isAsprak() {
+      return isAuthenticated() && (
+        getUserData().peran == 'asprak' || getUserData().peran == 'asisten'
+      );
+    }
+
+    // Alias kompatibilitas Sprint 2-3
     function isAsisten() {
-      return isAuthenticated() && getUserData().peran == 'asisten';
+      return isAsprak() || isAslab();
     }
 
     function isPraktikan() {
       return isAuthenticated() && getUserData().peran == 'praktikan';
     }
 
-    // -------------------------------------------------------------------------
-    // 1. Koleksi: users (/users/{uid})
-    // -------------------------------------------------------------------------
-    match /users/{userId} {
-      // Siapapun yang login dapat membaca profil untuk keperluan identitas & roster
-      allow read: if isAuthenticated();
-      // Pengguna dapat menyunting profil miliknya sendiri, dan Asisten dapat mengelola master data praktikan
-      allow create, update: if isOwner(userId) || isAsisten();
-      // Asisten dapat menghapus akun praktikan/asisten melalui Master Data
-      allow delete: if isAsisten() || isOwner(userId);
-    }
-
-    // -------------------------------------------------------------------------
-    // 2. Koleksi: sessions (/sessions/{sessionId})
-    // -------------------------------------------------------------------------
-    match /sessions/{sessionId} {
-      // Semua pengguna terautentikasi dapat melihat jadwal praktikum
-      allow read: if isAuthenticated();
-      // Hanya Asisten Laboratorium yang dapat menambah, membuka, menutup, atau menghapus sesi
-      allow create, update, delete: if isAsisten();
-    }
-
-    // -------------------------------------------------------------------------
-    // 3. Koleksi: attendances (/attendances/{attendanceId})
-    // Format ID: `${sessionId}_${studentId}`
-    // -------------------------------------------------------------------------
-    match /attendances/{attendanceId} {
-      // Praktikan dan Asisten dapat melihat rekap presensi
-      allow read: if isAuthenticated();
-      
-      // Praktikan hanya dapat mencatat presensi untuk dirinya sendiri (studentId == auth.uid)
-      // Asisten juga diizinkan jika melakukan presensi manual/override
-      allow create: if isAuthenticated() && (
-        (isPraktikan() && request.resource.data.studentId == request.auth.uid) || isAsisten()
+    function managesCourse(courseId) {
+      return isAslab() && (
+        !('managedCourseIds' in getUserData()) ||
+        getUserData().managedCourseIds.size() == 0 ||
+        courseId in getUserData().managedCourseIds
       );
-
-      // Tidak mengizinkan modifikasi presensi yang sudah tercatat (anti-tamper)
-      // kecuali asisten jika perlu revisi
-      allow update, delete: if isAsisten();
     }
 
-    // -------------------------------------------------------------------------
-    // 4. Koleksi: leave_requests (/leave_requests/{requestId})
-    // -------------------------------------------------------------------------
-    match /leave_requests/{requestId} {
-      // Pengguna terautentikasi dapat membaca pengajuan izin
-      allow read: if isAuthenticated();
+    function teachesLab(labId) {
+      return isAsprak() && (
+        !('labIds' in getUserData()) ||
+        getUserData().labIds.size() == 0 ||
+        labId in getUserData().labIds
+      );
+    }
 
-      // Praktikan dapat membuat pengajuan izin untuk dirinya sendiri (studentId == auth.uid)
-      // atau Asisten dapat menginputkan izin praktikan
+    // ===== P1 =====
+    // 1. Koleksi: users (/users/{uid})
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) || isAslab();
+      allow update: if isOwner(userId) || isAslab();
+      allow delete: if isAslab() || isOwner(userId);
+    }
+
+    // 2. Koleksi: courses (/courses/{courseId})
+    match /courses/{courseId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAslab();
+    }
+
+    // 3. Koleksi: labs (/labs/{labId})
+    match /labs/{labId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAslab();
+    }
+
+    // 4. Koleksi: lab_members (/lab_members/{memberId})
+    match /lab_members/{memberId} {
+      allow read: if isAuthenticated();
+      allow create, delete: if isAslab();
+      allow update: if isAslab() || (
+        isAuthenticated() &&
+        request.auth.token.email != null &&
+        resource.data.emailLower == request.auth.token.email.lower()
+      );
+    }
+
+    // 5. Koleksi audit P1: lab_transfers & import_batches
+    match /lab_transfers/{transferId} {
+      allow read: if isAslab();
+      allow create: if isAslab();
+      allow update, delete: if false;
+    }
+
+    match /import_batches/{batchId} {
+      allow read: if isAslab();
+      allow create: if isAslab();
+      allow update, delete: if false;
+    }
+
+    // ===== P2 =====
+    // 6. Koleksi: sessions (/sessions/{sessionId})
+    match /sessions/{sessionId} {
+      allow read: if isAuthenticated();
+      allow create, delete: if isAslab();
+      allow update: if isAslab() || (
+        isAsprak() &&
+        (!('labId' in resource.data) || teachesLab(resource.data.labId)) &&
+        (!('startedAt' in resource.data) || request.resource.data.startedAt == resource.data.startedAt) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status',
+          'openedAt',
+          'closedAt',
+          'startedAt',
+          'kodeSesi',
+          'qrPayload',
+          'updatedAt'
+        ])
+      );
+    }
+
+    // 7. Koleksi: attendances (/attendances/{attendanceId})
+    // Format ID: `${sessionId}_${studentId}` — tidak ada update/delete dari client
+    match /attendances/{attendanceId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && (
+        (isPraktikan() &&
+          request.resource.data.studentId == request.auth.uid &&
+          !('fineId' in request.resource.data) &&
+          (!('attendanceStatus' in request.resource.data) ||
+            request.resource.data.attendanceStatus in ['hadir', 'terlambat'])) ||
+        (isAsprak() && (
+          request.resource.data.attendanceStatus == 'izin' ||
+          request.resource.data.verificationMethod == 'manual-asprak'
+        ))
+      );
+      allow update, delete: if false;
+    }
+
+    // 8. Koleksi: leave_requests (/leave_requests/{requestId})
+    match /leave_requests/{requestId} {
+      allow read: if isAuthenticated();
       allow create: if isAuthenticated() && (
         request.resource.data.studentId == request.auth.uid || isAsisten()
       );
-
-      // Pembaruan keputusan status (disetujui/ditolak) hanya boleh dilakukan oleh Asisten
-      allow update: if isAsisten();
-      allow delete: if isAsisten();
+      allow update, delete: if isAsisten();
     }
 
-    // -------------------------------------------------------------------------
-    // 5. Koleksi labs (/labs/{labId}) — Sprint 3
-    // Read untuk semua pengguna terautentikasi, tulis hanya Asisten.
-    // -------------------------------------------------------------------------
-    match /labs/{labId} {
-      allow read: if isAuthenticated();
-      allow create, update, delete: if isAsisten();
+    // ===== P3 =====
+    // 9. Koleksi: fines & payments (hanya Admin SDK yang boleh menulis)
+    match /fines/{fineId} {
+      allow read: if isAuthenticated() && (
+        resource.data.studentId == request.auth.uid ||
+        managesCourse(resource.data.courseId)
+      );
+      allow write: if false;
     }
 
-    // -------------------------------------------------------------------------
-    // 6. Koleksi notifications (/notifications/{notificationId}) — Sprint 3
-    // Log peristiwa dibuat oleh aplikasi, hanya pemilik yang dapat membaca
-    // dan menandai isRead.
-    // -------------------------------------------------------------------------
+    match /payments/{paymentId} {
+      allow read: if isAuthenticated() && (
+        resource.data.studentId == request.auth.uid ||
+        managesCourse(resource.data.courseId)
+      );
+      allow write: if false;
+    }
+
+    match /payment_events/{eventId} {
+      allow read, write: if false;
+    }
+
+    // 10. Koleksi: notifications (/notifications/{notificationId})
     match /notifications/{notificationId} {
       allow read: if isAuthenticated() && resource.data.targetUserId == request.auth.uid;
       allow create: if isAuthenticated();
@@ -107,12 +177,9 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // -------------------------------------------------------------------------
-    // 7. Koleksi Sistem / Health Check (untuk verifikasi koneksi)
-    // -------------------------------------------------------------------------
+    // 11. Koleksi Sistem / Health Check
     match /system_health/{docId} {
       allow read, write: if isAuthenticated();
     }
   }
 }
-

@@ -93,6 +93,27 @@ function mapLocationSnapshot(raw: unknown): AttendanceLocationSnapshot | undefin
 
 function mapAttendanceSnapshot(id: string, raw: Record<string, unknown>): AttendanceDocument {
   const locationSnapshot = mapLocationSnapshot(raw.locationSnapshot);
+  const rawMethod = raw.verificationMethod;
+  const verificationMethod =
+    rawMethod === 'qr-location' ||
+    rawMethod === 'manual-asprak' ||
+    rawMethod === 'leave-approved'
+      ? rawMethod
+      : 'code-location';
+  const rawStatus = raw.attendanceStatus;
+  const attendanceStatus =
+    rawStatus === 'terlambat' || rawStatus === 'izin' || rawStatus === 'hadir'
+      ? rawStatus
+      : undefined;
+  const lateness =
+    raw.lateness && typeof raw.lateness === 'object'
+      ? (raw.lateness as AttendanceDocument['lateness'])
+      : undefined;
+  const manualEntry =
+    raw.manualEntry && typeof raw.manualEntry === 'object'
+      ? (raw.manualEntry as AttendanceDocument['manualEntry'])
+      : undefined;
+
   return {
     id,
     sessionId: String(raw.sessionId ?? ''),
@@ -106,8 +127,12 @@ function mapAttendanceSnapshot(id: string, raw: Record<string, unknown>): Attend
     ...(raw.deviceInfo ? { deviceInfo: String(raw.deviceInfo) } : {}),
     verifiedByCode: Boolean(raw.verifiedByCode),
     verifiedByLocation: Boolean(raw.verifiedByLocation),
-    verificationMethod:
-      raw.verificationMethod === 'qr-location' ? 'qr-location' : 'code-location',
+    verificationMethod,
+    ...(attendanceStatus ? { attendanceStatus } : {}),
+    ...(lateness ? { lateness } : {}),
+    ...(raw.fineId ? { fineId: String(raw.fineId) } : {}),
+    ...(raw.excusedByLeaveId ? { excusedByLeaveId: String(raw.excusedByLeaveId) } : {}),
+    ...(manualEntry ? { manualEntry } : {}),
     ...(locationSnapshot ? { locationSnapshot } : {}),
   };
 }

@@ -150,7 +150,7 @@ export default function AsistenPetaLabScreen() {
             <View style={styles.sheetOverlay}>
               <LabActivitySheet
                 activity={selectedActivity}
-                role="asisten"
+                role="asprak"
                 onClose={handleCloseSheet}
               />
             </View>

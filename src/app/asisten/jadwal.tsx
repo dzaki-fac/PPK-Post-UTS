@@ -3,13 +3,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 
@@ -17,17 +15,12 @@ import { EmptyState } from '@/components/empty-state';
 import { SesiCard } from '@/components/sesi-card';
 import { useAuth } from '@/context/auth-context';
 import { subscribeAllAttendances } from '@/services/attendance-service';
-import {
-  MAX_LAB_RADIUS_METER,
-  MIN_LAB_RADIUS_METER,
-  buildFallbackDefaultLabs,
-  subscribeLabs,
-} from '@/services/lab-service';
+import { buildFallbackDefaultLabs, subscribeLabs } from '@/services/lab-service';
 import { LeaveRequestDocument, subscribeLeaveRequests } from '@/services/leave-service';
 import {
-  createSession,
   isSessionExpired,
   subscribeSessions,
+  subscribeSessionsByLabIds,
   updateSessionStatus,
 } from '@/services/session-service';
 import {
@@ -39,7 +32,7 @@ import {
 
 type FilterType = 'semua' | SessionStatus;
 
-export default function JadwalAsistenScreen() {
+export default function JadwalAsprakScreen() {
   const { userDoc } = useAuth();
   const [sesiList, setSesiList] = useState<SessionDocument[]>([]);
   const [labs, setLabs] = useState<LabLocationDocument[]>([]);
@@ -48,38 +41,30 @@ export default function JadwalAsistenScreen() {
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [filter, setFilter] = useState<FilterType>('semua');
 
-  // Add Session Modal State
-  const [modalTambahVisible, setModalTambahVisible] = useState(false);
-  const [newPraktikum, setNewPraktikum] = useState('Praktikum PPK');
-  const [newMateri, setNewMateri] = useState('');
-  const [newKelas, setNewKelas] = useState<'Kelas A' | 'Kelas B'>('Kelas A');
-  const [newTanggal, setNewTanggal] = useState('19 Nov 2026');
-  const [newWaktuMulai, setNewWaktuMulai] = useState('07.30');
-  const [newWaktuSelesai, setNewWaktuSelesai] = useState('09.30');
-  const [newLabId, setNewLabId] = useState('lab-komputasi-1');
-  const [newRuang, setNewRuang] = useState('Lab Komputasi 1');
-  const [newRadiusOverride, setNewRadiusOverride] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
+  const assignedLabIds = useMemo(() => userDoc?.labIds ?? [], [userDoc?.labIds]);
 
   useEffect(() => {
-    const unsubSessions = subscribeSessions(
-      (items) => {
-        setSesiList(items);
-        setLoadingSessions(false);
-      },
-      () => {
-        setLoadingSessions(false);
-      }
-    );
+    const unsubSessions =
+      assignedLabIds.length > 0
+        ? subscribeSessionsByLabIds(
+            assignedLabIds,
+            (items) => {
+              setSesiList(items);
+              setLoadingSessions(false);
+            },
+            () => setLoadingSessions(false)
+          )
+        : subscribeSessions(
+            (items) => {
+              setSesiList(items);
+              setLoadingSessions(false);
+            },
+            () => setLoadingSessions(false)
+          );
 
     const unsubLabs = subscribeLabs(
-      (items) => {
-        setLabs(items.length > 0 ? items : buildFallbackDefaultLabs());
-      },
-      () => {
-        setLabs(buildFallbackDefaultLabs());
-      }
+      (items) => setLabs(items.length > 0 ? items : buildFallbackDefaultLabs()),
+      () => setLabs(buildFallbackDefaultLabs())
     );
 
     const unsubAttendances = subscribeAllAttendances((items) => {
@@ -96,9 +81,8 @@ export default function JadwalAsistenScreen() {
       unsubAttendances();
       unsubLeaves();
     };
-  }, []);
+  }, [assignedLabIds]);
 
-  // Pemeriksaan otomatis berkala: tutup sesi yang melewati durasi 2 jam atau waktu praktikum
   useEffect(() => {
     const timer = setInterval(() => {
       sesiList.forEach((s) => {
@@ -110,6 +94,33 @@ export default function JadwalAsistenScreen() {
     return () => clearInterval(timer);
   }, [sesiList]);
 
+  const scopedSessionIds = useMemo(() => new Set(sesiList.map((s) => s.id)), [sesiList]);
+
+  const scopedAttendances = useMemo(
+    () =>
+      attendances.filter(
+        (a) => scopedSessionIds.has(a.sessionId) && a.attendanceStatus !== 'izin'
+      ),
+    [attendances, scopedSessionIds]
+  );
+
+  const pendingLeaves = useMemo(
+    () =>
+      leaveRequests.filter(
+        (r) =>
+          r.status === 'menunggu' &&
+          (assignedLabIds.length === 0 || scopedSessionIds.has(r.sessionId))
+      ).length,
+    [leaveRequests, assignedLabIds.length, scopedSessionIds]
+  );
+
+  const assignedLabLabels = useMemo(() => {
+    if (assignedLabIds.length === 0) return 'Semua Lab (Akun Legacy)';
+    const matched = labs.filter((l) => assignedLabIds.includes(l.id));
+    if (matched.length === 0) return `${assignedLabIds.length} Laboratorium`;
+    return matched.map((l) => l.nama).join(', ');
+  }, [assignedLabIds, labs]);
+
   const filteredSesiList = useMemo(() => {
     if (filter === 'semua') return sesiList;
     return sesiList.filter((s) => s.status === filter);
@@ -117,12 +128,8 @@ export default function JadwalAsistenScreen() {
 
   const totalSesi = sesiList.length;
   const totalDibuka = sesiList.filter((s) => s.status === 'dibuka').length;
-  const totalPresensiMasuk = attendances.length;
+  const totalPresensiMasuk = scopedAttendances.length;
   const totalDitutup = sesiList.filter((s) => s.status === 'ditutup').length;
-  const pendingLeaves = useMemo(
-    () => leaveRequests.filter((r) => r.status === 'menunggu').length,
-    [leaveRequests]
-  );
 
   const handleCardPress = (sesi: SessionDocument) => {
     router.push({
@@ -131,64 +138,10 @@ export default function JadwalAsistenScreen() {
     });
   };
 
-  const handleSimpanSesiBaru = async () => {
-    setFormError(null);
-    if (!newMateri.trim()) {
-      setFormError('Materi praktikum wajib diisi.');
-      return;
-    }
-    if (!userDoc?.uid) {
-      setFormError('Identitas asisten tidak ditemukan. Silakan masuk ulang.');
-      return;
-    }
-
-    let parsedRadiusOverride: number | undefined;
-    if (newRadiusOverride.trim()) {
-      const n = Number(newRadiusOverride.trim());
-      if (!Number.isFinite(n) || n < MIN_LAB_RADIUS_METER || n > MAX_LAB_RADIUS_METER) {
-        setFormError(
-          `Radius khusus sesi harus antara ${MIN_LAB_RADIUS_METER} sampai ${MAX_LAB_RADIUS_METER} meter.`
-        );
-        return;
-      }
-      parsedRadiusOverride = Math.round(n);
-    }
-
-    const selectedLab = labs.find((l) => l.id === newLabId);
-
-    setSaving(true);
-    try {
-      const newCreated = await createSession({
-        praktikum: newPraktikum.trim() || 'Praktikum PPK',
-        kelas: newKelas,
-        tanggal: newTanggal.trim() || '19 Nov 2026',
-        waktuMulai: newWaktuMulai.trim() || '07.30',
-        waktuSelesai: newWaktuSelesai.trim() || '09.30',
-        ruang: selectedLab?.nama || newRuang.trim() || 'Lab Komputasi 1',
-        labId: selectedLab?.id || newLabId || undefined,
-        ...(parsedRadiusOverride !== undefined ? { radiusOverride: parsedRadiusOverride } : {}),
-        materi: newMateri.trim(),
-        createdBy: userDoc.uid,
-        status: 'belum-dibuka',
-      });
-      setNewMateri('');
-      setNewRadiusOverride('');
-      setModalTambahVisible(false);
-      router.push({
-        pathname: '/asisten/detail-sesi/[id]',
-        params: { id: newCreated.id },
-      });
-    } catch (err) {
-      setFormError(
-        err instanceof Error ? err.message : 'Gagal menyimpan sesi ke Firestore.'
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const renderItem = ({ item }: { item: SessionDocument }) => {
-    const totalHadir = attendances.filter((p) => p.sessionId === item.id).length;
+    const totalHadir = attendances.filter(
+      (p) => p.sessionId === item.id && p.attendanceStatus !== 'izin'
+    ).length;
     const totalIzin = leaveRequests.filter(
       (l) => l.sessionId === item.id && (l.status === 'disetujui' || l.status === 'menunggu')
     ).length;
@@ -196,7 +149,7 @@ export default function JadwalAsistenScreen() {
     return (
       <SesiCard
         sesi={item}
-        role="asisten"
+        role="asprak"
         totalHadir={totalHadir}
         totalIzin={totalIzin}
         onPress={() => handleCardPress(item)}
@@ -206,67 +159,42 @@ export default function JadwalAsistenScreen() {
 
   const renderHeader = () => (
     <View style={styles.header}>
-      {/* Eyebrow & Live Indicator */}
       <View style={styles.eyebrowRow}>
         <View style={styles.eyebrowBadge}>
-          <Text style={styles.eyebrowText}>ASISTEN LABORATORIUM</Text>
+          <Text style={styles.eyebrowText}>ASISTEN PRAKTIKUM (ASPRAK)</Text>
         </View>
         <View style={styles.liveTag}>
-          <Text style={styles.liveTagText}>Kontrol Real-Time</Text>
+          <Text style={styles.liveTagText}>Sinkron Real-Time</Text>
         </View>
       </View>
 
-      <View style={styles.titleActionRow}>
-        <View style={styles.titleWrap}>
-          <Text style={styles.headerTitle}>Pengelolaan Sesi Praktikum</Text>
-          <Text style={styles.headerSubtitle}>
-            Buka sesi praktikum, pantau presensi kehadiran mahasiswa, atau tutup sesi setelah kegiatan selesai
-          </Text>
-        </View>
-        <View style={styles.headerActionBtns}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Kelola Lokasi Laboratorium"
-            style={({ pressed }) => [styles.labShortcutBtn, pressed && styles.chipPressed]}
-            onPress={() => router.push('/asisten/lokasi-lab' as Href)}>
-            <Text style={styles.labShortcutBtnText}>Lokasi Lab</Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Tambah Sesi Praktikum"
-            style={({ pressed }) => [styles.tambahBtn, pressed && styles.chipPressed]}
-            onPress={() => {
-              const activeLabs = labs.filter((l) => l.isActive);
-              if (activeLabs.length > 0 && !activeLabs.some((l) => l.id === newLabId)) {
-                setNewLabId(activeLabs[0].id);
-                setNewRuang(activeLabs[0].nama);
-              }
-              setFormError(null);
-              setModalTambahVisible(true);
-            }}>
-            <Text style={styles.tambahBtnText}>+ Tambah Sesi</Text>
-          </Pressable>
+      <View style={styles.titleBlock}>
+        <Text style={styles.headerTitle}>Pelaksanaan Sesi Praktikum</Text>
+        <Text style={styles.headerSubtitle}>
+          Buka sesi saat praktikum dimulai, pantau dan kelola presensi mahasiswa, serta tutup sesi setelah selesai.
+        </Text>
+        <View style={styles.scopePill}>
+          <Text style={styles.scopePillText}>Lab Tanggung Jawab: {assignedLabLabels}</Text>
         </View>
       </View>
 
-      {/* Metrics Overview Cards (Matching Halaman 1 style) */}
       <View style={styles.metricsGrid}>
         <View style={styles.metricCard}>
           <Text style={styles.metricVal}>{totalSesi}</Text>
           <Text style={styles.metricLbl}>Total Sesi</Text>
-          <Text style={styles.metricDesc}>Modul PPK & BDD</Text>
+          <Text style={styles.metricDesc}>Lab diampu</Text>
         </View>
 
         <View style={[styles.metricCard, styles.metricCardDibuka]}>
           <Text style={[styles.metricVal, { color: '#16A34A' }]}>{totalDibuka}</Text>
           <Text style={styles.metricLbl}>Sesi Dibuka</Text>
-          <Text style={styles.metricDesc}>Presensi Aktif</Text>
+          <Text style={styles.metricDesc}>Presensi aktif</Text>
         </View>
 
         <View style={[styles.metricCard, styles.metricCardPresensi]}>
           <Text style={[styles.metricVal, { color: '#0D9488' }]}>{totalPresensiMasuk}</Text>
-          <Text style={styles.metricLbl}>Total Presensi</Text>
-          <Text style={styles.metricDesc}>Mahasiswa Hadir</Text>
+          <Text style={styles.metricLbl}>Presensi Masuk</Text>
+          <Text style={styles.metricDesc}>Hadir & terlambat</Text>
         </View>
 
         <Pressable
@@ -287,51 +215,42 @@ export default function JadwalAsistenScreen() {
           </Text>
           <Text style={styles.metricLbl}>Izin Menunggu</Text>
           <Text style={styles.metricDesc}>
-            {pendingLeaves > 0 ? 'Perlu Diverifikasi →' : 'Semua Ditinjau'}
+            {pendingLeaves > 0 ? 'Perlu ditinjau →' : 'Semua ditinjau'}
           </Text>
         </Pressable>
 
         <View style={styles.metricCard}>
           <Text style={[styles.metricVal, { color: '#64748B' }]}>{totalDitutup}</Text>
           <Text style={styles.metricLbl}>Sesi Ditutup</Text>
-          <Text style={styles.metricDesc}>Selesai Dikelola</Text>
+          <Text style={styles.metricDesc}>Selesai</Text>
         </View>
       </View>
 
-      {/* Banner Permohonan Izin Menunggu Keputusan */}
       {pendingLeaves > 0 ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Buka Panel Moderasi Izin Praktikum"
           onPress={() => router.push('/asisten/moderasi-izin')}
-          style={({ pressed }) => [
-            styles.pendingLeaveBanner,
-            pressed && styles.chipPressed,
-          ]}>
+          style={({ pressed }) => [styles.pendingLeaveBanner, pressed && styles.chipPressed]}>
           <View style={styles.pendingLeaveBadge}>
-            <Text style={styles.pendingLeaveBadgeText}>
-              MODERASI IZIN ({pendingLeaves})
-            </Text>
+            <Text style={styles.pendingLeaveBadgeText}>MODERASI IZIN ({pendingLeaves})</Text>
           </View>
           <View style={styles.pendingLeaveContent}>
             <Text style={styles.pendingLeaveTitle}>
               Terdapat {pendingLeaves} pengajuan izin praktikan menunggu keputusan Anda
             </Text>
             <Text style={styles.pendingLeaveSubtitle}>
-              Rekomendasi kategori dari Model AI Pengajar telah tersedia. Klik untuk menyetujui atau menolak.
+              Izin yang disetujui dicatat sebagai tidak hadir dengan izin dan bebas denda.
             </Text>
           </View>
           <View style={styles.pendingLeaveActionBtn}>
-            <Text style={styles.pendingLeaveActionText}>Tinjau Sekarang →</Text>
+            <Text style={styles.pendingLeaveActionText}>Tinjau →</Text>
           </View>
         </Pressable>
       ) : null}
 
-      {/* Banner Pintasan Peta Laboratorium */}
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Monitoring Peta Laboratorium"
-        onPress={() => router.push('/asisten/peta-lab' as any)}
+        onPress={() => router.push('/asisten/peta-lab' as Href)}
         style={({ pressed }) => [styles.mapBanner, pressed && styles.chipPressed]}>
         <View style={styles.mapBannerLeft}>
           <View style={styles.mapBannerTagRow}>
@@ -341,7 +260,7 @@ export default function JadwalAsistenScreen() {
             </View>
           </View>
           <Text style={styles.mapBannerSub}>
-            Pantau persebaran ruang lab Informatika, koordinat, radius geofencing, dan praktikum aktif
+            Pantau persebaran ruang lab, koordinat, dan aktivitas sesi berlangsung
           </Text>
         </View>
         <View style={styles.mapBannerBtn}>
@@ -349,347 +268,95 @@ export default function JadwalAsistenScreen() {
         </View>
       </Pressable>
 
-      {/* Filter Section */}
       <View style={styles.filterSection}>
-        <Text style={styles.filterTitle}>Filter Berdasarkan Status Sesi:</Text>
+        <Text style={styles.filterTitle}>Filter Status Sesi:</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterRow}>
-          <FilterChip
-            label="Semua"
-            active={filter === 'semua'}
-            count={sesiList.length}
-            onPress={() => setFilter('semua')}
-          />
-          <FilterChip
-            label="Dibuka"
-            active={filter === 'dibuka'}
-            count={sesiList.filter((s) => s.status === 'dibuka').length}
-            variant="dibuka"
-            onPress={() => setFilter('dibuka')}
-          />
-          <FilterChip
-            label="Belum Dibuka"
-            active={filter === 'belum-dibuka'}
-            count={sesiList.filter((s) => s.status === 'belum-dibuka').length}
-            variant="belum-dibuka"
-            onPress={() => setFilter('belum-dibuka')}
-          />
-          <FilterChip
-            label="Ditutup"
-            active={filter === 'ditutup'}
-            count={sesiList.filter((s) => s.status === 'ditutup').length}
-            variant="ditutup"
-            onPress={() => setFilter('ditutup')}
-          />
+          {(
+            [
+              { key: 'semua', label: 'Semua' },
+              { key: 'dibuka', label: 'Dibuka' },
+              { key: 'belum-dibuka', label: 'Belum Dibuka' },
+              { key: 'ditutup', label: 'Ditutup' },
+            ] as const
+          ).map((f) => {
+            const active = filter === f.key;
+            return (
+              <Pressable
+                key={f.key}
+                onPress={() => setFilter(f.key)}
+                style={({ pressed }) => [
+                  styles.filterChip,
+                  active && styles.filterChipActive,
+                  pressed && styles.chipPressed,
+                ]}>
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    active && styles.filterChipTextActive,
+                  ]}>
+                  {f.label}
+                </Text>
+              </Pressable>
+            );
+          })}
         </ScrollView>
       </View>
     </View>
   );
 
   return (
-    <View style={styles.container}>
+    <View style={styles.root}>
       <FlatList
         data={filteredSesiList}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         ListHeaderComponent={renderHeader}
-        contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listContent}
+        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         ListEmptyComponent={
           loadingSessions ? (
-            <View style={styles.loadingState}>
+            <View style={styles.loadingWrap}>
               <ActivityIndicator size="large" color="#0D9488" />
-              <Text style={styles.loadingStateText}>Menyinkronkan jadwal sesi dari Firestore...</Text>
+              <Text style={styles.loadingText}>Memuat sesi praktikum...</Text>
             </View>
           ) : (
             <EmptyState
-              title="Tidak Ada Sesi"
-              message={
-                filter === 'semua'
-                  ? 'Belum ada jadwal praktikum yang tersedia saat ini. Klik "+ Tambah Sesi" untuk membuat sesi baru.'
-                  : `Tidak ada sesi praktikum dengan status "${filter}".`
-              }
-              actionText={filter !== 'semua' ? 'Tampilkan Semua Sesi' : undefined}
-              onAction={filter !== 'semua' ? () => setFilter('semua') : undefined}
+              title="Belum Ada Sesi di Lab Anda"
+              message="Jadwal sesi praktikum dibuat oleh Aslab untuk laboratorium yang Anda ampu."
             />
           )
         }
       />
-
-      {/* Modal Tambah Sesi Praktikum Baru */}
-      <Modal
-        visible={modalTambahVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setModalTambahVisible(false)}>
-        <View style={styles.modalBackdrop}>
-          <Pressable
-            style={styles.modalDismiss}
-            onPress={() => setModalTambahVisible(false)}
-          />
-          <View style={styles.modalPopupCard}>
-            <View style={styles.modalHeader}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.modalTitle}>Tambah Sesi Praktikum</Text>
-                <Text style={styles.modalSubtitle}>
-                  Jadwalkan sesi praktikum baru ke Cloud Firestore
-                </Text>
-              </View>
-              <Pressable
-                style={({ pressed }) => [styles.closeBtnCircle, pressed && styles.chipPressed]}
-                onPress={() => setModalTambahVisible(false)}>
-                <Text style={styles.closeBtnCircleText}>✕</Text>
-              </Pressable>
-            </View>
-
-            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-              {formError ? (
-                <View style={styles.formErrorBox}>
-                  <Text style={styles.formErrorText}>{formError}</Text>
-                </View>
-              ) : null}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Mata Praktikum</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={newPraktikum}
-                  onChangeText={setNewPraktikum}
-                  placeholder="Praktikum PPK"
-                  placeholderTextColor="#94A3B8"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Materi Praktikum *</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={newMateri}
-                  onChangeText={setNewMateri}
-                  placeholder="Mis. Modul 4: Integrasi Form & Modal"
-                  placeholderTextColor="#94A3B8"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Kelas Praktikum</Text>
-                <View style={styles.kelasOptionRow}>
-                  <Pressable
-                    style={[
-                      styles.kelasOptionBtn,
-                      newKelas === 'Kelas A' && styles.kelasOptionBtnActive,
-                    ]}
-                    onPress={() => setNewKelas('Kelas A')}>
-                    <Text
-                      style={[
-                        styles.kelasOptionText,
-                        newKelas === 'Kelas A' && styles.kelasOptionTextActive,
-                      ]}>
-                      Kelas A
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    style={[
-                      styles.kelasOptionBtn,
-                      newKelas === 'Kelas B' && styles.kelasOptionBtnActive,
-                    ]}
-                    onPress={() => setNewKelas('Kelas B')}>
-                    <Text
-                      style={[
-                        styles.kelasOptionText,
-                        newKelas === 'Kelas B' && styles.kelasOptionTextActive,
-                      ]}>
-                      Kelas B
-                    </Text>
-                  </Pressable>
-                </View>
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Tanggal Pelaksanaan</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={newTanggal}
-                  onChangeText={setNewTanggal}
-                  placeholder="05 Nov 2026"
-                  placeholderTextColor="#94A3B8"
-                />
-              </View>
-
-              <View style={styles.timeRow}>
-                <View style={[styles.inputGroup, { flex: 1 }]}>
-                  <Text style={styles.inputLabel}>Jam Mulai</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    value={newWaktuMulai}
-                    onChangeText={setNewWaktuMulai}
-                    placeholder="07.30"
-                    placeholderTextColor="#94A3B8"
-                  />
-                </View>
-                <View style={[styles.inputGroup, { flex: 1 }]}>
-                  <Text style={styles.inputLabel}>Jam Selesai</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    value={newWaktuSelesai}
-                    onChangeText={setNewWaktuSelesai}
-                    placeholder="09.30"
-                    placeholderTextColor="#94A3B8"
-                  />
-                </View>
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Pilih Laboratorium (Acuan Geofencing) *</Text>
-                <View style={styles.labPickerGrid}>
-                  {labs.filter((l) => l.isActive).map((lab) => {
-                    const selected = newLabId === lab.id;
-                    return (
-                      <Pressable
-                        key={lab.id}
-                        accessibilityRole="button"
-                        onPress={() => {
-                          setNewLabId(lab.id);
-                          setNewRuang(lab.nama);
-                        }}
-                        style={[
-                          styles.labPickerChip,
-                          selected && styles.labPickerChipActive,
-                        ]}>
-                        <Text
-                          style={[
-                            styles.labPickerName,
-                            selected && styles.labPickerNameActive,
-                          ]}
-                          numberOfLines={1}>
-                          {lab.nama}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.labPickerMeta,
-                            selected && styles.labPickerMetaActive,
-                          ]}>
-                          {lab.kode} • Radius {lab.radiusMeter}m
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>
-                  Radius Khusus Sesi (Opsional, {MIN_LAB_RADIUS_METER}-{MAX_LAB_RADIUS_METER}m)
-                </Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={newRadiusOverride}
-                  onChangeText={(t) => setNewRadiusOverride(t.replace(/[^0-9]/g, ''))}
-                  placeholder="Kosongkan untuk memakai radius default lab"
-                  placeholderTextColor="#94A3B8"
-                  keyboardType="number-pad"
-                  maxLength={3}
-                />
-              </View>
-            </ScrollView>
-
-            <View style={styles.modalFooter}>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.cancelBtn,
-                  pressed && styles.chipPressed,
-                ]}
-                onPress={() => setModalTambahVisible(false)}
-                disabled={saving}>
-                <Text style={styles.cancelBtnText}>Batal</Text>
-              </Pressable>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.saveBtn,
-                  pressed && styles.chipPressed,
-                  saving && styles.disabledBtn,
-                ]}
-                onPress={handleSimpanSesiBaru}
-                disabled={saving}>
-                {saving ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <Text style={styles.saveBtnText}>Simpan & Buat Sesi</Text>
-                )}
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
 
-function FilterChip({
-  label,
-  active,
-  count,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  count?: number;
-  variant?: SessionStatus;
-  onPress: () => void;
-}) {
-  const getBadgeStyle = () => {
-    if (active) return styles.chipActive;
-    return styles.chipInactive;
-  };
-
-  const getTextStyle = () => {
-    if (active) return styles.chipTextActive;
-    return styles.chipTextInactive;
-  };
-
-  return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.chip,
-        getBadgeStyle(),
-        pressed && styles.chipPressed,
-      ]}
-      onPress={onPress}>
-      <Text style={[styles.chipText, getTextStyle()]}>{label}</Text>
-      {count !== undefined ? (
-        <View style={[styles.countBadge, active && styles.countBadgeActive]}>
-          <Text style={[styles.countText, active && styles.countTextActive]}>
-            {count}
-          </Text>
-        </View>
-      ) : null}
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
-  listContainer: {
-    width: '100%',
+  listContent: {
     maxWidth: 960,
+    width: '100%',
     alignSelf: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 90,
-    gap: 14,
+    paddingHorizontal: Platform.OS === 'web' ? 20 : 14,
+    paddingTop: 18,
+    paddingBottom: Platform.OS === 'web' ? 100 : 32,
   },
   header: {
-    marginBottom: 8,
     gap: 14,
+    marginBottom: 14,
   },
   eyebrowRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
   },
   eyebrowBadge: {
     backgroundColor: '#F0FDFA',
@@ -697,130 +364,85 @@ const styles = StyleSheet.create({
     borderColor: '#99F6E4',
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 16,
+    borderRadius: 20,
   },
   eyebrowText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
     color: '#0D9488',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
   },
   liveTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#ECFDF5',
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
+    backgroundColor: '#DCFCE7',
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 16,
+    borderRadius: 20,
   },
   liveTagText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#065F46',
+    color: '#15803D',
+  },
+  titleBlock: {
+    gap: 6,
   },
   headerTitle: {
-    fontSize: Platform.OS === 'web' ? 32 : 26,
-    fontWeight: '900',
+    fontSize: 22,
+    fontWeight: '800',
     color: '#0F172A',
-    letterSpacing: -0.6,
+    letterSpacing: -0.3,
   },
   headerSubtitle: {
-    fontSize: 14,
-    lineHeight: 22,
-    color: '#64748B',
+    fontSize: 13,
+    color: '#475569',
+    lineHeight: 19,
+  },
+  scopePill: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginTop: 2,
+  },
+  scopePillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
   },
   metricsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    marginTop: 4,
+    gap: 10,
   },
   metricCard: {
     flex: 1,
-    minWidth: 140,
+    minWidth: 135,
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
-    padding: 14,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    gap: 3,
-    shadowColor: '#000000',
-    shadowOpacity: 0.03,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 6,
-    elevation: 1,
-  },
-  metricCardDibuka: {
-    borderColor: '#BBF7D0',
-    backgroundColor: '#F0FDF4',
-  },
-  metricCardPresensi: {
-    borderColor: '#99F6E4',
-    backgroundColor: '#F0FDFA',
-  },
-  metricCardIzin: {
-    borderColor: '#FDE68A',
-    backgroundColor: '#FFFBEB',
-  },
-  pendingLeaveBanner: {
-    backgroundColor: '#FFFBEB',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#FDE68A',
     padding: 14,
-    gap: 8,
-    marginVertical: 4,
-  },
-  pendingLeaveBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 6,
-  },
-  pendingLeaveBadgeText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#B45309',
-    letterSpacing: 0.3,
-  },
-  pendingLeaveContent: {
     gap: 2,
   },
-  pendingLeaveTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#92400E',
+  metricCardDibuka: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
   },
-  pendingLeaveSubtitle: {
-    fontSize: 12,
-    lineHeight: 18,
-    color: '#78350F',
+  metricCardPresensi: {
+    backgroundColor: '#F0FDFA',
+    borderColor: '#99F6E4',
   },
-  pendingLeaveActionBtn: {
-    alignSelf: 'flex-start',
-    marginTop: 4,
-    backgroundColor: '#F59E0B',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  pendingLeaveActionText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#FFFFFF',
+  metricCardIzin: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
   },
   metricVal: {
     fontSize: 24,
     fontWeight: '900',
     color: '#0F172A',
-    letterSpacing: -0.5,
   },
   metricLbl: {
     fontSize: 12,
@@ -831,384 +453,144 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#64748B',
   },
-  filterSection: {
-    gap: 8,
-    marginTop: 8,
-  },
-  filterTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#334155',
-  },
-  filterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 2,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5.5,
-    borderRadius: 16,
+  pendingLeaveBanner: {
+    backgroundColor: '#FFFBEB',
     borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 14,
+    padding: 14,
+    gap: 8,
   },
-  chipInactive: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#E2E8F0',
+  pendingLeaveBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FEF3C7',
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
-  chipActive: {
-    backgroundColor: '#0D9488',
-    borderColor: '#0D9488',
+  pendingLeaveBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#B45309',
   },
-  chipPressed: {
-    opacity: 0.85,
+  pendingLeaveContent: {
+    gap: 2,
   },
-  chipText: {
-    fontSize: 11.5,
-    fontWeight: '700',
+  pendingLeaveTitle: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: '#92400E',
   },
-  chipTextInactive: {
-    color: '#475569',
+  pendingLeaveSubtitle: {
+    fontSize: 12,
+    color: '#B45309',
   },
-  chipTextActive: {
-    color: '#FFFFFF',
+  pendingLeaveActionBtn: {
+    alignSelf: 'flex-end',
   },
-  countBadge: {
-    marginLeft: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 10,
-    backgroundColor: '#E2E8F0',
-  },
-  countBadgeActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  countText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#475569',
-  },
-  countTextActive: {
-    color: '#FFFFFF',
+  pendingLeaveActionText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#B45309',
   },
   mapBanner: {
-    backgroundColor: '#F0FDFA',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#99F6E4',
     borderRadius: 14,
     padding: 14,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'space-between',
+    gap: 10,
   },
   mapBannerLeft: {
     flex: 1,
-    gap: 3,
+    gap: 4,
   },
   mapBannerTagRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+    flexWrap: 'wrap',
   },
   mapBannerTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
-    color: '#0F766E',
+    color: '#0F172A',
   },
   mapTag: {
-    backgroundColor: '#CCFBF1',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 6,
+    backgroundColor: '#F0FDFA',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 20,
   },
   mapTagText: {
     fontSize: 9.5,
     fontWeight: '800',
     color: '#0D9488',
-    letterSpacing: 0.3,
   },
   mapBannerSub: {
     fontSize: 12,
-    lineHeight: 17,
-    color: '#475569',
+    color: '#64748B',
   },
   mapBannerBtn: {
     backgroundColor: '#0D9488',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
     borderRadius: 10,
-    minHeight: 36,
+    paddingHorizontal: 12,
+    minHeight: 40,
     justifyContent: 'center',
-    alignItems: 'center',
   },
   mapBannerBtnText: {
     fontSize: 12,
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  titleActionRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 16,
-    flexWrap: 'wrap',
+  filterSection: {
+    gap: 8,
   },
-  titleWrap: {
-    flex: 1,
-    minWidth: 260,
-    gap: 4,
-  },
-  tambahBtn: {
-    minHeight: 44,
-    justifyContent: 'center',
-    backgroundColor: '#0D9488',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    shadowColor: '#0D9488',
-    shadowOpacity: 0.25,
-    shadowOffset: { width: 0, height: 3 },
-    shadowRadius: 6,
-    elevation: 3,
-    alignSelf: 'flex-start',
-  },
-  tambahBtnText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 0.2,
-  },
-
-  /* Add Session Modal Styles */
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalDismiss: {
-    ...StyleSheet.absoluteFill,
-  },
-  modalPopupCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 22,
-    maxWidth: 480,
-    width: '100%',
-    maxHeight: '88%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 25,
-    elevation: 10,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    zIndex: 1,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-    marginBottom: 14,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0F172A',
-    letterSpacing: -0.3,
-  },
-  modalSubtitle: {
+  filterTitle: {
     fontSize: 12,
-    color: '#64748B',
-    marginTop: 2,
+    fontWeight: '700',
+    color: '#475569',
   },
-  closeBtnCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F1F5F9',
+  filterRow: {
+    gap: 8,
+  },
+  filterChip: {
+    minHeight: 38,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  closeBtnCircleText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#64748B',
+  filterChipActive: {
+    backgroundColor: '#0D9488',
+    borderColor: '#0D9488',
   },
-  modalBody: {
-    maxHeight: 400,
-  },
-  inputGroup: {
-    marginBottom: 12,
-    gap: 6,
-  },
-  inputLabel: {
+  filterChipText: {
     fontSize: 12,
     fontWeight: '700',
     color: '#334155',
   },
-  textInput: {
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    fontSize: 13,
-    color: '#0F172A',
-  },
-  kelasOptionRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  kelasOptionBtn: {
-    flex: 1,
-    paddingVertical: 9,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    backgroundColor: '#F8FAFC',
-    alignItems: 'center',
-  },
-  kelasOptionBtnActive: {
-    borderColor: '#0D9488',
-    backgroundColor: '#F0FDFA',
-  },
-  kelasOptionText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#475569',
-  },
-  kelasOptionTextActive: {
-    color: '#0F766E',
-  },
-  timeRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  modalFooter: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 10,
-    marginTop: 16,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-  },
-  cancelBtn: {
-    minHeight: 44,
-    justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    backgroundColor: '#F1F5F9',
-    alignItems: 'center',
-  },
-  cancelBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#475569',
-  },
-  saveBtn: {
-    minHeight: 44,
-    justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    borderRadius: 10,
-    backgroundColor: '#0D9488',
-    alignItems: 'center',
-  },
-  saveBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
+  filterChipTextActive: {
     color: '#FFFFFF',
   },
-  disabledBtn: {
-    opacity: 0.65,
+  chipPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.98 }],
   },
-  loadingState: {
-    paddingVertical: 48,
+  loadingWrap: {
+    paddingVertical: 40,
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
+    gap: 10,
   },
-  loadingStateText: {
+  loadingText: {
     fontSize: 13,
     fontWeight: '600',
     color: '#64748B',
-  },
-  formErrorBox: {
-    backgroundColor: '#FEE2E2',
-    borderWidth: 1,
-    borderColor: '#FCA5A5',
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 12,
-  },
-  formErrorText: {
-    fontSize: 12.5,
-    fontWeight: '600',
-    color: '#B91C1C',
-  },
-  headerActionBtns: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  labShortcutBtn: {
-    minHeight: 44,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#0D9488',
-    backgroundColor: '#F0FDFA',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  labShortcutBtnText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#0D9488',
-  },
-  labPickerGrid: {
-    gap: 8,
-  },
-  labPickerChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    backgroundColor: '#F8FAFC',
-    gap: 2,
-  },
-  labPickerChipActive: {
-    borderColor: '#0D9488',
-    backgroundColor: '#F0FDFA',
-    borderWidth: 1.5,
-  },
-  labPickerName: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  labPickerNameActive: {
-    color: '#0F766E',
-  },
-  labPickerMeta: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#64748B',
-  },
-  labPickerMetaActive: {
-    color: '#0D9488',
   },
 });

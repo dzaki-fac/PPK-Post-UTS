@@ -87,7 +87,8 @@ export default function PraktikanRiwayatScreen() {
           sesiId: att.sessionId,
           praktikanId: att.studentId,
           waktuKehadiran: att.waktuKehadiran,
-          status: 'hadir',
+          attendanceStatus: att.attendanceStatus ?? 'hadir',
+          lateMinutes: att.lateness?.minutesAfterStart,
           sesi: sesi,
         } as RiwayatItem;
       });
@@ -99,7 +100,7 @@ export default function PraktikanRiwayatScreen() {
   }, [firestoreAttendances, effectiveSessions, currentPraktikan, getRiwayatPraktikan]);
 
   const totalSesiTersedia = effectiveSessions.length;
-  const totalHadir = riwayatList.length;
+  const totalHadir = riwayatList.filter((r) => r.attendanceStatus !== 'izin').length;
   const persentase =
     totalSesiTersedia > 0
       ? Math.round((totalHadir / totalSesiTersedia) * 100)
@@ -149,7 +150,7 @@ export default function PraktikanRiwayatScreen() {
               </View>
             ) : null}
           </View>
-          <StatusBadge status="hadir" size="small" />
+          <StatusBadge status={item.attendanceStatus ?? 'hadir'} size="small" />
         </View>
 
         {item.sesi?.materi ? (
@@ -631,7 +632,10 @@ export default function PraktikanRiwayatScreen() {
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
               <View style={styles.modalStatusBox}>
                 <Text style={styles.modalSectionLabel}>Status Presensi:</Text>
-                <StatusBadge status="hadir" size="small" />
+                <StatusBadge
+                  status={selectedPresensiModal?.attendanceStatus ?? 'hadir'}
+                  size="small"
+                />
               </View>
 
               <View style={styles.modalInfoBox}>

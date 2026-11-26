@@ -23,9 +23,7 @@ import {
   subscribeStudentLeaveRequests,
 } from '@/services/leave-service';
 import {
-  isSessionExpired,
   subscribeSessions,
-  updateSessionStatus,
 } from '@/services/session-service';
 import { AttendanceDocument, SessionDocument, SessionStatus } from '@/types/praktikum';
 
@@ -49,7 +47,8 @@ export default function PraktikanJadwalScreen() {
       },
       () => {
         setLoadingSessions(false);
-      }
+      },
+      { autoCloseExpired: false }
     );
 
     let unsubAttendances: (() => void) | null = null;
@@ -79,33 +78,31 @@ export default function PraktikanJadwalScreen() {
     };
   }, [studentUid, userDoc?.nim]);
 
-  // Pemeriksaan otomatis berkala: tutup sesi yang melewati batas 2 jam atau jam praktikum
-  useEffect(() => {
-    const timer = setInterval(() => {
-      sesiList.forEach((s) => {
-        if (s.status === 'dibuka' && isSessionExpired(s)) {
-          updateSessionStatus(s.id, 'ditutup').catch(() => {});
-        }
-      });
-    }, 30000);
-    return () => clearInterval(timer);
-  }, [sesiList]);
-
   const studentClass = normalizeClassCode(userDoc?.kelas);
+  const studentLabId = userDoc?.labId;
+
+  const scopedSesiList = useMemo(() => {
+    if (!studentLabId) return sesiList;
+    return sesiList.filter((s) => {
+      if (s.labId) return s.labId === studentLabId;
+      return !studentClass || normalizeClassCode(s.kelas) === studentClass;
+    });
+  }, [sesiList, studentLabId, studentClass]);
 
   const filteredSesiList = useMemo(() => {
-    if (filter === 'semua') return sesiList;
+    if (filter === 'semua') return scopedSesiList;
     if (filter === 'kelas-saya') {
-      if (!studentClass) return sesiList;
-      return sesiList.filter((s) => normalizeClassCode(s.kelas) === studentClass);
+      if (studentLabId) return scopedSesiList;
+      if (!studentClass) return scopedSesiList;
+      return scopedSesiList.filter((s) => normalizeClassCode(s.kelas) === studentClass);
     }
-    return sesiList.filter((s) => s.status === filter);
-  }, [sesiList, filter, studentClass]);
+    return scopedSesiList.filter((s) => s.status === filter);
+  }, [scopedSesiList, filter, studentClass, studentLabId]);
 
-  const totalSesi = sesiList.length;
-  const totalDibuka = sesiList.filter((s) => s.status === 'dibuka').length;
-  const totalSudahHadir = myAttendances.length;
-  const totalBelumBuka = sesiList.filter((s) => s.status === 'belum-dibuka').length;
+  const totalSesi = scopedSesiList.length;
+  const totalDibuka = scopedSesiList.filter((s) => s.status === 'dibuka').length;
+  const totalSudahHadir = myAttendances.filter((a) => a.attendanceStatus !== 'izin').length;
+  const totalBelumBuka = scopedSesiList.filter((s) => s.status === 'belum-dibuka').length;
   const totalIzinDisetujui = myLeaves.filter((l) => l.status === 'disetujui').length;
   const totalIzinMenunggu = myLeaves.filter((l) => l.status === 'menunggu').length;
 
@@ -119,7 +116,9 @@ export default function PraktikanJadwalScreen() {
   const renderItem = ({ item }: { item: SessionDocument }) => {
     const presensiItem = myAttendances.find((p) => p.sessionId === item.id);
     const leaveItem = myLeaves.find((l) => l.sessionId === item.id);
-    const isHadir = Boolean(presensiItem);
+    const isExcused = presensiItem?.attendanceStatus === 'izin';
+    const isHadir = Boolean(presensiItem && !isExcused);
+    const effectiveLeaveStatus = isExcused ? 'disetujui' : leaveItem?.status;
 
     return (
       <SesiCard
@@ -127,14 +126,14 @@ export default function PraktikanJadwalScreen() {
         role="praktikan"
         isHadir={isHadir}
         waktuHadir={presensiItem?.waktuKehadiran}
-        leaveStatus={leaveItem?.status}
+        leaveStatus={effectiveLeaveStatus}
         leaveCategory={leaveItem?.aiClassification?.category}
         onPress={() => handleCardPress(item)}
         onPresensiPress={
           item.status === 'dibuka' &&
           !isHadir &&
-          leaveItem?.status !== 'disetujui' &&
-          leaveItem?.status !== 'menunggu'
+          effectiveLeaveStatus !== 'disetujui' &&
+          effectiveLeaveStatus !== 'menunggu'
             ? () =>
                 router.push({
                   pathname: '/praktikan/presensi',

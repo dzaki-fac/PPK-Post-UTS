@@ -16,6 +16,7 @@ Untuk mempermudah pemahaman arsitektur dan kolaborasi pengembang, dokumentasi pr
 | **`SRS.md`** | **Spesifikasi Kebutuhan Sprint 1:** Antarmuka, tata letak Flexbox, navigasi Expo Router, simulasi alur asisten & praktikan, serta state runtime in-memory. | [Baca SRS.md](./SRS.md) |
 | **`SRS2.md`** | **Spesifikasi Kebutuhan Sprint 2:** Integrasi Firebase Authentication multi-metode, Cloud Firestore real-time, modul pengajuan izin, klasifikasi AI Model EDOM, dan pembagian tugas 2 programmer. | [Baca SRS2.md](./SRS2.md) |
 | **`SRS3.md`** | **Spesifikasi Kebutuhan Sprint 3:** Validasi lokasi presensi (*geofencing*) & QR Code, pengelolaan koordinat lab, peta laboratorium interaktif + live tracking & rute, push notification berbasis peristiwa, serta ketahanan perangkat. | [Baca SRS3.md](./SRS3.md) |
+| **`SRS4.md`** | **Spesifikasi Kebutuhan Sprint 4:** Pemisahan peran Aslab/Asprak, manajemen laboratorium & impor (bulk/single), dashboard keberlangsungan lab, perhitungan keterlambatan & denda, serta integrasi pembayaran Midtrans Sandbox. Seluruh implementasi UI **wajib** patuh `DESIGN.md`. | [Baca SRS4.md](./SRS4.md) |
 | **`firestore.rules`** | **Aturan Keamanan Database:** Role-Based Access Control (RBAC) resmi Cloud Firestore yang melindungi koleksi `/users`, `/sessions`, `/attendances`, `/leave_requests`, `/labs`, `/notifications`, dan `/system_health`. | [Baca firestore.rules](./firestore.rules) |
 
 ---

@@ -15,6 +15,7 @@ import { LabMapView, UserLocationState } from '@/components/lab-map-view';
 import { Colors } from '@/constants/theme';
 import { useDeviceResilience } from '@/hooks/use-device-resilience';
 import { subscribeLabActivities } from '@/services/lab-activity-service';
+import { calculateDistanceMeters } from '@/services/location-service';
 import { LabWithActivity } from '@/types/praktikum';
 
 export default function AslabPetaLabScreen() {
@@ -54,12 +55,29 @@ export default function AslabPetaLabScreen() {
     setSelectedLabId(null);
   }, []);
 
-  const selectedActivity = useMemo(() => {
-    return activities.find((a) => a.lab.id === selectedLabId) || null;
-  }, [activities, selectedLabId]);
+  const activitiesWithDistance = useMemo(() => {
+    if (!userLocation) return activities;
+    return activities.map((item) => {
+      const distanceMeters = calculateDistanceMeters(
+        userLocation.latitude,
+        userLocation.longitude,
+        item.lab.latitude,
+        item.lab.longitude
+      );
+      return {
+        ...item,
+        distanceMeters,
+        isUserInsideRadius: distanceMeters <= item.lab.radiusMeter,
+      };
+    });
+  }, [activities, userLocation]);
 
-  const totalLabs = activities.length;
-  const activeSessionsCount = activities.filter((a) => Boolean(a.ongoingSession)).length;
+  const selectedActivity = useMemo(() => {
+    return activitiesWithDistance.find((a) => a.lab.id === selectedLabId) || null;
+  }, [activitiesWithDistance, selectedLabId]);
+
+  const totalLabs = activitiesWithDistance.length;
+  const activeSessionsCount = activitiesWithDistance.filter((a) => Boolean(a.ongoingSession)).length;
   const idleLabsCount = totalLabs - activeSessionsCount;
 
   return (
@@ -141,7 +159,7 @@ export default function AslabPetaLabScreen() {
             </View>
           ) : (
             <LabMapView
-              activities={activities}
+              activities={activitiesWithDistance}
               selectedLabId={selectedLabId}
               onSelectLab={handleSelectLab}
               accentColor={Colors.aslabPrimary}

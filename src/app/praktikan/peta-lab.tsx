@@ -15,6 +15,7 @@ import { LabMapView, UserLocationState } from '@/components/lab-map-view';
 import { useAuth } from '@/context/auth-context';
 import { useDeviceResilience } from '@/hooks/use-device-resilience';
 import { subscribeLabActivities } from '@/services/lab-activity-service';
+import { calculateDistanceMeters } from '@/services/location-service';
 import { LabWithActivity } from '@/types/praktikum';
 
 export default function PraktikanPetaLabScreen() {
@@ -57,14 +58,31 @@ export default function PraktikanPetaLabScreen() {
     setSelectedLabId(null);
   }, []);
 
+  const activitiesWithDistance = useMemo(() => {
+    if (!userLocation) return activities;
+    return activities.map((item) => {
+      const distanceMeters = calculateDistanceMeters(
+        userLocation.latitude,
+        userLocation.longitude,
+        item.lab.latitude,
+        item.lab.longitude
+      );
+      return {
+        ...item,
+        distanceMeters,
+        isUserInsideRadius: distanceMeters <= item.lab.radiusMeter,
+      };
+    });
+  }, [activities, userLocation]);
+
   const selectedActivity = useMemo(() => {
-    return activities.find((a) => a.lab.id === selectedLabId) || null;
-  }, [activities, selectedLabId]);
+    return activitiesWithDistance.find((a) => a.lab.id === selectedLabId) || null;
+  }, [activitiesWithDistance, selectedLabId]);
 
   // Metrik ringkasan untuk header
-  const totalLabs = activities.length;
-  const activeSessionsCount = activities.filter((a) => Boolean(a.ongoingSession)).length;
-  const insideRadiusCount = activities.filter((a) => Boolean(a.isUserInsideRadius)).length;
+  const totalLabs = activitiesWithDistance.length;
+  const activeSessionsCount = activitiesWithDistance.filter((a) => Boolean(a.ongoingSession)).length;
+  const insideRadiusCount = activitiesWithDistance.filter((a) => Boolean(a.isUserInsideRadius)).length;
 
   const userClass = userDoc?.kelas;
 
@@ -154,7 +172,7 @@ export default function PraktikanPetaLabScreen() {
             </View>
           ) : (
             <LabMapView
-              activities={activities}
+              activities={activitiesWithDistance}
               selectedLabId={selectedLabId}
               onSelectLab={handleSelectLab}
               accentColor="#EA580C"

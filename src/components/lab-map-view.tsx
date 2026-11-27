@@ -103,8 +103,25 @@ export function LabMapView({
         if (isMounted) setPermissionStatus('granted');
 
         try {
+          const lastKnown = await Location.getLastKnownPositionAsync({
+            maxAge: 30000,
+          });
+          if (lastKnown && isMounted) {
+            const quickState: UserLocationState = {
+              latitude: lastKnown.coords.latitude,
+              longitude: lastKnown.coords.longitude,
+              accuracy: lastKnown.coords.accuracy,
+            };
+            setUserLocation(quickState);
+            onUserLocationChange?.(quickState);
+          }
+        } catch {
+          // Lanjut ke GPS presisi tinggi
+        }
+
+        try {
           const firstPos = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
+            accuracy: Location.Accuracy.High,
           });
           if (isMounted) {
             const locState: UserLocationState = {
@@ -122,8 +139,8 @@ export function LabMapView({
         subscription = await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.High,
-            distanceInterval: 5,
-            timeInterval: 3000,
+            distanceInterval: 2,
+            timeInterval: 2000,
           },
           (loc) => {
             if (!isMounted) return;
@@ -299,6 +316,7 @@ export function LabMapView({
         style={styles.map}
         initialRegion={UNDIP_INFORMATIKA_COORDINATES}
         onMapReady={() => setMapReady(true)}
+        showsUserLocation={permissionStatus === 'granted'}
         showsCompass
         showsScale
         toolbarEnabled={false}
@@ -314,6 +332,7 @@ export function LabMapView({
         {/* Lingkaran Radius Laboratorium Terpilih */}
         {selectedActivity ? (
           <Circle
+            key={`lab-circle-${selectedActivity.lab.id}-${selectedActivity.lab.radiusMeter || 50}`}
             center={{
               latitude: selectedActivity.lab.latitude,
               longitude: selectedActivity.lab.longitude,
@@ -322,6 +341,7 @@ export function LabMapView({
             strokeColor={accentColor}
             strokeWidth={2}
             fillColor={radiusFillColor}
+            zIndex={2}
           />
         ) : null}
 
@@ -371,22 +391,6 @@ export function LabMapView({
             </Marker>
           );
         })}
-
-        {/* Marker Lokasi Pengguna Live */}
-        {userLocation ? (
-          <Marker
-            coordinate={{
-              latitude: userLocation.latitude,
-              longitude: userLocation.longitude,
-            }}
-            anchor={{ x: 0.5, y: 0.5 }}
-            tracksViewChanges={false}
-            title="Lokasi Anda">
-            <View style={styles.userOuter}>
-              <View style={styles.userInner} />
-            </View>
-          </Marker>
-        ) : null}
 
         {/* Marker Simulasi Pergerakan Rute */}
         {simPoint ? (
@@ -494,22 +498,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: '#22C55E',
     borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-  },
-  userOuter: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(37, 99, 235, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  userInner: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#2563EB',
-    borderWidth: 2,
     borderColor: '#FFFFFF',
   },
   simMarker: {

@@ -14,7 +14,7 @@ Setiap programmer dan AI agent yang bekerja pada repositori ini **wajib mematuhi
 - **Karakter Visual:** Bersih, terstruktur, berbasis data (*dashboard-forward*), modern, akademis, tanpa elemen artifisial / emoji generik.
 - **Prinsip Utama:**
   1. **Data-Centric & Balanced:** Setiap halaman utama diawali dengan kartu metrik ringkasan (*stats overview*) sehingga tampilan tidak pernah hampa atau sekadar kartu tanpa konteks.
-  2. **Zero-Slop Clean Typography:** Tidak menggunakan emoji sebagai ikon UI; menggunakan tipografi tebal, inisial terstruktur, dan penanda geometris (`●`, `■`, `▲`, `▼`, `←`, `→`).
+  2. **Zero-Slop Clean Typography:** Tidak menggunakan emoji maupun titik bulat status dekoratif (`●`) sebagai ikon UI; menggunakan tipografi tebal, inisial terstruktur, dan penanda arah/geometris bersih (`←`, `→`, `■`, `▲`, `▼`).
   3. **Multi-Platform Adaptive:** Tampil proporsional di Web Desktop (`maxWidth: 960px` terpusat, *floating centered pill navigation*), tablet, dan ponsel pintar Android/iOS (full-width dengan safe-area insets).
 
 ---
@@ -41,16 +41,16 @@ Sistem warna membedakan peran secara fungsional: **Terracotta Orange** untuk Por
 | `aslab.primary` | `#4F46E5` | Aksen utama Portal Aslab (Indigo), tombol & filter aktif | **6.3:1** thd surface (WCAG AA) |
 | `aslab.tint` | `#EEF2FF` | Latar badge ASLAB, kartu highlight Aslab | Lembut |
 | `aslab.border` | `#C7D2FE` | Garis pembatas kartu & chip Aslab | Lembut |
-| `status.open.dot` | `#16A34A` | Titik indikator sesi dibuka / hadir / lunas / berhasil | — |
+| `status.open.accent` | `#16A34A` | Aksen warna sesi dibuka / hadir / lunas / berhasil | — |
 | `status.open.bg` | `#DCFCE7` | Latar badge sesi dibuka / hadir / lunas / berhasil | — |
 | `status.open.text` | `#15803D` | Teks badge sesi dibuka / hadir / lunas / berhasil | **5.4:1** thd badge bg |
-| `status.wait.dot` | `#EAB308` | Titik indikator belum dibuka / terlambat / pending | — |
+| `status.wait.accent` | `#EAB308` | Aksen warna belum dibuka / terlambat / pending | — |
 | `status.wait.bg` | `#FEF3C7` | Latar badge belum dibuka / terlambat / pending | — |
 | `status.wait.text` | `#B45309` | Teks badge belum dibuka / terlambat / pending | **5.1:1** thd badge bg |
-| `status.excused.dot` | `#2563EB` | Titik indikator izin (*excused absence*) / terjadwal | — |
+| `status.excused.accent` | `#2563EB` | Aksen warna izin (*excused absence*) / terjadwal | — |
 | `status.excused.bg` | `#DBEAFE` | Latar badge izin (*excused absence*) / terjadwal | — |
 | `status.excused.text` | `#1D4ED8` | Teks badge izin (*excused absence*) / terjadwal | **5.9:1** thd badge bg |
-| `status.close.dot` | `#DC2626` | Titik indikator ditutup / belum dibayar / gagal / hapus | — |
+| `status.close.accent` | `#DC2626` | Aksen warna ditutup / belum dibayar / gagal / hapus | — |
 | `status.close.bg` | `#FEE2E2` | Latar badge ditutup / belum dibayar / gagal | — |
 | `status.close.text` | `#B91C1C` | Teks badge ditutup / belum dibayar / gagal | **5.8:1** thd badge bg |
 
@@ -92,23 +92,22 @@ export const themeLayout = {
 ## 5. Spesifikasi Komponen Universal
 
 ### 5.1 Universal Top Navbar (`RoleHeader`)
-- **Struktur Kiri:**
-  - Badge logo kotak (`36x36`, radius 9) bertuliskan `PPK` oranye tebal.
-  - Teks institusi: `PPK LabPortal` (14–15pt ExtraBold) dan `Presensi & Manajemen Sesi` (10–11pt Muted).
-  - Keseluruhan logo sisi kiri dapat ditekan untuk navigasi kembali ke Portal Utama (`/`).
-- **Struktur Kanan:**
-  - Pill identitas pengguna aktif: menampilkan inisial peran (`PRAKTIKAN` / `ASPRAK` / `ASLAB`) dengan palet warna peran masing-masing, nama pengguna (dibatasi `maxWidth: 160–180` dengan `numberOfLines={1}`), dan info kelas/peran lab.
+- **Struktur Responsif:**
+  - Pada layar lebar (`width >= 680px`): tampil 1 baris horizontal berisi brand kiri (`PPK LabPortal`), pill identitas pengguna, serta tombol `Notifikasi` & `Keluar` di kanan.
+  - Pada layar ponsel sempit (`width < 680px`): otomatis tersusun **2 baris** — baris atas `[PPK] LabPortal` utuh di kiri + `Notifikasi` & `Keluar` di kanan, dan baris kedua full-width berisi pill identitas pengguna agar nama lengkap maupun judul aplikasi tidak pernah terpotong.
+- **Identitas & Aksi:**
+  - Badge logo kotak (`28x28`, radius 7) bertuliskan `PPK` oranye tebal + teks `LabPortal`, dapat ditekan untuk kembali ke beranda peran.
+  - Pill identitas pengguna menampilkan badge peran (`PRAKTIKAN` / `ASPRAK` / `ASLAB`), nama lengkap, serta info kelas/peran lab.
   - Tombol `Notifikasi` & `Keluar`: memicu navigasi ke `/notifikasi` atau **Centered Popup Modal** konfirmasi keluar akun.
 - **Penyelarasan:**
-  - `paddingHorizontal: Platform.OS === 'web' ? 20 : 14`.
+  - `paddingHorizontal: width >= 680 ? 20 : 14`.
   - Terkoneksi dengan Safe-Area Insets pada Android/iOS.
 
 ### 5.2 Breadcrumb Navigasi (`BreadcrumbBack`)
 - Menggantikan tombol back navbar yang canggung.
-- Berupa pill independen dengan teks panah rapi di atas judul halaman:
+- Berupa pill independen seragam di seluruh halaman (`fontSize: 11.5`, `paddingHorizontal: 12`, `paddingVertical: 5`, `borderRadius: 20`) dengan awalan panah `← Kembali ...` di atas judul halaman:
   - Pada Pemilihan Identitas: `← Kembali ke Pemilihan Peran`
-  - Pada Detail Sesi Asisten: `← Kembali ke Jadwal Praktikum`
-  - Pada Detail Sesi Praktikan: `← Kembali ke Jadwal Praktikum`
+  - Pada Detail Sesi / Peta / Izin / Tagihan / Impor: `← Kembali ke ...`
 - Dilengkapi fallback redirect (`router.canGoBack() ? router.back() : router.replace(...)`).
 
 ### 5.3 Kartu Ringkasan Metrik (`MetricsGrid`)
@@ -118,7 +117,7 @@ export const themeLayout = {
 - Setiap kartu memiliki angka tebal (24pt), label tebal (12pt), dan teks penjelasan (11pt).
 
 ### 5.4 Kartu Sesi Praktikum (`SesiCard`)
-- Menampilkan: Nama Praktikum, Chip Kelas (`Kelas A` / `Kelas B`), Badge Status dengan dot berwarna.
+- Menampilkan: Nama Praktikum, Chip Kelas (`Kelas A` / `Kelas B`), `StatusBadge` teks bersih tanpa titik bulat dekoratif.
 - Blok Materi: Teks materi modul praktikum berlatar lembut dengan border aksen kiri 3px.
 - Grid Metadata: Tanggal pelaksanaan, Jam WIB, dan Ruang Laboratorium.
 - Varian Asisten: Menampilkan counter mahasiswa hadir (`X Mahasiswa Hadir`), pill badge kode sesi jika status dibuka (`Kode: 2401`), dan link `Kelola sesi →`.
@@ -248,3 +247,5 @@ Untuk menjaga alur aplikasi mengalir mulus tanpa jalan buntu:
 3. **DILARANG menggunakan lebar container tetap (*fixed width*):** Gunakan Flexbox dengan `width: '100%'`, `maxWidth: 960`, dan `alignSelf: 'center'`.
 4. **DILARANG menggunakan bayangan berlebih (*muddy shadows*):** Gunakan border tipis `#E2E8F0` dengan elevasi halus (`elevation: 1–2`).
 5. **DILARANG mengabaikan status kosong (*empty states*):** Setiap FlatList wajib memiliki `ListEmptyComponent` berupa `EmptyState` terstruktur.
+6. **DILARANG menambahkan titik bulat status dekoratif (*status dot*) di mana pun:** Jangan pernah menempatkan karakter bulat (`●`, `•`) maupun `<View>` lingkaran kecil sebagai indikator di dalam badge (`StatusBadge`, `PANEL ASPRAK`, `PANEL ASLAB`, `LIVE TRACKING`), pill header, kartu status, atau banner info. Pembeda status wajib memakai warna latar, border, dan tipografi teks yang bersih. *(Satu-satunya penanda titik bulat yang diizinkan hanyalah pin lokasi GPS pengguna pada kanvas peta.)*
+7. **DILARANG membuat tombol `Kembali` berukuran berbeda atau header/email terpotong di layar sempit:** Semua pill navigasi kembali memakai ukuran seragam (`fontSize: 11.5`, `paddingHorizontal: 12`, `paddingVertical: 5`, `borderRadius: 20`) berawalan `←`, badge lab pada kartu anggota diletakkan di bawah info agar email tidak terlipat sempit, kontrol aksi pada peta memakai pill berlabel jelas (`Lokasi Saya`, `Fokus Lab`), dan lingkaran radius peta hanya digambar untuk **1 lab terpilih**.

@@ -94,6 +94,7 @@ export default function RekapAsistenScreen() {
         nama: s.nama,
         nim: s.nim || '-',
         kelas: s.kelas || 'A',
+        labId: s.labId,
       }));
     }
     return dummyStudents.map((s) => ({
@@ -101,6 +102,7 @@ export default function RekapAsistenScreen() {
       nama: s.nama,
       nim: s.nim,
       kelas: s.kelas,
+      labId: undefined as string | undefined,
     }));
   }, [firestoreStudents, dummyStudents]);
 
@@ -110,11 +112,22 @@ export default function RekapAsistenScreen() {
       .filter((s) => s.status === 'dibuka' || s.status === 'ditutup')
       .map((sesi) => {
         const kodeKelas = normalizeClassCode(sesi.kelas);
-        const kelasMahasiswa = daftarMahasiswaMaster.filter(
+        const sessionLabId = 'labId' in sesi ? sesi.labId : undefined;
+        const labAndClassMahasiswa = daftarMahasiswaMaster.filter((p) => {
+          const matchClass = normalizeClassCode(p.kelas) === kodeKelas;
+          if (!matchClass) return false;
+          if (sessionLabId && p.labId) return p.labId === sessionLabId;
+          return true;
+        });
+        const classOnlyMahasiswa = daftarMahasiswaMaster.filter(
           (p) => normalizeClassCode(p.kelas) === kodeKelas
         );
         const mahasiswaFinal =
-          kelasMahasiswa.length > 0 ? kelasMahasiswa : daftarMahasiswaMaster;
+          labAndClassMahasiswa.length > 0
+            ? labAndClassMahasiswa
+            : classOnlyMahasiswa.length > 0
+            ? classOnlyMahasiswa
+            : daftarMahasiswaMaster;
 
         const attendancesForSession =
           firestoreAttendances.length > 0

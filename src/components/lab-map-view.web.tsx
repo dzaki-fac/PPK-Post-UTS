@@ -473,7 +473,7 @@ export function LabMapView({
 
   if (DATA.googleMapsApiKey) {
     const gs = document.createElement('script');
-    gs.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(DATA.googleMapsApiKey) + '&callback=__onGoogleMapsReady';
+    gs.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(DATA.googleMapsApiKey) + '&loading=async&callback=__onGoogleMapsReady';
     gs.async = true;
     gs.defer = true;
     gs.onerror = () => startLeafletEngine();

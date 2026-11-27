@@ -22,6 +22,8 @@ import {
   reviewLeaveRequest,
   subscribeLeaveRequests,
 } from '@/services/leave-service';
+import { subscribeSessions, subscribeSessionsByLabIds } from '@/services/session-service';
+import type { SessionDocument } from '@/types/praktikum';
 
 type FilterType = 'semua' | LeaveStatus;
 
@@ -33,8 +35,12 @@ export default function ModerasiIzinScreen() {
   const reviewerName = userDoc?.nama || currentAsisten?.nama || 'Asisten Praktikum';
 
   const [requests, setRequests] = useState<LeaveRequestDocument[]>([]);
+  const [sessions, setSessions] = useState<SessionDocument[]>([]);
+  const [sessionsLoaded, setSessionsLoaded] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterType>('semua');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
+
+  const assignedLabIds = useMemo(() => userDoc?.labIds ?? [], [userDoc?.labIds]);
 
   // State Modal Konfirmasi Persetujuan & Error
   const [approveTarget, setApproveTarget] = useState<LeaveRequestDocument | null>(null);
@@ -45,31 +51,57 @@ export default function ModerasiIzinScreen() {
   const [rejectNotes, setRejectNotes] = useState<string>('');
   const [rejectError, setRejectError] = useState<string | null>(null);
 
-  // Subscribe ke antrean Firestore /leave_requests secara real-time
+  // Subscribe ke antrean Firestore /leave_requests dan sesi lab yang diampu Asprak secara real-time
   useEffect(() => {
     const unsubscribe = subscribeLeaveRequests((data) => {
       setRequests(data);
     });
 
+    const unsubSessions =
+      assignedLabIds.length > 0
+        ? subscribeSessionsByLabIds(
+            assignedLabIds,
+            (items) => {
+              setSessions(items);
+              setSessionsLoaded(true);
+            },
+            () => setSessionsLoaded(true)
+          )
+        : subscribeSessions(
+            (items) => {
+              setSessions(items);
+              setSessionsLoaded(true);
+            },
+            () => setSessionsLoaded(true)
+          );
+
     return () => {
       unsubscribe();
+      unsubSessions();
     };
-  }, []);
+  }, [assignedLabIds]);
+
+  const scopedSessionIds = useMemo(() => new Set(sessions.map((s) => s.id)), [sessions]);
+
+  const scopedRequests = useMemo(() => {
+    if (assignedLabIds.length === 0 || !sessionsLoaded) return requests;
+    return requests.filter((r) => scopedSessionIds.has(r.sessionId));
+  }, [assignedLabIds.length, sessionsLoaded, requests, scopedSessionIds]);
 
   // Filter permohonan sesuai tab aktif
   const filteredRequests = useMemo(() => {
-    if (activeFilter === 'semua') return requests;
-    return requests.filter((r) => r.status === activeFilter);
-  }, [requests, activeFilter]);
+    if (activeFilter === 'semua') return scopedRequests;
+    return scopedRequests.filter((r) => r.status === activeFilter);
+  }, [scopedRequests, activeFilter]);
 
   // Statistik Ringkasan Metrik
   const stats = useMemo(() => {
-    const total = requests.length;
-    const menunggu = requests.filter((r) => r.status === 'menunggu').length;
-    const disetujui = requests.filter((r) => r.status === 'disetujui').length;
-    const ditolak = requests.filter((r) => r.status === 'ditolak').length;
+    const total = scopedRequests.length;
+    const menunggu = scopedRequests.filter((r) => r.status === 'menunggu').length;
+    const disetujui = scopedRequests.filter((r) => r.status === 'disetujui').length;
+    const ditolak = scopedRequests.filter((r) => r.status === 'ditolak').length;
     return { total, menunggu, disetujui, ditolak };
-  }, [requests]);
+  }, [scopedRequests]);
 
   // Handler Persetujuan
   const handleConfirmApprove = async () => {

@@ -81,12 +81,11 @@ export default function ModerasiIzinScreen() {
     };
   }, [assignedLabIds]);
 
-  const scopedSessionIds = useMemo(() => new Set(sessions.map((s) => s.id)), [sessions]);
-
   const scopedRequests = useMemo(() => {
-    if (assignedLabIds.length === 0 || !sessionsLoaded) return requests;
-    return requests.filter((r) => scopedSessionIds.has(r.sessionId));
-  }, [assignedLabIds.length, sessionsLoaded, requests, scopedSessionIds]);
+    if (assignedLabIds.length === 0) return requests;
+    if (!sessionsLoaded) return [];
+    return requests.filter((r) => sessions.some((s) => s.id === r.sessionId));
+  }, [assignedLabIds, sessionsLoaded, sessions, requests]);
 
   // Filter permohonan sesuai tab aktif
   const filteredRequests = useMemo(() => {

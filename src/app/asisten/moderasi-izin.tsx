@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
@@ -126,6 +127,21 @@ export default function ModerasiIzinScreen() {
 
   const renderHeader = () => (
     <View style={styles.header}>
+      {/* Breadcrumb Navigasi */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Kembali ke Kelola Sesi"
+        onPress={() => {
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace('/asisten/jadwal');
+          }
+        }}
+        style={({ pressed }) => [styles.breadcrumbPill, pressed && styles.pressed]}>
+        <Text style={styles.breadcrumbText}>← Kembali ke Kelola Sesi</Text>
+      </Pressable>
+
       <View style={styles.eyebrowRow}>
         <View style={styles.eyebrowBadge}>
           <Text style={styles.eyebrowText}>PANEL ASPRAK</Text>
@@ -333,6 +349,22 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: 8,
     gap: 14,
+  },
+  breadcrumbPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#F0FDFA',
+    borderWidth: 1,
+    borderColor: '#99F6E4',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    minHeight: 36,
+    justifyContent: 'center',
+  },
+  breadcrumbText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0D9488',
   },
   eyebrowRow: {
     flexDirection: 'row',

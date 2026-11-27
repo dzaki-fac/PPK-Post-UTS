@@ -439,6 +439,21 @@ export default function PraktikanPresensiScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
         <View style={styles.contentWrap}>
+          {/* Breadcrumb Back Button */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Kembali ke Jadwal Praktikum"
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/praktikan/jadwal');
+              }
+            }}
+            style={({ pressed }) => [styles.breadcrumbPill, pressed && styles.btnPressed]}>
+            <Text style={styles.breadcrumbText}>← Kembali ke Jadwal Praktikum</Text>
+          </Pressable>
+
           {/* Header */}
           <View style={styles.pageHeader}>
             <View style={styles.eyebrowRow}>
@@ -1024,6 +1039,22 @@ const styles = StyleSheet.create({
   },
   pageHeader: {
     gap: 6,
+  },
+  breadcrumbPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    minHeight: 36,
+    justifyContent: 'center',
+  },
+  breadcrumbText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#EA580C',
   },
   eyebrowRow: {
     flexDirection: 'row',

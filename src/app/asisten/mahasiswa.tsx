@@ -222,10 +222,14 @@ export default function AsprakKelasSayaScreen() {
             <View style={styles.infoCol}>
               <Text style={styles.name}>{item.nama}</Text>
               <Text style={styles.meta}>NIM: {item.nim}</Text>
-              <Text style={styles.email}>{item.email}</Text>
-            </View>
-            <View style={styles.labBadge}>
-              <Text style={styles.labBadgeText}>{item.labName}</Text>
+              <Text style={styles.email} numberOfLines={1} ellipsizeMode="middle">
+                {item.email}
+              </Text>
+              <View style={styles.labBadge}>
+                <Text style={styles.labBadgeText} numberOfLines={1}>
+                  {item.labName}
+                </Text>
+              </View>
             </View>
           </View>
         )}
@@ -368,7 +372,7 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
     padding: 14,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 12,
   },
   avatar: {
@@ -388,7 +392,8 @@ const styles = StyleSheet.create({
   },
   infoCol: {
     flex: 1,
-    gap: 2,
+    minWidth: 0,
+    gap: 3,
   },
   name: {
     fontSize: 14,
@@ -401,16 +406,18 @@ const styles = StyleSheet.create({
     color: '#475569',
   },
   email: {
-    fontSize: 11.5,
+    fontSize: 12,
     color: '#64748B',
   },
   labBadge: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
     backgroundColor: '#F0FDFA',
     borderColor: '#99F6E4',
     borderWidth: 1,
     borderRadius: 20,
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 3,
   },
   labBadgeText: {
     fontSize: 11,

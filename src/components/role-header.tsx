@@ -5,6 +5,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,6 +17,8 @@ import { getHomeRouteByRole, getRoleDisplayLabel } from '@/utils/role';
 
 export function RoleHeader() {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const isCompact = width < 680;
   const { userDoc, role, logout } = useAuth();
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -48,91 +51,101 @@ export function RoleHeader() {
     }
   };
 
+  const renderUserPill = (fullWidth: boolean) => (
+    <View
+      style={[
+        styles.userPill,
+        fullWidth && styles.userPillCompactFull,
+        isPraktikan
+          ? styles.userPillPraktikan
+          : isAslab
+          ? styles.userPillAslab
+          : styles.userPillAsisten,
+      ]}>
+      <View
+        style={[
+          styles.roleMiniBadge,
+          isPraktikan
+            ? styles.roleMiniPraktikan
+            : isAslab
+            ? styles.roleMiniAslab
+            : styles.roleMiniAsisten,
+        ]}>
+        <Text
+          style={[
+            styles.roleMiniText,
+            isPraktikan
+              ? styles.textPraktikan
+              : isAslab
+              ? styles.textAslab
+              : styles.textAsisten,
+          ]}>
+          {roleLabel}
+        </Text>
+      </View>
+      <View style={[styles.userInfoWrap, fullWidth && styles.userInfoWrapFull]}>
+        <Text style={styles.userName} numberOfLines={1}>
+          {name}
+        </Text>
+        <Text style={styles.userSub} numberOfLines={1}>
+          {subInfo}
+        </Text>
+      </View>
+    </View>
+  );
+
   return (
     <View style={styles.topNavbar}>
       <View
         style={[
           styles.navInner,
+          isCompact && styles.navInnerCompact,
           {
-            paddingTop: Platform.OS === 'web' ? 12 : Math.max(insets.top - 4, 10),
-            paddingBottom: 12,
+            paddingTop: Platform.OS === 'web' ? 10 : Math.max(insets.top - 2, 10),
+            paddingBottom: 10,
           },
         ]}>
-        {/* Brand Group */}
-        <Pressable
-          style={({ pressed }) => [styles.brandRow, pressed && styles.btnPressed]}
-          onPress={() => router.replace(getHomeRouteByRole(role) as Href)}
-          accessibilityRole="button"
-          accessibilityLabel="PPK LabPortal Beranda">
-          <View style={styles.logoBadge}>
-            <Text style={styles.logoBadgeText}>PPK</Text>
-          </View>
-          <View>
-            <Text style={styles.brandTitle}>LabPortal</Text>
-            {Platform.OS === 'web' && (
-              <Text style={styles.brandSubtitle}>Presensi & Manajemen Lab</Text>
-            )}
-          </View>
-        </Pressable>
-
-        {/* Right Group: User Profile Badge & Logout Button */}
-        <View style={styles.rightGroup}>
-          <View
-            style={[
-              styles.userPill,
-              isPraktikan
-                ? styles.userPillPraktikan
-                : isAslab
-                ? styles.userPillAslab
-                : styles.userPillAsisten,
-            ]}>
-            <View
-              style={[
-                styles.roleMiniBadge,
-                isPraktikan
-                  ? styles.roleMiniPraktikan
-                  : isAslab
-                  ? styles.roleMiniAslab
-                  : styles.roleMiniAsisten,
-              ]}>
-              <Text
-                style={[
-                  styles.roleMiniText,
-                  isPraktikan
-                    ? styles.textPraktikan
-                    : isAslab
-                    ? styles.textAslab
-                    : styles.textAsisten,
-                ]}>
-                {roleLabel}
-              </Text>
-            </View>
-            <View style={styles.userInfoWrap}>
-              <Text style={styles.userName} numberOfLines={1}>
-                {name}
-              </Text>
-              <Text style={styles.userSub} numberOfLines={1}>
-                {subInfo}
-              </Text>
-            </View>
-          </View>
-
+        <View style={[styles.topRow, isCompact && styles.topRowCompact]}>
+          {/* Brand Group */}
           <Pressable
-            style={({ pressed }) => [styles.logoutBtn, pressed && styles.btnPressed]}
-            onPress={() => router.push('/notifikasi' as Href)}
+            style={({ pressed }) => [styles.brandRow, pressed && styles.btnPressed]}
+            onPress={() => router.replace(getHomeRouteByRole(role) as Href)}
             accessibilityRole="button"
-            accessibilityLabel="Buka pusat notifikasi">
-            <Text style={styles.logoutBtnText}>Notifikasi</Text>
+            accessibilityLabel="PPK LabPortal Beranda">
+            <View style={styles.logoBadge}>
+              <Text style={styles.logoBadgeText}>PPK</Text>
+            </View>
+            <View>
+              <Text style={styles.brandTitle}>LabPortal</Text>
+              {!isCompact && (
+                <Text style={styles.brandSubtitle}>Presensi & Manajemen Lab</Text>
+              )}
+            </View>
           </Pressable>
 
-          <Pressable
-            style={({ pressed }) => [styles.logoutBtn, pressed && styles.btnPressed]}
-            onPress={() => setLogoutModalVisible(true)}
-            accessibilityRole="button"
-            accessibilityLabel="Keluar dari akun">
-            <Text style={styles.logoutBtnText}>Keluar</Text>
-          </Pressable>
+          {/* Right Group */}
+          <View style={styles.rightGroup}>
+            {!isCompact && renderUserPill(false)}
+
+            <Pressable
+              style={({ pressed }) => [styles.logoutBtn, pressed && styles.btnPressed]}
+              onPress={() => router.push('/notifikasi' as Href)}
+              accessibilityRole="button"
+              accessibilityLabel="Buka pusat notifikasi">
+              <Text style={styles.logoutBtnText}>Notifikasi</Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [styles.logoutBtn, pressed && styles.btnPressed]}
+              onPress={() => setLogoutModalVisible(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Keluar dari akun">
+              <Text style={styles.logoutBtnText}>Keluar</Text>
+            </Pressable>
+          </View>
         </View>
+
+        {isCompact && renderUserPill(true)}
       </View>
 
       <ConfirmationModal
@@ -173,22 +186,30 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
     paddingHorizontal: 20,
+  },
+  navInnerCompact: {
+    paddingHorizontal: 14,
+    gap: 8,
+  },
+  topRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    flexWrap: 'nowrap',
-    gap: 4,
+    gap: 10,
+  },
+  topRowCompact: {
+    width: '100%',
   },
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    flexShrink: 1,
+    gap: 7,
+    flexShrink: 0,
   },
   logoBadge: {
-    width: 26,
-    height: 26,
-    borderRadius: 6,
+    width: 28,
+    height: 28,
+    borderRadius: 7,
     backgroundColor: '#FFF7ED',
     borderWidth: 1.5,
     borderColor: '#FED7AA',
@@ -196,38 +217,44 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoBadgeText: {
-    fontSize: 9.5,
+    fontSize: 10,
     fontWeight: '900',
     color: '#EA580C',
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
   brandTitle: {
-    fontSize: Platform.OS === 'web' ? 14 : 11.5,
+    fontSize: 15,
     fontWeight: '800',
     color: '#0F172A',
     letterSpacing: -0.3,
   },
   brandSubtitle: {
-    fontSize: 8.5,
+    fontSize: 10,
     color: '#64748B',
     fontWeight: '500',
   },
   rightGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
     flexShrink: 0,
   },
   userPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 5,
-    paddingVertical: 2.5,
-    borderRadius: 7,
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
     borderWidth: 1,
-    flexShrink: 1,
-    maxWidth: Platform.OS === 'web' ? 260 : 210,
+    maxWidth: 280,
+  },
+  userPillCompactFull: {
+    width: '100%',
+    maxWidth: '100%',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    gap: 8,
   },
   userPillPraktikan: {
     backgroundColor: '#FFF7ED',
@@ -242,25 +269,33 @@ const styles = StyleSheet.create({
     borderColor: Colors.aslabBorder,
   },
   userInfoWrap: {
-    gap: 0.5,
+    gap: 1,
     flexShrink: 1,
   },
+  userInfoWrapFull: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
   userName: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: '#0F172A',
     flexShrink: 1,
-    maxWidth: Platform.OS === 'web' ? 180 : 160,
   },
   userSub: {
-    fontSize: 8.5,
+    fontSize: 10.5,
+    fontWeight: '600',
     color: '#64748B',
-    maxWidth: Platform.OS === 'web' ? 180 : 160,
+    flexShrink: 0,
   },
   roleMiniBadge: {
-    paddingHorizontal: 3.5,
-    paddingVertical: 1,
-    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 5,
+    flexShrink: 0,
   },
   roleMiniPraktikan: {
     backgroundColor: '#FED7AA',
@@ -272,7 +307,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.aslabBorder,
   },
   roleMiniText: {
-    fontSize: 7.5,
+    fontSize: 9,
     fontWeight: '800',
     letterSpacing: 0.3,
   },
@@ -286,17 +321,17 @@ const styles = StyleSheet.create({
     color: Colors.aslabPrimary,
   },
   logoutBtn: {
-    height: 28,
+    height: 30,
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#CBD5E1',
-    paddingHorizontal: 6,
-    borderRadius: 6,
+    paddingHorizontal: 10,
+    borderRadius: 7,
     alignItems: 'center',
     justifyContent: 'center',
   },
   logoutBtnText: {
-    fontSize: 10.5,
+    fontSize: 11.5,
     fontWeight: '700',
     color: '#334155',
   },

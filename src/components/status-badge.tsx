@@ -69,13 +69,6 @@ export function StatusBadge({ status, size = 'medium' }: StatusBadgeProps) {
         small ? styles.badgeSmall : styles.badgeMedium,
         { backgroundColor: cfg.bg },
       ]}>
-      <View
-        style={[
-          styles.dot,
-          small ? styles.dotSmall : styles.dotMedium,
-          { backgroundColor: cfg.dot },
-        ]}
-      />
       <Text
         style={[
           styles.label,

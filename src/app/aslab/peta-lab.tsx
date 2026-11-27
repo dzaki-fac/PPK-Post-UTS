@@ -108,7 +108,6 @@ export default function AslabPetaLabScreen() {
             </View>
 
             <View style={styles.liveIndicatorBadge}>
-              <View style={styles.liveDot} />
               <Text style={styles.liveText}>PANEL ASLAB</Text>
             </View>
           </View>
@@ -207,14 +206,14 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
     borderRadius: 20,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 5,
     marginBottom: 8,
   },
   breadcrumbPressed: {
     opacity: 0.75,
   },
   breadcrumbText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
     color: Colors.aslabPrimary,
   },

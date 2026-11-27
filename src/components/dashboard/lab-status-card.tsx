@@ -45,7 +45,6 @@ export function LabStatusCard({ item }: LabStatusCardProps) {
             styles.stateBadge,
             { backgroundColor: badgeStyle.bg, borderColor: badgeStyle.border },
           ]}>
-          <Text style={[styles.stateDot, { color: badgeStyle.dot }]}>●</Text>
           <Text style={[styles.stateLabel, { color: badgeStyle.text }]}>{badgeStyle.label}</Text>
         </View>
       </View>

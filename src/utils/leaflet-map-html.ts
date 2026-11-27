@@ -108,12 +108,12 @@ export function buildHybridMapHtml(params: BuildHybridMapHtmlParams): string {
     return list.map((lab) => {
       let sameCount = 0;
       placed.forEach((p) => {
-        if (Math.abs(p.lat - lab.lat) < 0.00008 && Math.abs(p.lng - lab.lng) < 0.00008) sameCount++;
+        if (Math.abs(p.lat - lab.lat) < 0.00012 && Math.abs(p.lng - lab.lng) < 0.00012) sameCount++;
       });
       placed.push(lab);
-      const angle = sameCount * ((Math.PI * 2) / 5);
-      const visualLat = sameCount > 0 ? lab.lat + Math.sin(angle) * 0.00018 : lab.lat;
-      const visualLng = sameCount > 0 ? lab.lng + Math.cos(angle) * 0.00022 : lab.lng;
+      const angle = (sameCount - 1) * ((Math.PI * 2) / 4);
+      const visualLat = sameCount > 0 ? lab.lat + Math.sin(angle) * 0.00032 : lab.lat;
+      const visualLng = sameCount > 0 ? lab.lng + Math.cos(angle) * 0.00042 : lab.lng;
       const color = lab.status === 'ongoing' ? '#16A34A' : lab.status === 'upcoming' ? '#D97706' : '#475569';
       return { lab, visualLat, visualLng, color };
     });
@@ -350,21 +350,29 @@ export function buildHybridMapHtml(params: BuildHybridMapHtmlParams): string {
           { position: 'topleft' }
         ).addTo(lMap);
 
-        if (DATA.zonePolygon && DATA.zonePolygon.length >= 3) {
-          L.polygon(DATA.zonePolygon, {
-            color: DATA.accent,
-            weight: 1.5,
-            fillColor: DATA.accent,
-            fillOpacity: 0.08,
-          }).addTo(lMap);
-        }
-
         const markersLayer = L.layerGroup().addTo(lMap);
         let labBounds = [];
         const markersById = {};
-        const circlesById = {};
+        let selectedCircle = null;
         let hasFittedInitialLabs = false;
         let lastLabsSignature = '';
+
+        function updateLeafletSelectedCircle(selectedId) {
+          if (selectedCircle) {
+            lMap.removeLayer(selectedCircle);
+            selectedCircle = null;
+          }
+          const sel = selectedId ? markersById[selectedId] : null;
+          if (sel) {
+            selectedCircle = L.circle([sel.lab.lat, sel.lab.lng], {
+              radius: sel.lab.radius,
+              color: DATA.accent,
+              weight: 2,
+              fillColor: DATA.accent,
+              fillOpacity: 0.12,
+            }).addTo(lMap);
+          }
+        }
 
         function renderLeafletLabs(labsList, selectedId) {
           const sig = JSON.stringify((labsList || []).map((l) => [l.id, l.lat, l.lng, l.radius, l.status, l.statusLabel]));
@@ -373,7 +381,6 @@ export function buildHybridMapHtml(params: BuildHybridMapHtmlParams): string {
 
           markersLayer.clearLayers();
           Object.keys(markersById).forEach((k) => delete markersById[k]);
-          Object.keys(circlesById).forEach((k) => delete circlesById[k]);
           labBounds = [];
 
           const spread = computeSpreadLabs(labsList);
@@ -383,15 +390,6 @@ export function buildHybridMapHtml(params: BuildHybridMapHtmlParams): string {
 
             const isSel = lab.id === selectedId;
             const activeColor = isSel ? DATA.accent : color;
-
-            const circle = L.circle([lab.lat, lab.lng], {
-              radius: lab.radius,
-              color: activeColor,
-              weight: isSel ? 2.5 : 1.5,
-              fillColor: activeColor,
-              fillOpacity: isSel ? 0.18 : 0.1,
-            }).addTo(markersLayer);
-            circlesById[lab.id] = { circle, color, lab };
 
             const icon = L.divIcon({
               className: '',
@@ -410,6 +408,8 @@ export function buildHybridMapHtml(params: BuildHybridMapHtmlParams): string {
             });
             markersById[lab.id] = { marker, color, lab };
           });
+
+          updateLeafletSelectedCircle(selectedId);
 
           if (!hasFittedInitialLabs && labBounds.length > 0) {
             hasFittedInitialLabs = true;
@@ -444,7 +444,6 @@ export function buildHybridMapHtml(params: BuildHybridMapHtmlParams): string {
 
           Object.keys(markersById).forEach((id) => {
             const entry = markersById[id];
-            const cEntry = circlesById[id];
             const isSel = id === msg.selectedLabId;
             const bg = isSel ? DATA.accent : entry.color;
             entry.marker.setIcon(L.divIcon({
@@ -453,13 +452,8 @@ export function buildHybridMapHtml(params: BuildHybridMapHtmlParams): string {
               iconSize: [64, 28],
               iconAnchor: [32, 14],
             }));
-            cEntry.circle.setStyle({
-              color: isSel ? DATA.accent : cEntry.color,
-              weight: isSel ? 2.5 : 1.5,
-              fillColor: isSel ? DATA.accent : cEntry.color,
-              fillOpacity: isSel ? 0.18 : 0.08,
-            });
           });
+          updateLeafletSelectedCircle(msg.selectedLabId);
 
           lastUser = msg.user || null;
           const btnUser = document.getElementById('btn-focus-user');
@@ -629,24 +623,32 @@ export function buildHybridMapHtml(params: BuildHybridMapHtmlParams): string {
       fullscreenControl: false,
     });
 
-    if (DATA.zonePolygon && DATA.zonePolygon.length >= 3) {
-      new google.maps.Polygon({
-        map,
-        paths: DATA.zonePolygon.map((pt) => ({ lat: pt[0], lng: pt[1] })),
-        strokeColor: DATA.accent,
-        strokeOpacity: 0.85,
-        strokeWeight: 1.5,
-        fillColor: DATA.accent,
-        fillOpacity: 0.08,
-      });
-    }
-
     const infoWin = new google.maps.InfoWindow();
     const gMarkers = {};
-    const gCircles = {};
+    let gSelectedCircle = null;
     let gBounds = new google.maps.LatLngBounds();
     let hasFittedGoogleLabs = false;
     let lastGoogleSignature = '';
+
+    function updateGoogleSelectedCircle(selectedId) {
+      if (gSelectedCircle) {
+        gSelectedCircle.setMap(null);
+        gSelectedCircle = null;
+      }
+      const sel = selectedId ? gMarkers[selectedId] : null;
+      if (sel) {
+        gSelectedCircle = new google.maps.Circle({
+          map,
+          center: { lat: sel.lab.lat, lng: sel.lab.lng },
+          radius: sel.lab.radius,
+          strokeColor: DATA.accent,
+          strokeOpacity: 0.9,
+          strokeWeight: 2,
+          fillColor: DATA.accent,
+          fillOpacity: 0.12,
+        });
+      }
+    }
 
     function renderGoogleLabs(labsList, selectedId) {
       const sig = JSON.stringify((labsList || []).map((l) => [l.id, l.lat, l.lng, l.radius, l.status, l.statusLabel]));
@@ -654,7 +656,6 @@ export function buildHybridMapHtml(params: BuildHybridMapHtmlParams): string {
       lastGoogleSignature = sig;
 
       Object.keys(gMarkers).forEach((k) => { gMarkers[k].marker.setMap(null); delete gMarkers[k]; });
-      Object.keys(gCircles).forEach((k) => { gCircles[k].circle.setMap(null); delete gCircles[k]; });
       gBounds = new google.maps.LatLngBounds();
 
       const spread = computeSpreadLabs(labsList);
@@ -663,18 +664,6 @@ export function buildHybridMapHtml(params: BuildHybridMapHtmlParams): string {
         gBounds.extend({ lat: visualLat, lng: visualLng });
         const isSel = lab.id === selectedId;
         const activeColor = isSel ? DATA.accent : color;
-
-        const circle = new google.maps.Circle({
-          map,
-          center: { lat: lab.lat, lng: lab.lng },
-          radius: lab.radius,
-          strokeColor: activeColor,
-          strokeOpacity: 0.9,
-          strokeWeight: isSel ? 2.5 : 1.5,
-          fillColor: activeColor,
-          fillOpacity: isSel ? 0.18 : 0.1,
-        });
-        gCircles[lab.id] = { circle, color, lab };
 
         const marker = new google.maps.Marker({
           map,
@@ -693,6 +682,8 @@ export function buildHybridMapHtml(params: BuildHybridMapHtmlParams): string {
         });
         gMarkers[lab.id] = { marker, color, lab };
       });
+
+      updateGoogleSelectedCircle(selectedId);
 
       if (!hasFittedGoogleLabs && spread.length > 0) {
         hasFittedGoogleLabs = true;
@@ -732,17 +723,11 @@ export function buildHybridMapHtml(params: BuildHybridMapHtmlParams): string {
 
       Object.keys(gMarkers).forEach((id) => {
         const m = gMarkers[id];
-        const c = gCircles[id];
         const isSel = id === msg.selectedLabId;
         const bg = isSel ? DATA.accent : m.color;
         m.marker.setIcon(makeSvgPin(m.lab.kode, bg, isSel));
-        c.circle.setOptions({
-          strokeColor: isSel ? DATA.accent : c.color,
-          strokeWeight: isSel ? 2.5 : 1.5,
-          fillColor: isSel ? DATA.accent : c.color,
-          fillOpacity: isSel ? 0.18 : 0.1,
-        });
       });
+      updateGoogleSelectedCircle(msg.selectedLabId);
 
       lastUser = msg.user || null;
       const btnUser = document.getElementById('btn-focus-user');

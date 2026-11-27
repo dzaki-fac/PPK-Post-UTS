@@ -115,7 +115,6 @@ export default function PraktikanPetaLabScreen() {
             </View>
 
             <View style={styles.liveIndicatorBadge}>
-              <View style={styles.liveDot} />
               <Text style={styles.liveText}>LIVE TRACKING</Text>
             </View>
           </View>

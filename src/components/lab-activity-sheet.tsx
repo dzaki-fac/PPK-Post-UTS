@@ -92,12 +92,6 @@ export function LabActivitySheet({
                 styles.distanceBadge,
                 isUserInsideRadius ? styles.withinRadiusBadge : styles.outsideRadiusBadge,
               ]}>
-              <View
-                style={[
-                  styles.statusDot,
-                  { backgroundColor: isUserInsideRadius ? '#16A34A' : '#DC2626' },
-                ]}
-              />
               <Text
                 style={[
                   styles.distanceText,
@@ -120,7 +114,6 @@ export function LabActivitySheet({
         {/* Section 1: Praktikum Sedang Berlangsung */}
         <View style={styles.sectionBlock}>
           <View style={styles.sectionHeader}>
-            <View style={[styles.sectionIndicatorDot, { backgroundColor: ongoingSession ? '#16A34A' : '#64748B' }]} />
             <Text style={styles.sectionTitle}>PRAKTIKUM SEDANG BERLANGSUNG</Text>
           </View>
 
@@ -140,15 +133,6 @@ export function LabActivitySheet({
                       ? styles.statusOpen
                       : styles.statusOngoing,
                   ]}>
-                  <View
-                    style={[
-                      styles.statusDot,
-                      {
-                        backgroundColor:
-                          ongoingSession.status === 'dibuka' ? '#16A34A' : '#0284C7',
-                      },
-                    ]}
-                  />
                   <Text
                     style={[
                       styles.statusText,
@@ -203,7 +187,6 @@ export function LabActivitySheet({
             </View>
           ) : (
             <View style={styles.emptySessionBox}>
-              <View style={styles.emptyDot} />
               <Text style={styles.emptySessionText}>
                 Tidak ada praktikum aktif di laboratorium ini saat ini.
               </Text>
@@ -214,7 +197,6 @@ export function LabActivitySheet({
         {/* Section 2: Praktikum Berikutnya */}
         <View style={styles.sectionBlock}>
           <View style={styles.sectionHeader}>
-            <View style={[styles.sectionIndicatorDot, { backgroundColor: '#2563EB' }]} />
             <Text style={styles.sectionTitle}>PRAKTIKUM BERIKUTNYA</Text>
           </View>
 
@@ -228,7 +210,6 @@ export function LabActivitySheet({
                   </View>
                 </View>
                 <View style={[styles.statusPill, styles.statusWaiting]}>
-                  <View style={[styles.statusDot, { backgroundColor: '#EAB308' }]} />
                   <Text style={[styles.statusText, { color: '#B45309' }]}>
                     BELUM DIBUKA
                   </Text>
@@ -259,7 +240,6 @@ export function LabActivitySheet({
             </View>
           ) : (
             <View style={styles.emptySessionBox}>
-              <View style={styles.emptyDot} />
               <Text style={styles.emptySessionText}>
                 Belum ada jadwal praktikum berikutnya yang terdaftar di lab ini.
               </Text>

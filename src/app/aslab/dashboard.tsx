@@ -73,7 +73,6 @@ export default function AslabDashboardScreen() {
               <Text style={styles.eyebrowText}>ASISTEN LABORATORIUM (ASLAB)</Text>
             </View>
             <View style={styles.liveTag}>
-              <Text style={styles.liveDot}>●</Text>
               <Text style={styles.liveText}>Data Real-Time Firebase</Text>
             </View>
           </View>

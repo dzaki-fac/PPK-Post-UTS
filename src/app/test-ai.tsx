@@ -216,14 +216,16 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   backButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 8,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 20,
     backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   backButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 11.5,
+    fontWeight: '700',
     color: '#0F172A',
   },
   headerTag: {

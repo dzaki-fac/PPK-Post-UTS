@@ -92,17 +92,17 @@ export function isSessionExpired(session: {
 
   const now = Date.now();
   const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+  const openedTime = session.openedAt ? new Date(session.openedAt).getTime() : NaN;
 
-  if (session.openedAt) {
-    const openedTime = new Date(session.openedAt).getTime();
-    if (!Number.isNaN(openedTime) && now - openedTime >= TWO_HOURS_MS) {
-      return true;
-    }
+  if (!Number.isNaN(openedTime) && now - openedTime >= TWO_HOURS_MS) {
+    return true;
   }
 
   if (session.tanggal && session.waktuSelesai) {
     const endDt = parseWibDateTime(session.tanggal, session.waktuSelesai);
-    if (endDt && now >= endDt.getTime()) {
+    // Hanya tutup otomatis berdasar waktuSelesai bila sesi dibuka sebelum jam selesai jadwal
+    // (jika Asprak membuka susulan/uji coba setelah jam selesai, beri toleransi 2 jam dari openedAt)
+    if (endDt && (Number.isNaN(openedTime) || openedTime < endDt.getTime()) && now >= endDt.getTime()) {
       return true;
     }
   }

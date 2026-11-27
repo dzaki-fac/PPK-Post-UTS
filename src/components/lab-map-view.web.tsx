@@ -35,14 +35,6 @@ interface WebMapNoticeState {
   canRetry?: boolean;
 }
 
-/** Zona poligon kawasan Gedung Teknik Informatika (Gedung E) FSM UNDIP */
-const INFORMATIKA_ZONE_POLYGON = [
-  { latitude: -7.0478, longitude: 110.4406 },
-  { latitude: -7.0478, longitude: 110.44125 },
-  { latitude: -7.04835, longitude: 110.44125 },
-  { latitude: -7.04835, longitude: 110.4406 },
-];
-
 export function LabMapView({
   activities,
   selectedLabId,
@@ -206,7 +198,6 @@ export function LabMapView({
           lng: UNDIP_INFORMATIKA_COORDINATES.longitude,
         },
         accentColor,
-        zonePolygon: INFORMATIKA_ZONE_POLYGON,
         googleMapsApiKey,
         showBuiltInControls: true,
       }),
@@ -222,7 +213,6 @@ export function LabMapView({
     <View style={styles.container}>
       {/* Web Simulation Banner */}
       <View style={styles.webNoticeBanner}>
-        <View style={styles.webNoticeDot} />
         <Text style={styles.webNoticeText}>
           Peta Interaktif Aktif: Ketuk marker laboratorium pada peta atau pilih kartu di bawah untuk melihat aktivitas & radius.
         </Text>
@@ -230,7 +220,6 @@ export function LabMapView({
 
       {geoError && (
         <View style={styles.geoWarningBanner}>
-          <View style={[styles.webNoticeDot, { backgroundColor: '#D97706' }]} />
           <Text style={styles.geoWarningText}>{geoError}</Text>
         </View>
       )}
@@ -245,19 +234,6 @@ export function LabMapView({
               ? styles.mapInfoBanner
               : undefined,
           ]}>
-          <View
-            style={[
-              styles.webNoticeDot,
-              {
-                backgroundColor:
-                  mapNotice.tone === 'error'
-                    ? '#DC2626'
-                    : mapNotice.tone === 'info'
-                    ? '#2563EB'
-                    : '#D97706',
-              },
-            ]}
-          />
           <Text
             style={[
               styles.geoWarningText,
@@ -358,7 +334,6 @@ export function LabMapView({
                   <View style={styles.spatialRight}>
                     {hasOngoing ? (
                       <View style={styles.ongoingBadge}>
-                        <View style={styles.ongoingDot} />
                         <Text style={styles.ongoingBadgeText}>AKTIF</Text>
                       </View>
                     ) : (
@@ -422,7 +397,6 @@ export function LabMapView({
       {/* User Location Bar */}
       {userLocation && (
         <View style={styles.userLocationBar}>
-          <View style={styles.userDotPulse} />
           <Text style={styles.userLocationText}>
             Posisi Web Anda: {userLocation.latitude.toFixed(6)}, {userLocation.longitude.toFixed(6)}
             {userLocation.accuracy ? ` (Akurasi ±${Math.round(userLocation.accuracy)}m)` : ''}

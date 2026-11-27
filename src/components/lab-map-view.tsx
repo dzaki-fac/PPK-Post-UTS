@@ -40,14 +40,6 @@ interface MapNoticeState {
   canRetry?: boolean;
 }
 
-/** Zona poligon kawasan Gedung Teknik Informatika (Gedung E) FSM UNDIP */
-const INFORMATIKA_ZONE_POLYGON = [
-  { latitude: -7.0478, longitude: 110.4406 },
-  { latitude: -7.0478, longitude: 110.44125 },
-  { latitude: -7.04835, longitude: 110.44125 },
-  { latitude: -7.04835, longitude: 110.4406 },
-];
-
 export function LabMapView({
   activities,
   selectedLabId,
@@ -275,7 +267,6 @@ export function LabMapView({
           lng: UNDIP_INFORMATIKA_COORDINATES.longitude,
         },
         accentColor,
-        zonePolygon: INFORMATIKA_ZONE_POLYGON,
         googleMapsApiKey,
         showBuiltInControls: false,
       }),
@@ -380,7 +371,6 @@ export function LabMapView({
       <View style={styles.bannerStack}>
         {permissionStatus === 'denied' && (
           <View style={styles.resilienceBanner}>
-            <View style={styles.resilienceIconDot} />
             <Text style={styles.resilienceText}>
               Izin lokasi belum diberikan. Peta tetap menampilkan marker laboratorium.
             </Text>
@@ -398,7 +388,6 @@ export function LabMapView({
 
         {permissionStatus === 'disabled' && (
           <View style={[styles.resilienceBanner, styles.resilienceWarning]}>
-            <View style={[styles.resilienceIconDot, { backgroundColor: '#D97706' }]} />
             <Text style={styles.resilienceText}>
               Layanan GPS perangkat nonaktif. Aktifkan lokasi untuk tracking posisi.
             </Text>
@@ -415,16 +404,6 @@ export function LabMapView({
                 ? styles.resilienceInfo
                 : undefined,
             ]}>
-            <View
-              style={[
-                styles.resilienceIconDot,
-                mapNotice.tone === 'warning'
-                  ? { backgroundColor: '#D97706' }
-                  : mapNotice.tone === 'info'
-                  ? { backgroundColor: '#2563EB' }
-                  : undefined,
-              ]}
-            />
             <Text style={styles.resilienceText}>{mapNotice.message}</Text>
             {mapNotice.canRetry ? (
               <TouchableOpacity style={styles.resilienceAction} onPress={handleReloadMap}>
@@ -472,43 +451,37 @@ export function LabMapView({
         onMessage={handleWebViewMessage}
       />
 
-      {/* Floating Control Buttons */}
+      {/* Floating Control Pills (jelas, tidak bertumpuk, dan di atas watermark footer peta) */}
       <View style={styles.floatingControls}>
         {activeRouteCoords.length >= 2 && (
           <TouchableOpacity
-            style={[styles.floatingBtn, isSimulatingRoute && styles.floatingBtnActive]}
+            style={[styles.floatingPillBtn, isSimulatingRoute && styles.floatingBtnActive]}
             onPress={handleSimulateRoute}
             accessibilityLabel="Simulasi Pergerakan Rute">
-            <Text style={[styles.routeBtnText, { color: accentColor }]}>
-              {isSimulatingRoute ? 'STOP' : 'RUTE'}
+            <Text style={[styles.floatingPillText, { color: accentColor }]}>
+              {isSimulatingRoute ? 'Hentikan Rute' : 'Simulasi Rute'}
             </Text>
           </TouchableOpacity>
         )}
 
         {userLocation && (
           <TouchableOpacity
-            style={[styles.floatingBtn, isLocating && styles.floatingBtnActive]}
+            style={[styles.floatingPillBtn, isLocating && styles.floatingBtnActive]}
             onPress={centerToUser}
             accessibilityLabel="Pusatkan ke Lokasi Saya">
             {isLocating ? (
               <ActivityIndicator size="small" color={accentColor} />
             ) : (
-              <View style={styles.locateIconOuter}>
-                <View style={[styles.locateIconInner, { backgroundColor: accentColor }]} />
-              </View>
+              <Text style={[styles.floatingPillText, { color: accentColor }]}>Lokasi Saya</Text>
             )}
           </TouchableOpacity>
         )}
 
         <TouchableOpacity
-          style={styles.floatingBtn}
+          style={styles.floatingPillBtn}
           onPress={centerToCampus}
           accessibilityLabel="Pusatkan ke Kampus Informatika">
-          <View style={styles.campusIcon}>
-            <View style={[styles.campusIconBar, { height: 10 }]} />
-            <View style={[styles.campusIconBar, { height: 14 }]} />
-            <View style={[styles.campusIconBar, { height: 8 }]} />
-          </View>
+          <Text style={styles.floatingPillText}>Fokus Lab</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -593,22 +566,26 @@ const styles = StyleSheet.create({
   },
   floatingControls: {
     position: 'absolute',
-    right: 14,
-    bottom: 24,
+    right: 12,
+    bottom: 42,
     zIndex: 15,
-    gap: 10,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    gap: 8,
   },
-  floatingBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  floatingPillBtn: {
+    minHeight: 36,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 18,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#CBD5E1',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#0F172A',
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.14,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
     elevation: 5,
@@ -616,33 +593,9 @@ const styles = StyleSheet.create({
   floatingBtnActive: {
     backgroundColor: '#F8FAFC',
   },
-  routeBtnText: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.4,
-  },
-  locateIconOuter: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 2,
-    borderColor: '#0F172A',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  locateIconInner: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  campusIcon: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 2.5,
-  },
-  campusIconBar: {
-    width: 3.5,
-    borderRadius: 1.5,
-    backgroundColor: '#334155',
+  floatingPillText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#0F172A',
   },
 });

@@ -128,8 +128,8 @@ export default function NotifikasiScreen() {
           <Text style={[styles.eventText, { color: accent }]}>{EVENT_LABEL[item.eventType]}</Text>
         </View>
         {!item.isRead ? (
-          <View style={styles.unreadDot}>
-            <Text style={styles.unreadDotText}>●</Text>
+          <View style={[styles.eventPill, { backgroundColor: '#FFF7ED' }]}>
+            <Text style={[styles.eventText, { color: '#EA580C' }]}>BARU</Text>
           </View>
         ) : null}
       </View>
@@ -240,13 +240,15 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   backPill: {
-    minHeight: 44,
     justifyContent: 'center',
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
     borderRadius: 20,
     backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  backText: { color: '#334155', fontWeight: '700', fontSize: 13 },
+  backText: { color: '#334155', fontWeight: '700', fontSize: 11.5 },
   headerTitleWrap: { flex: 1, minWidth: 180 },
   headerTitle: { color: '#0F172A', fontWeight: '800', fontSize: 18 },
   headerSubtitle: { color: '#64748B', fontSize: 12, marginTop: 2 },

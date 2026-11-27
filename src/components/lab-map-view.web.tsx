@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -7,7 +7,13 @@ import {
   View,
 } from 'react-native';
 
+import { UNDIP_INFORMATIKA_COORDINATES } from '@/services/lab-activity-service';
 import { LabWithActivity } from '@/types/praktikum';
+import {
+  buildHybridMapHtml,
+  type HybridMapStatusMessage,
+  type LeafletLabPayload,
+} from '@/utils/leaflet-map-html';
 
 export interface UserLocationState {
   latitude: number;
@@ -23,6 +29,20 @@ interface LabMapViewProps {
   onUserLocationChange?: (location: UserLocationState | null) => void;
 }
 
+interface WebMapNoticeState {
+  tone: 'info' | 'warning' | 'error';
+  message: string;
+  canRetry?: boolean;
+}
+
+/** Zona poligon kawasan Gedung Teknik Informatika (Gedung E) FSM UNDIP */
+const INFORMATIKA_ZONE_POLYGON = [
+  { latitude: -7.0478, longitude: 110.4406 },
+  { latitude: -7.0478, longitude: 110.44125 },
+  { latitude: -7.04835, longitude: 110.44125 },
+  { latitude: -7.04835, longitude: 110.4406 },
+];
+
 export function LabMapView({
   activities,
   selectedLabId,
@@ -32,6 +52,9 @@ export function LabMapView({
 }: LabMapViewProps) {
   const [userLocation, setUserLocation] = useState<UserLocationState | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
+  const [mapNotice, setMapNotice] = useState<WebMapNoticeState | null>(null);
+  const [mapReloadKey, setMapReloadKey] = useState(0);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   // Browser Geolocation API listener
   useEffect(() => {
@@ -76,32 +99,79 @@ export function LabMapView({
     };
   }, [onUserLocationChange]);
 
-  const selectedActivity = activities.find((a) => a.lab.id === selectedLabId) ?? activities[0] ?? null;
-  const mapTargetLat = selectedActivity?.lab.latitude ?? -7.048036;
-  const mapTargetLng = selectedActivity?.lab.longitude ?? 110.440912;
-  const iframeRef = React.useRef<HTMLIFrameElement | null>(null);
+  const selectedActivity =
+    activities.find((a) => a.lab.id === selectedLabId) ?? activities[0] ?? null;
+  const mapTargetLat = selectedActivity?.lab.latitude ?? UNDIP_INFORMATIKA_COORDINATES.latitude;
+  const mapTargetLng = selectedActivity?.lab.longitude ?? UNDIP_INFORMATIKA_COORDINATES.longitude;
+  const selectedTargetId = selectedActivity?.lab.id ?? null;
 
-  // Terima klik marker dari Leaflet iframe untuk memilih laboratorium
+  // Terima event klik marker & status engine/fallback dari iframe peta
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'SELECT_LAB' && typeof event.data.labId === 'string') {
-        const found = activities.find((a) => a.lab.id === event.data.labId);
+      const data = event.data as
+        | { type?: 'SELECT_LAB'; labId?: string }
+        | HybridMapStatusMessage
+        | undefined;
+      if (!data) return;
+
+      if (data.type === 'SELECT_LAB' && typeof data.labId === 'string') {
+        const found = activities.find((a) => a.lab.id === data.labId);
         if (found) onSelectLab(found);
+        return;
+      }
+
+      if (data.type === 'MAP_STATUS') {
+        if (data.status === 'error' || data.status === 'tile_error') {
+          setMapNotice({ tone: 'error', message: data.message, canRetry: true });
+        } else if (data.status === 'fallback') {
+          setMapNotice({ tone: 'warning', message: data.message });
+        } else if (data.status === 'ready' && data.tileProvider && data.tileProvider !== 'osm') {
+          setMapNotice({ tone: 'info', message: data.message });
+        } else if (data.status === 'ready' && data.engine === 'google') {
+          setMapNotice(null);
+        }
       }
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, [activities, onSelectLab]);
 
-  const selectedTargetId = selectedActivity?.lab.id ?? null;
+  const labsPayload = useMemo<LeafletLabPayload[]>(
+    () =>
+      activities.map((item) => {
+        const status = item.ongoingSession
+          ? ('ongoing' as const)
+          : item.nextSession
+          ? ('upcoming' as const)
+          : ('idle' as const);
+        const statusLabel = item.ongoingSession
+          ? `Sedang Berlangsung: ${item.ongoingSession.praktikum}`
+          : item.nextSession
+          ? `Berikutnya: ${item.nextSession.praktikum}`
+          : 'Tidak ada sesi aktif';
+        return {
+          id: item.lab.id,
+          kode: item.lab.kode || item.lab.nama,
+          nama: item.lab.nama,
+          gedung: item.lab.gedung,
+          lat: item.lab.latitude,
+          lng: item.lab.longitude,
+          radius: item.lab.radiusMeter || 50,
+          status,
+          statusLabel,
+        };
+      }),
+    [activities]
+  );
 
-  const syncMapOverlay = React.useCallback(() => {
+  const syncMapOverlay = useCallback(() => {
     const win = iframeRef.current?.contentWindow;
     if (!win) return;
     win.postMessage(
       {
         type: 'SYNC_MAP_STATE',
+        labs: labsPayload,
         selectedLabId: selectedTargetId,
         target: { lat: mapTargetLat, lng: mapTargetLng },
         user: userLocation
@@ -114,387 +184,39 @@ export function LabMapView({
       },
       '*'
     );
-  }, [selectedTargetId, mapTargetLat, mapTargetLng, userLocation]);
+  }, [labsPayload, selectedTargetId, mapTargetLat, mapTargetLng, userLocation]);
 
   useEffect(() => {
     syncMapOverlay();
   }, [syncMapOverlay]);
 
-  const leafletSrcDoc = React.useMemo(() => {
-    const labsPayload = activities.map((item) => {
-      const status = item.ongoingSession
-        ? 'ongoing'
-        : item.nextSession
-        ? 'upcoming'
-        : 'idle';
-      const statusLabel = item.ongoingSession
-        ? `Sedang Berlangsung: ${item.ongoingSession.praktikum}`
-        : item.nextSession
-        ? `Berikutnya: ${item.nextSession.praktikum}`
-        : 'Tidak ada sesi aktif';
-      return {
-        id: item.lab.id,
-        kode: item.lab.kode || item.lab.nama,
-        nama: item.lab.nama,
-        gedung: item.lab.gedung,
-        lat: item.lab.latitude,
-        lng: item.lab.longitude,
-        radius: item.lab.radiusMeter || 50,
-        status,
-        statusLabel,
-      };
-    });
+  const googleMapsApiKey =
+    process.env.EXPO_PUBLIC_USE_GOOGLE_MAPS === 'false' ||
+    process.env.EXPO_PUBLIC_WEB_USE_GOOGLE_MAPS === 'false'
+      ? ''
+      : process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? '';
 
-    const payloadJson = JSON.stringify({
-      labs: labsPayload,
-      defaultCenter: { lat: -7.048036, lng: 110.440912 },
-      accent: accentColor,
-      googleMapsApiKey:
-        process.env.EXPO_PUBLIC_WEB_USE_GOOGLE_MAPS === 'true'
-          ? process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? ''
-          : '',
-    }).replace(/<\/script>/gi, '<\\/script>');
+  // HTML dasar tetap stabil (daftar lab & status live dikirim via postMessage agar tidak reload iframe)
+  const hybridSrcDoc = useMemo(
+    () =>
+      buildHybridMapHtml({
+        labs: [],
+        defaultCenter: {
+          lat: UNDIP_INFORMATIKA_COORDINATES.latitude,
+          lng: UNDIP_INFORMATIKA_COORDINATES.longitude,
+        },
+        accentColor,
+        zonePolygon: INFORMATIKA_ZONE_POLYGON,
+        googleMapsApiKey,
+        showBuiltInControls: true,
+      }),
+    [accentColor, googleMapsApiKey]
+  );
 
-    return `<!DOCTYPE html>
-<html lang="id">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<style>
-  html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #F1F5F9; overflow: hidden; }
-  .lab-pin { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 999px; color: #fff; font-size: 11px; font-weight: 800; letter-spacing: 0.3px; border: 2px solid #fff; box-shadow: 0 2px 6px rgba(15,23,42,0.28); white-space: nowrap; cursor: pointer; }
-  .lab-pin.selected { outline: 3px solid rgba(15,23,42,0.35); transform: scale(1.06); }
-  .user-dot { width: 16px; height: 16px; border-radius: 999px; background: #2563EB; border: 3px solid #fff; box-shadow: 0 0 0 4px rgba(37,99,235,0.28); }
-  .leaflet-popup-content { margin: 10px 12px; font-size: 12px; line-height: 1.4; color: #0F172A; }
-  .map-badge { position: absolute; left: 10px; bottom: 10px; z-index: 900; background: rgba(255,255,255,0.94); border: 1px solid #E2E8F0; border-radius: 8px; padding: 5px 9px; font-size: 11px; font-weight: 700; color: #0F172A; pointer-events: none; }
-  .map-controls { position: absolute; right: 10px; top: 10px; z-index: 900; display: flex; gap: 6px; }
-  .map-ctrl-btn { background: #fff; border: 1px solid #CBD5E1; border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 700; color: #0F172A; cursor: pointer; box-shadow: 0 1px 4px rgba(15,23,42,0.12); }
-  .map-ctrl-btn:hover { background: #F8FAFC; }
-</style>
-</head>
-<body>
-<div id="map"></div>
-<div class="map-controls">
-  <button type="button" class="map-ctrl-btn" id="btn-focus-labs">Fokus Lab</button>
-  <button type="button" class="map-ctrl-btn" id="btn-focus-user" style="display:none">Lokasi Saya</button>
-</div>
-<div class="map-badge" id="map-badge">Peta Laboratorium Informatika FSM UNDIP</div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-  const DATA = ${payloadJson};
-  const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  const firstLab = DATA.labs[0] || DATA.defaultCenter;
-  let activeEngine = null; // 'google' | 'leaflet'
-  let latestSyncMsg = null;
-
-  function computeSpreadPositions() {
-    const placed = [];
-    return DATA.labs.map((lab) => {
-      let sameCount = 0;
-      placed.forEach((p) => {
-        if (Math.abs(p.lat - lab.lat) < 0.00008 && Math.abs(p.lng - lab.lng) < 0.00008) sameCount++;
-      });
-      placed.push(lab);
-      const angle = sameCount * ((Math.PI * 2) / 5);
-      const visualLat = sameCount > 0 ? lab.lat + Math.sin(angle) * 0.00018 : lab.lat;
-      const visualLng = sameCount > 0 ? lab.lng + Math.cos(angle) * 0.00022 : lab.lng;
-      const color = lab.status === 'ongoing' ? '#16A34A' : lab.status === 'upcoming' ? '#D97706' : '#475569';
-      return { lab, visualLat, visualLng, color };
-    });
-  }
-  const SPREAD_LABS = computeSpreadPositions();
-
-  // ---- ENGINE 1: Leaflet + OpenStreetMap (juga fallback otomatis bila Google Maps JS API dibatasi) ----
-  let lMap = null;
-  let lApplySync = null;
-  function startLeafletEngine() {
-    if (activeEngine === 'leaflet') return;
-    activeEngine = 'leaflet';
-    document.getElementById('map-badge').textContent = 'Peta Lab (OpenStreetMap)';
-    const mapEl = document.getElementById('map');
-    mapEl.innerHTML = '';
-    lMap = L.map('map', { zoomControl: true }).setView([firstLab.lat, firstLab.lng], 18);
-    const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 20,
-      attribution: '&copy; OpenStreetMap'
-    });
-    const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 20,
-      attribution: '&copy; Esri Satellite'
-    });
-    streetLayer.addTo(lMap);
-    L.control.layers({ 'Peta Jalan': streetLayer, 'Satelit': satLayer }, {}, { position: 'topleft' }).addTo(lMap);
-
-    const labBounds = [];
-    const markersById = {};
-    const circlesById = {};
-
-    SPREAD_LABS.forEach(({ lab, visualLat, visualLng, color }) => {
-      labBounds.push([lab.lat, lab.lng]);
-      labBounds.push([visualLat, visualLng]);
-      const circle = L.circle([lab.lat, lab.lng], {
-        radius: lab.radius,
-        color,
-        weight: 1.5,
-        fillColor: color,
-        fillOpacity: 0.1,
-      }).addTo(lMap);
-      circlesById[lab.id] = { circle, color, lab };
-
-      const icon = L.divIcon({
-        className: '',
-        html: '<div class="lab-pin" style="background:' + color + '">' + esc(lab.kode) + '</div>',
-        iconSize: [64, 28],
-        iconAnchor: [32, 14]
-      });
-      const marker = L.marker([visualLat, visualLng], { icon }).addTo(lMap);
-      marker.bindPopup('<strong>' + esc(lab.nama) + '</strong><br/>' + esc(lab.gedung) + '<br/>Radius: ' + esc(lab.radius) + ' m<br/><span style="color:' + color + ';font-weight:700">' + esc(lab.statusLabel) + '</span>');
-      marker.on('click', () => {
-        window.parent.postMessage({ type: 'SELECT_LAB', labId: lab.id }, '*');
-      });
-      markersById[lab.id] = { marker, color, lab };
-    });
-
-    function fitLabsView() {
-      if (labBounds.length > 1) lMap.fitBounds(labBounds, { padding: [45, 45], maxZoom: 18 });
-      else if (labBounds.length === 1) lMap.setView(labBounds[0], 18);
-    }
-    fitLabsView();
-
-    let userMarker = null, userAccCircle = null, routeLine = null, lastUser = null;
-    document.getElementById('btn-focus-labs').onclick = fitLabsView;
-    document.getElementById('btn-focus-user').onclick = () => { if (lastUser) lMap.setView([lastUser.lat, lastUser.lng], 17); };
-
-    lApplySync = (msg) => {
-      Object.keys(markersById).forEach((id) => {
-        const entry = markersById[id];
-        const cEntry = circlesById[id];
-        const isSel = id === msg.selectedLabId;
-        const bg = isSel ? DATA.accent : entry.color;
-        entry.marker.setIcon(L.divIcon({
-          className: '',
-          html: '<div class="lab-pin ' + (isSel ? 'selected' : '') + '" style="background:' + bg + '">' + esc(entry.lab.kode) + '</div>',
-          iconSize: [64, 28],
-          iconAnchor: [32, 14]
-        }));
-        cEntry.circle.setStyle({
-          color: isSel ? DATA.accent : cEntry.color,
-          weight: isSel ? 2.5 : 1.5,
-          fillColor: isSel ? DATA.accent : cEntry.color,
-          fillOpacity: isSel ? 0.18 : 0.08,
-        });
-      });
-
-      lastUser = msg.user || null;
-      const btnUser = document.getElementById('btn-focus-user');
-      if (msg.user) {
-        btnUser.style.display = 'inline-block';
-        if (!userMarker) {
-          userAccCircle = L.circle([msg.user.lat, msg.user.lng], { radius: Math.min(msg.user.acc || 25, 100), color: '#2563EB', weight: 1, fillOpacity: 0.12 }).addTo(lMap);
-          userMarker = L.marker([msg.user.lat, msg.user.lng], {
-            icon: L.divIcon({ className: '', html: '<div class="user-dot"></div>', iconSize: [16, 16], iconAnchor: [8, 8] })
-          }).addTo(lMap).bindPopup('Lokasi Perangkat Anda');
-        } else {
-          userMarker.setLatLng([msg.user.lat, msg.user.lng]);
-          userAccCircle.setLatLng([msg.user.lat, msg.user.lng]);
-          userAccCircle.setRadius(Math.min(msg.user.acc || 25, 100));
-        }
-        if (msg.target) {
-          const pts = [[msg.user.lat, msg.user.lng], [msg.target.lat, msg.target.lng]];
-          if (!routeLine) routeLine = L.polyline(pts, { color: DATA.accent, weight: 2.5, dashArray: '6,6' }).addTo(lMap);
-          else routeLine.setLatLngs(pts);
-        }
-      } else {
-        btnUser.style.display = 'none';
-        if (userMarker) { lMap.removeLayer(userMarker); userMarker = null; }
-        if (userAccCircle) { lMap.removeLayer(userAccCircle); userAccCircle = null; }
-        if (routeLine) { lMap.removeLayer(routeLine); routeLine = null; }
-      }
-    };
-    if (latestSyncMsg) lApplySync(latestSyncMsg);
-  }
-
-  // ---- ENGINE 2: Google Maps JS API (Utama bila API key aktif & valid) ----
-  let gApplySync = null;
-  function makeSvgPin(code, bg, isSelected) {
-    const stroke = isSelected ? '#0F172A' : '#FFFFFF';
-    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="76" height="30" viewBox="0 0 76 30"><rect x="2" y="2" width="72" height="24" rx="12" fill="' + bg + '" stroke="' + stroke + '" stroke-width="2.5"/><text x="38" y="18" text-anchor="middle" fill="#FFFFFF" font-family="Arial,sans-serif" font-size="11" font-weight="800">' + esc(code) + '</text></svg>';
-    return {
-      url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-      scaledSize: new google.maps.Size(76, 30),
-      anchor: new google.maps.Point(38, 15),
-    };
-  }
-
-  window.__onGoogleMapsReady = function() {
-    if (activeEngine === 'leaflet' || !window.google || !window.google.maps) return;
-    activeEngine = 'google';
-    document.getElementById('map-badge').textContent = 'Google Maps — Lab FSM UNDIP';
-    const map = new google.maps.Map(document.getElementById('map'), {
-      center: { lat: firstLab.lat, lng: firstLab.lng },
-      zoom: 18,
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: false,
-    });
-
-    const infoWin = new google.maps.InfoWindow();
-    const bounds = new google.maps.LatLngBounds();
-    const gMarkers = {};
-    const gCircles = {};
-
-    SPREAD_LABS.forEach(({ lab, visualLat, visualLng, color }) => {
-      bounds.extend({ lat: lab.lat, lng: lab.lng });
-      bounds.extend({ lat: visualLat, lng: visualLng });
-      const circle = new google.maps.Circle({
-        map,
-        center: { lat: lab.lat, lng: lab.lng },
-        radius: lab.radius,
-        strokeColor: color,
-        strokeOpacity: 0.9,
-        strokeWeight: 1.5,
-        fillColor: color,
-        fillOpacity: 0.12,
-      });
-      gCircles[lab.id] = { circle, color, lab };
-
-      const marker = new google.maps.Marker({
-        map,
-        position: { lat: visualLat, lng: visualLng },
-        title: lab.nama,
-        icon: makeSvgPin(lab.kode, color, false),
-      });
-      marker.addListener('click', () => {
-        infoWin.setContent('<div style="font-family:sans-serif;font-size:12px;line-height:1.4;color:#0F172A"><strong>' + esc(lab.nama) + '</strong><br/>' + esc(lab.gedung) + '<br/>Radius: ' + esc(lab.radius) + ' m<br/><span style="color:' + color + ';font-weight:700">' + esc(lab.statusLabel) + '</span></div>');
-        infoWin.open(map, marker);
-        window.parent.postMessage({ type: 'SELECT_LAB', labId: lab.id }, '*');
-      });
-      gMarkers[lab.id] = { marker, color, lab };
-    });
-
-    function fitLabsView() {
-      if (SPREAD_LABS.length > 1) {
-        map.fitBounds(bounds, 40);
-        google.maps.event.addListenerOnce(map, 'idle', () => {
-          if (map.getZoom() > 18) map.setZoom(18);
-        });
-      } else {
-        map.setCenter({ lat: firstLab.lat, lng: firstLab.lng });
-        map.setZoom(18);
-      }
-    }
-    fitLabsView();
-
-    let gUserMarker = null, gUserCircle = null, gRouteLine = null, lastUser = null;
-    document.getElementById('btn-focus-labs').onclick = fitLabsView;
-    document.getElementById('btn-focus-user').onclick = () => {
-      if (lastUser) {
-        map.panTo({ lat: lastUser.lat, lng: lastUser.lng });
-        map.setZoom(17);
-      }
-    };
-
-    gApplySync = (msg) => {
-      if (activeEngine !== 'google') return;
-      Object.keys(gMarkers).forEach((id) => {
-        const m = gMarkers[id];
-        const c = gCircles[id];
-        const isSel = id === msg.selectedLabId;
-        const bg = isSel ? DATA.accent : m.color;
-        m.marker.setIcon(makeSvgPin(m.lab.kode, bg, isSel));
-        c.circle.setOptions({
-          strokeColor: isSel ? DATA.accent : c.color,
-          strokeWeight: isSel ? 2.5 : 1.5,
-          fillColor: isSel ? DATA.accent : c.color,
-          fillOpacity: isSel ? 0.18 : 0.1,
-        });
-      });
-
-      lastUser = msg.user || null;
-      const btnUser = document.getElementById('btn-focus-user');
-      if (msg.user) {
-        btnUser.style.display = 'inline-block';
-        const pos = { lat: msg.user.lat, lng: msg.user.lng };
-        if (!gUserMarker) {
-          gUserCircle = new google.maps.Circle({
-            map,
-            center: pos,
-            radius: Math.min(msg.user.acc || 25, 100),
-            strokeColor: '#2563EB',
-            strokeWeight: 1,
-            fillColor: '#2563EB',
-            fillOpacity: 0.12,
-          });
-          gUserMarker = new google.maps.Marker({
-            map,
-            position: pos,
-            title: 'Lokasi Perangkat Anda',
-            icon: {
-              path: google.maps.SymbolPath.CIRCLE,
-              scale: 7,
-              fillColor: '#2563EB',
-              fillOpacity: 1,
-              strokeColor: '#FFFFFF',
-              strokeWeight: 2.5,
-            },
-          });
-        } else {
-          gUserMarker.setPosition(pos);
-          gUserCircle.setCenter(pos);
-          gUserCircle.setRadius(Math.min(msg.user.acc || 25, 100));
-        }
-        if (msg.target) {
-          const path = [pos, { lat: msg.target.lat, lng: msg.target.lng }];
-          if (!gRouteLine) {
-            gRouteLine = new google.maps.Polyline({
-              map,
-              path,
-              strokeColor: DATA.accent,
-              strokeOpacity: 0,
-              icons: [{ icon: { path: 'M 0,-1 0,1', strokeOpacity: 0.9, scale: 3 }, offset: '0', repeat: '12px' }],
-            });
-          } else {
-            gRouteLine.setPath(path);
-          }
-        }
-      } else {
-        btnUser.style.display = 'none';
-        if (gUserMarker) { gUserMarker.setMap(null); gUserMarker = null; }
-        if (gUserCircle) { gUserCircle.setMap(null); gUserCircle = null; }
-        if (gRouteLine) { gRouteLine.setMap(null); gRouteLine = null; }
-      }
-    };
-    if (latestSyncMsg) gApplySync(latestSyncMsg);
+  const handleReloadMap = () => {
+    setMapNotice(null);
+    setMapReloadKey((prev) => prev + 1);
   };
-
-  window.gm_authFailure = function() {
-    startLeafletEngine();
-  };
-
-  window.addEventListener('message', (event) => {
-    const msg = event.data;
-    if (!msg || msg.type !== 'SYNC_MAP_STATE') return;
-    latestSyncMsg = msg;
-    if (activeEngine === 'google' && gApplySync) gApplySync(msg);
-    else if (activeEngine === 'leaflet' && lApplySync) lApplySync(msg);
-  });
-
-  if (DATA.googleMapsApiKey) {
-    const gs = document.createElement('script');
-    gs.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(DATA.googleMapsApiKey) + '&loading=async&callback=__onGoogleMapsReady';
-    gs.async = true;
-    gs.defer = true;
-    gs.onerror = () => startLeafletEngine();
-    document.head.appendChild(gs);
-    setTimeout(() => { if (!activeEngine) startLeafletEngine(); }, 4500);
-  } else {
-    startLeafletEngine();
-  }
-</script>
-</body>
-</html>`;
-  }, [activities, accentColor]);
 
   return (
     <View style={styles.container}>
@@ -513,6 +235,52 @@ export function LabMapView({
         </View>
       )}
 
+      {mapNotice && (
+        <View
+          style={[
+            styles.geoWarningBanner,
+            mapNotice.tone === 'error'
+              ? styles.mapErrorBanner
+              : mapNotice.tone === 'info'
+              ? styles.mapInfoBanner
+              : undefined,
+          ]}>
+          <View
+            style={[
+              styles.webNoticeDot,
+              {
+                backgroundColor:
+                  mapNotice.tone === 'error'
+                    ? '#DC2626'
+                    : mapNotice.tone === 'info'
+                    ? '#2563EB'
+                    : '#D97706',
+              },
+            ]}
+          />
+          <Text
+            style={[
+              styles.geoWarningText,
+              mapNotice.tone === 'error'
+                ? { color: '#991B1B' }
+                : mapNotice.tone === 'info'
+                ? { color: '#1E40AF' }
+                : undefined,
+            ]}>
+            {mapNotice.message}
+          </Text>
+          {mapNotice.canRetry ? (
+            <TouchableOpacity style={styles.retryBtn} onPress={handleReloadMap}>
+              <Text style={styles.retryBtnText}>Muat Ulang Peta</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={() => setMapNotice(null)} accessibilityLabel="Tutup info peta">
+              <Text style={styles.dismissText}>✕</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
       {/* Visual Spatial Campus Map Representation */}
       <View style={styles.mapCanvas}>
         <View style={styles.campusGridHeader}>
@@ -524,7 +292,7 @@ export function LabMapView({
           </Text>
         </View>
 
-        {/* Live Embedded Google Maps Canvas untuk Web */}
+        {/* Hybrid Embedded Google Maps + Leaflet Auto-Fallback Canvas */}
         <View
           style={{
             height: 220,
@@ -536,10 +304,11 @@ export function LabMapView({
             backgroundColor: '#E2E8F0',
           }}>
           <iframe
+            key={mapReloadKey}
             ref={iframeRef}
             onLoad={syncMapOverlay}
             title="Peta Laboratorium Informatika FSM UNDIP"
-            srcDoc={leafletSrcDoc}
+            srcDoc={hybridSrcDoc}
             style={{ width: '100%', height: '100%', border: 0 }}
             loading="lazy"
           />
@@ -702,11 +471,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  mapErrorBanner: {
+    backgroundColor: '#FEE2E2',
+    borderBottomColor: '#FCA5A5',
+  },
+  mapInfoBanner: {
+    backgroundColor: '#EFF6FF',
+    borderBottomColor: '#BFDBFE',
+  },
   geoWarningText: {
     flex: 1,
     fontSize: 11.5,
     fontWeight: '600',
     color: '#92400E',
+  },
+  retryBtn: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  retryBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  dismissText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
+    paddingHorizontal: 4,
   },
   mapCanvas: {
     flex: 1,

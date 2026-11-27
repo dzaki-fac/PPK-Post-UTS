@@ -14,7 +14,11 @@ import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import { UNDIP_INFORMATIKA_COORDINATES } from '@/services/lab-activity-service';
 import { getRouteCoordinates, type RouteCoordinate } from '@/services/route-service';
 import { LabWithActivity } from '@/types/praktikum';
-import { buildLeafletMapHtml } from '@/utils/leaflet-map-html';
+import {
+  buildHybridMapHtml,
+  type HybridMapStatusMessage,
+  type LeafletLabPayload,
+} from '@/utils/leaflet-map-html';
 
 export interface UserLocationState {
   latitude: number;
@@ -28,6 +32,12 @@ interface LabMapViewProps {
   onSelectLab: (activity: LabWithActivity) => void;
   accentColor?: string;
   onUserLocationChange?: (location: UserLocationState | null) => void;
+}
+
+interface MapNoticeState {
+  tone: 'info' | 'warning' | 'error';
+  message: string;
+  canRetry?: boolean;
 }
 
 /** Zona poligon kawasan Gedung Teknik Informatika (Gedung E) FSM UNDIP */
@@ -47,6 +57,8 @@ export function LabMapView({
 }: LabMapViewProps) {
   const webViewRef = useRef<WebView>(null);
   const [mapReady, setMapReady] = useState(false);
+  const [mapReloadKey, setMapReloadKey] = useState(0);
+  const [mapNotice, setMapNotice] = useState<MapNoticeState | null>(null);
   const [userLocation, setUserLocation] = useState<UserLocationState | null>(null);
   const [routeCoords, setRouteCoords] = useState<RouteCoordinate[]>([]);
   const [permissionStatus, setPermissionStatus] = useState<
@@ -220,41 +232,55 @@ export function LabMapView({
     }, 500);
   };
 
-  const mapHtml = useMemo(() => {
-    const labsPayload = activities.map((item) => {
-      const status = item.ongoingSession
-        ? ('ongoing' as const)
-        : item.nextSession
-        ? ('upcoming' as const)
-        : ('idle' as const);
-      const statusLabel = item.ongoingSession
-        ? `Sedang Berlangsung: ${item.ongoingSession.praktikum}`
-        : item.nextSession
-        ? `Berikutnya: ${item.nextSession.praktikum}`
-        : 'Tidak ada sesi aktif';
-      return {
-        id: item.lab.id,
-        kode: item.lab.kode || item.lab.nama,
-        nama: item.lab.nama,
-        gedung: item.lab.gedung,
-        lat: item.lab.latitude,
-        lng: item.lab.longitude,
-        radius: item.lab.radiusMeter || 50,
-        status,
-        statusLabel,
-      };
-    });
+  const labsPayload = useMemo<LeafletLabPayload[]>(
+    () =>
+      activities.map((item) => {
+        const status = item.ongoingSession
+          ? ('ongoing' as const)
+          : item.nextSession
+          ? ('upcoming' as const)
+          : ('idle' as const);
+        const statusLabel = item.ongoingSession
+          ? `Sedang Berlangsung: ${item.ongoingSession.praktikum}`
+          : item.nextSession
+          ? `Berikutnya: ${item.nextSession.praktikum}`
+          : 'Tidak ada sesi aktif';
+        return {
+          id: item.lab.id,
+          kode: item.lab.kode || item.lab.nama,
+          nama: item.lab.nama,
+          gedung: item.lab.gedung,
+          lat: item.lab.latitude,
+          lng: item.lab.longitude,
+          radius: item.lab.radiusMeter || 50,
+          status,
+          statusLabel,
+        };
+      }),
+    [activities]
+  );
 
-    return buildLeafletMapHtml({
-      labs: labsPayload,
-      defaultCenter: {
-        lat: UNDIP_INFORMATIKA_COORDINATES.latitude,
-        lng: UNDIP_INFORMATIKA_COORDINATES.longitude,
-      },
-      accentColor,
-      zonePolygon: INFORMATIKA_ZONE_POLYGON,
-    });
-  }, [activities, accentColor]);
+  const googleMapsApiKey =
+    process.env.EXPO_PUBLIC_USE_GOOGLE_MAPS === 'false'
+      ? ''
+      : process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? '';
+
+  // HTML dasar tetap stabil (daftar lab & status live dikirim lewat __syncLabMapState agar tidak reload WebView)
+  const mapHtml = useMemo(
+    () =>
+      buildHybridMapHtml({
+        labs: [],
+        defaultCenter: {
+          lat: UNDIP_INFORMATIKA_COORDINATES.latitude,
+          lng: UNDIP_INFORMATIKA_COORDINATES.longitude,
+        },
+        accentColor,
+        zonePolygon: INFORMATIKA_ZONE_POLYGON,
+        googleMapsApiKey,
+        showBuiltInControls: false,
+      }),
+    [accentColor, googleMapsApiKey]
+  );
 
   const syncWebViewState = useCallback(() => {
     if (!mapReady || !webViewRef.current) return;
@@ -262,6 +288,7 @@ export function LabMapView({
       ? { lat: selectedActivity.lab.latitude, lng: selectedActivity.lab.longitude }
       : null;
     const payload = {
+      labs: labsPayload,
       selectedLabId: selectedActivity?.lab.id ?? null,
       target,
       user: userLocation
@@ -278,22 +305,51 @@ export function LabMapView({
     webViewRef.current.injectJavaScript(
       `window.__syncLabMapState && window.__syncLabMapState(${serialized}); true;`
     );
-  }, [mapReady, selectedActivity, userLocation, activeRouteCoords, simPoint]);
+  }, [mapReady, labsPayload, selectedActivity, userLocation, activeRouteCoords, simPoint]);
 
   useEffect(() => {
     syncWebViewState();
   }, [syncWebViewState]);
 
+  const handleReloadMap = () => {
+    setMapReady(false);
+    setMapNotice(null);
+    setMapReloadKey((prev) => prev + 1);
+  };
+
   const handleWebViewMessage = useCallback(
     (event: WebViewMessageEvent) => {
       try {
-        const parsed = JSON.parse(event.nativeEvent.data) as {
-          type?: string;
-          labId?: string;
-        };
+        const parsed = JSON.parse(event.nativeEvent.data) as
+          | { type?: 'SELECT_LAB'; labId?: string }
+          | HybridMapStatusMessage;
+
         if (parsed.type === 'SELECT_LAB' && parsed.labId) {
           const found = activities.find((a) => a.lab.id === parsed.labId);
           if (found) onSelectLab(found);
+          return;
+        }
+
+        if (parsed.type === 'MAP_STATUS') {
+          if (parsed.status === 'error' || parsed.status === 'tile_error') {
+            setMapNotice({
+              tone: 'error',
+              message: parsed.message,
+              canRetry: true,
+            });
+          } else if (parsed.status === 'fallback') {
+            setMapNotice({
+              tone: 'warning',
+              message: parsed.message,
+            });
+          } else if (parsed.status === 'ready' && parsed.tileProvider && parsed.tileProvider !== 'osm') {
+            setMapNotice({
+              tone: 'info',
+              message: parsed.message,
+            });
+          } else if (parsed.status === 'ready' && parsed.engine === 'google') {
+            setMapNotice(null);
+          }
         }
       } catch {
         // Abaikan pesan non-JSON
@@ -320,44 +376,98 @@ export function LabMapView({
 
   return (
     <View style={styles.container}>
-      {/* Banner Resilience GPS / Permission */}
-      {permissionStatus === 'denied' && (
-        <View style={styles.resilienceBanner}>
-          <View style={styles.resilienceIconDot} />
-          <Text style={styles.resilienceText}>
-            Izin lokasi belum diberikan. Peta tetap menampilkan marker laboratorium.
-          </Text>
-          <TouchableOpacity
-            style={styles.resilienceAction}
-            onPress={() => {
-              if (Platform.OS !== 'web') {
-                Linking.openSettings().catch(() => {});
-              }
-            }}>
-            <Text style={styles.resilienceActionText}>Buka Pengaturan</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      {/* Banner Status GPS / Fallback / Error Peta */}
+      <View style={styles.bannerStack}>
+        {permissionStatus === 'denied' && (
+          <View style={styles.resilienceBanner}>
+            <View style={styles.resilienceIconDot} />
+            <Text style={styles.resilienceText}>
+              Izin lokasi belum diberikan. Peta tetap menampilkan marker laboratorium.
+            </Text>
+            <TouchableOpacity
+              style={styles.resilienceAction}
+              onPress={() => {
+                if (Platform.OS !== 'web') {
+                  Linking.openSettings().catch(() => {});
+                }
+              }}>
+              <Text style={styles.resilienceActionText}>Buka Pengaturan</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
-      {permissionStatus === 'disabled' && (
-        <View style={[styles.resilienceBanner, styles.resilienceWarning]}>
-          <View style={[styles.resilienceIconDot, { backgroundColor: '#D97706' }]} />
-          <Text style={styles.resilienceText}>
-            Layanan GPS perangkat nonaktif. Aktifkan lokasi untuk tracking posisi.
-          </Text>
-        </View>
-      )}
+        {permissionStatus === 'disabled' && (
+          <View style={[styles.resilienceBanner, styles.resilienceWarning]}>
+            <View style={[styles.resilienceIconDot, { backgroundColor: '#D97706' }]} />
+            <Text style={styles.resilienceText}>
+              Layanan GPS perangkat nonaktif. Aktifkan lokasi untuk tracking posisi.
+            </Text>
+          </View>
+        )}
+
+        {mapNotice && (
+          <View
+            style={[
+              styles.resilienceBanner,
+              mapNotice.tone === 'warning'
+                ? styles.resilienceWarning
+                : mapNotice.tone === 'info'
+                ? styles.resilienceInfo
+                : undefined,
+            ]}>
+            <View
+              style={[
+                styles.resilienceIconDot,
+                mapNotice.tone === 'warning'
+                  ? { backgroundColor: '#D97706' }
+                  : mapNotice.tone === 'info'
+                  ? { backgroundColor: '#2563EB' }
+                  : undefined,
+              ]}
+            />
+            <Text style={styles.resilienceText}>{mapNotice.message}</Text>
+            {mapNotice.canRetry ? (
+              <TouchableOpacity style={styles.resilienceAction} onPress={handleReloadMap}>
+                <Text style={styles.resilienceActionText}>Muat Ulang Peta</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.resilienceDismiss}
+                onPress={() => setMapNotice(null)}
+                accessibilityLabel="Tutup info peta">
+                <Text style={styles.resilienceDismissText}>✕</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+      </View>
 
       <WebView
+        key={mapReloadKey}
         ref={webViewRef}
         originWhitelist={['*']}
-        source={{ html: mapHtml }}
+        source={{ html: mapHtml, baseUrl: 'https://ppk-labportal.app' }}
+        applicationNameForUserAgent="PPKLabPortal/1.0"
         style={styles.map}
         javaScriptEnabled
         domStorageEnabled
         onLoadEnd={() => {
           setMapReady(true);
           syncWebViewState();
+        }}
+        onError={() => {
+          setMapNotice({
+            tone: 'error',
+            message: 'Tampilan peta WebView mengalami kendala jaringan.',
+            canRetry: true,
+          });
+        }}
+        onHttpError={() => {
+          setMapNotice({
+            tone: 'warning',
+            message: 'Sebagian resource peta gagal diambil dari server.',
+            canRetry: true,
+          });
         }}
         onMessage={handleWebViewMessage}
       />
@@ -415,12 +525,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#E2E8F0',
   },
-  resilienceBanner: {
+  bannerStack: {
     position: 'absolute',
     top: 12,
     left: 12,
     right: 12,
     zIndex: 20,
+    gap: 8,
+  },
+  resilienceBanner: {
     backgroundColor: '#FEE2E2',
     borderColor: '#FCA5A5',
     borderWidth: 1,
@@ -439,6 +552,10 @@ const styles = StyleSheet.create({
   resilienceWarning: {
     backgroundColor: '#FEF3C7',
     borderColor: '#FDE68A',
+  },
+  resilienceInfo: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
   },
   resilienceIconDot: {
     width: 8,
@@ -464,6 +581,15 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#0F172A',
+  },
+  resilienceDismiss: {
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+  },
+  resilienceDismissText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
   },
   floatingControls: {
     position: 'absolute',

@@ -271,7 +271,7 @@ export default function PraktikanRiwayatScreen() {
                 styles.decisionTitle,
                 isApproved ? { color: '#15803D' } : { color: '#B91C1C' },
               ]}>
-              Keputusan Asisten: {isApproved ? 'DISETUJUI' : 'DITOLAK'}
+              Keputusan Asprak: {isApproved ? 'DISETUJUI' : 'DITOLAK'}
             </Text>
             {item.reviewerName ? (
               <Text style={styles.decisionMeta}>
@@ -280,7 +280,7 @@ export default function PraktikanRiwayatScreen() {
             ) : null}
             {item.reviewNotes ? (
               <Text style={styles.decisionNotes}>
-                Catatan Asisten: {`"${item.reviewNotes}"`}
+                Catatan Asprak: {`"${item.reviewNotes}"`}
               </Text>
             ) : null}
           </View>
@@ -509,7 +509,7 @@ export default function PraktikanRiwayatScreen() {
                       selectedLeaveModal?.status === 'disetujui' && { color: '#1E40AF' },
                       selectedLeaveModal?.status === 'ditolak' && { color: '#B91C1C' },
                     ]}>
-                    {selectedLeaveModal?.status === 'menunggu' && 'Menunggu Verifikasi Asisten'}
+                    {selectedLeaveModal?.status === 'menunggu' && 'Menunggu Verifikasi Asprak'}
                     {selectedLeaveModal?.status === 'disetujui' && 'Izin Telah Disetujui'}
                     {selectedLeaveModal?.status === 'ditolak' && 'Izin Tidak Disetujui'}
                   </Text>
@@ -562,7 +562,7 @@ export default function PraktikanRiwayatScreen() {
                         ? { color: '#15803D' }
                         : { color: '#B91C1C' },
                     ]}>
-                    Keputusan Asisten: {selectedLeaveModal.status === 'disetujui' ? 'DISETUJUI' : 'DITOLAK'}
+                    Keputusan Asprak: {selectedLeaveModal.status === 'disetujui' ? 'DISETUJUI' : 'DITOLAK'}
                   </Text>
                   {selectedLeaveModal.reviewerName ? (
                     <Text style={styles.decisionMeta}>

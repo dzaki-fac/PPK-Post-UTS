@@ -210,7 +210,7 @@ export default function PraktikanJadwalScreen() {
           style={({ pressed }) => [styles.pendingStudentNotice, pressed && styles.cardPressed]}>
           <View style={{ flex: 1 }}>
             <Text style={styles.pendingStudentTitle}>
-              {totalIzinMenunggu} Pengajuan Izin Menunggu Verifikasi Asisten
+              {totalIzinMenunggu} Pengajuan Izin Menunggu Verifikasi Asprak
             </Text>
             <Text style={styles.pendingStudentSub}>
               Rekomendasi AI telah disematkan. Klik untuk memantau status persetujuan.
@@ -400,7 +400,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 960,
     alignSelf: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: Platform.OS === 'web' ? 20 : 14,
     paddingTop: 20,
     paddingBottom: 90,
     gap: 14,

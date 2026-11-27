@@ -154,7 +154,7 @@ export function LeaveCard({
               styles.reviewResultTitle,
               isApproved ? { color: '#15803D' } : { color: '#B91C1C' },
             ]}>
-            Keputusan Asisten: {isApproved ? 'DISETUJUI' : 'DITOLAK'}
+            Keputusan Asprak: {isApproved ? 'DISETUJUI' : 'DITOLAK'}
           </Text>
           {request.reviewerName ? (
             <Text style={styles.reviewResultSub}>

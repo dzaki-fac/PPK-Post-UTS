@@ -297,7 +297,7 @@ export function subscribePraktikanUsers(
 }
 
 /**
- * Listener real-time daftar seluruh asisten laboratorium (peran == 'asisten') di /users.
+ * Listener real-time daftar seluruh asisten praktikum (`asprak` maupun legacy `asisten`) di /users.
  */
 export function subscribeAsistenUsers(
   onData: (assistants: UserDocument[]) => void,
@@ -305,7 +305,7 @@ export function subscribeAsistenUsers(
 ): Unsubscribe {
   const q = query(
     collection(db, USERS_COLLECTION),
-    where('peran', '==', 'asisten')
+    where('peran', 'in', ['asprak', 'asisten'])
   );
 
   return onSnapshot(

@@ -90,7 +90,7 @@ export default function AsistenPetaLabScreen() {
 
             <View style={styles.liveIndicatorBadge}>
               <View style={styles.liveDot} />
-              <Text style={styles.liveText}>PANEL ASISTEN</Text>
+              <Text style={styles.liveText}>PANEL ASPRAK</Text>
             </View>
           </View>
 

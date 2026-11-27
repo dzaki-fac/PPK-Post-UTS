@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 960,
     alignSelf: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: Platform.OS === 'web' ? 20 : 14,
     paddingTop: 16,
     paddingBottom: 36,
     gap: 14,

@@ -128,7 +128,7 @@ export default function LoginScreen() {
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>Masuk ke Portal</Text>
                 <Text style={styles.cardSubtitle}>
-                  Gunakan akun terdaftar Anda untuk mengakses jadwal praktikum, presensi real-time, atau kontrol sesi asisten.
+                  Gunakan akun terdaftar Anda untuk mengakses jadwal praktikum, presensi real-time, atau kontrol sesi asprak.
                 </Text>
 
                 {!firebaseReady ? (

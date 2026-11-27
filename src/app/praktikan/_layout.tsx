@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
   },
   tabBarWeb: {
-    maxWidth: 560,
+    maxWidth: 640,
     width: '100%',
     alignSelf: 'center',
     marginHorizontal: 'auto',

@@ -637,7 +637,7 @@ export default function PraktikanPresensiScreen() {
               <Text style={styles.leaveBlockedTitle}>Pengajuan Izin Aktif pada Sesi Ini</Text>
               <Text style={styles.leaveBlockedDesc}>
                 Status izin Anda saat ini:{' '}
-                {leaveRecord?.status === 'disetujui' ? 'Disetujui Asisten' : 'Menunggu Verifikasi'}.
+                {leaveRecord?.status === 'disetujui' ? 'Disetujui Asprak' : 'Menunggu Verifikasi'}.
                 Praktikan dengan izin aktif tidak dapat mencatat presensi kehadiran pada sesi yang sama.
               </Text>
               <Pressable
@@ -649,9 +649,9 @@ export default function PraktikanPresensiScreen() {
             </View>
           ) : activeSession.status === 'belum-dibuka' ? (
             <View style={styles.warningCard}>
-              <Text style={styles.warningTitle}>Sesi Belum Dibuka oleh Asisten</Text>
+              <Text style={styles.warningTitle}>Sesi Belum Dibuka oleh Asprak</Text>
               <Text style={styles.warningDesc}>
-                Formulir presensi berbasis lokasi akan otomatis aktif setelah asisten membuka sesi praktikum ini.
+                Formulir presensi berbasis lokasi akan otomatis aktif setelah Asprak membuka sesi praktikum ini.
               </Text>
               <Pressable
                 accessibilityRole="button"
@@ -669,7 +669,7 @@ export default function PraktikanPresensiScreen() {
             <View style={styles.dangerCard}>
               <Text style={styles.dangerTitle}>Sesi Praktikum Telah Ditutup</Text>
               <Text style={styles.dangerDesc}>
-                Waktu presensi untuk sesi ini sudah berakhir dan ditutup oleh asisten. Sistem menolak pencatatan kehadiran baru.
+                Waktu presensi untuk sesi ini sudah berakhir dan ditutup oleh Asprak. Sistem menolak pencatatan kehadiran baru.
               </Text>
             </View>
           ) : (
@@ -758,7 +758,7 @@ export default function PraktikanPresensiScreen() {
                       editable={!isClassMismatch}
                     />
                     <Text style={styles.helperText}>
-                      Dapatkan kode 4 digit dari layar asisten di dalam ruang laboratorium.
+                      Dapatkan kode 4 digit dari layar Asprak di dalam ruang laboratorium.
                     </Text>
                   </View>
                 ) : (
@@ -789,7 +789,7 @@ export default function PraktikanPresensiScreen() {
                       </View>
                     ) : (
                       <Text style={styles.helperText}>
-                        Arahkan kamera ke QR Code sesi yang ditampilkan asisten laboratorium.
+                        Arahkan kamera ke QR Code sesi yang ditampilkan Asprak di laboratorium.
                       </Text>
                     )}
 
@@ -874,7 +874,7 @@ export default function PraktikanPresensiScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.qrModalTitle}>Pindai QR Code Presensi</Text>
                 <Text style={styles.qrModalSub}>
-                  Arahkan kotak bidik ke QR Code aktif milik asisten
+                  Arahkan kotak bidik ke QR Code aktif milik Asprak
                 </Text>
               </View>
               <Pressable

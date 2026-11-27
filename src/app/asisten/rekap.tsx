@@ -313,7 +313,7 @@ export default function RekapAsistenScreen() {
       {/* Banner Menuju Panel Moderasi Izin */}
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Buka Panel Moderasi Izin Asisten"
+        accessibilityLabel="Buka Panel Moderasi Izin Asprak"
         onPress={() => router.push('/asisten/moderasi-izin')}
         style={({ pressed }) => [styles.moderasiBanner, pressed && styles.cardPressed]}>
         <View style={styles.moderasiBannerLeft}>
@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 960,
     alignSelf: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: Platform.OS === 'web' ? 20 : 14,
     paddingTop: 20,
     paddingBottom: 90,
     gap: 14,

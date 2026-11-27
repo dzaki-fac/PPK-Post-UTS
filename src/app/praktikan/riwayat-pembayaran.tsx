@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 
 import { EmptyState } from '@/components/empty-state';
+import { MetricGridItem, MetricsGrid } from '@/components/metrics-grid';
 import { StatusBadge } from '@/components/status-badge';
 import { useAuth } from '@/context/auth-context';
 import { subscribeStudentPayments } from '@/services/payment-service';
@@ -67,6 +68,39 @@ export default function PraktikanRiwayatPembayaranScreen() {
     };
   }, [payments]);
 
+  const metricItems = useMemo<MetricGridItem[]>(
+    () => [
+      {
+        key: 'total',
+        label: 'Total Transaksi',
+        value: metrics.total,
+        hint: `${metrics.failed} gagal / kedaluwarsa`,
+      },
+      {
+        key: 'success',
+        label: 'Berhasil',
+        value: metrics.success,
+        tone: 'success',
+        hint: 'Settlement terverifikasi',
+      },
+      {
+        key: 'pending',
+        label: 'Menunggu',
+        value: metrics.pending,
+        tone: 'warning',
+        hint: 'Belum final',
+      },
+      {
+        key: 'paidTotal',
+        label: 'Total Dibayarkan',
+        value: formatRupiah(metrics.totalPaid),
+        tone: 'primary',
+        hint: 'Akumulasi lunas',
+      },
+    ],
+    [metrics]
+  );
+
   const filteredPayments = useMemo(() => {
     if (filter === 'semua') return payments;
     return payments.filter((item) => item.status === filter);
@@ -97,39 +131,7 @@ export default function PraktikanRiwayatPembayaranScreen() {
         </View>
       ) : null}
 
-      <View style={styles.metricsGrid}>
-        <View style={styles.metricCard}>
-          <Text style={styles.metricVal}>{metrics.total}</Text>
-          <Text style={styles.metricLbl}>Total Transaksi</Text>
-          <Text style={styles.metricDesc}>Semua percobaan</Text>
-        </View>
-
-        <View style={[styles.metricCard, styles.metricCardSuccess]}>
-          <Text style={[styles.metricVal, { color: '#16A34A' }]}>{metrics.success}</Text>
-          <Text style={styles.metricLbl}>Berhasil</Text>
-          <Text style={styles.metricDesc}>Settlement terverifikasi</Text>
-        </View>
-
-        <View style={[styles.metricCard, styles.metricCardPending]}>
-          <Text style={[styles.metricVal, { color: '#D97706' }]}>{metrics.pending}</Text>
-          <Text style={styles.metricLbl}>Menunggu</Text>
-          <Text style={styles.metricDesc}>Belum final</Text>
-        </View>
-
-        <View style={[styles.metricCard, styles.metricCardFailed]}>
-          <Text style={[styles.metricVal, { color: '#DC2626' }]}>{metrics.failed}</Text>
-          <Text style={styles.metricLbl}>Gagal</Text>
-          <Text style={styles.metricDesc}>Batal / kedaluwarsa</Text>
-        </View>
-
-        <View style={[styles.metricCard, styles.metricCardPaidTotal]}>
-          <Text style={[styles.metricVal, styles.metricValNominal, { color: '#EA580C' }]}>
-            {formatRupiah(metrics.totalPaid)}
-          </Text>
-          <Text style={styles.metricLbl}>Total Dibayarkan</Text>
-          <Text style={styles.metricDesc}>Akumulasi lunas</Text>
-        </View>
-      </View>
+      <MetricsGrid items={metricItems} accentColor="#EA580C" />
 
       <ScrollView
         horizontal
@@ -282,9 +284,9 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 960,
     alignSelf: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: Platform.OS === 'web' ? 20 : 14,
     paddingTop: 16,
-    paddingBottom: 32,
+    paddingBottom: 90,
     gap: 12,
   },
   loadingWrap: {
@@ -324,7 +326,7 @@ const styles = StyleSheet.create({
     color: '#EA580C',
   },
   bannerTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '800',
     color: '#0F172A',
   },
@@ -359,51 +361,6 @@ const styles = StyleSheet.create({
     color: '#B91C1C',
     fontSize: 13,
     fontWeight: '600',
-  },
-  metricsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  metricCard: {
-    flexGrow: 1,
-    flexBasis: 150,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    padding: 14,
-    gap: 3,
-  },
-  metricCardSuccess: {
-    borderColor: '#BBF7D0',
-  },
-  metricCardPending: {
-    borderColor: '#FDE68A',
-  },
-  metricCardFailed: {
-    borderColor: '#FECACA',
-  },
-  metricCardPaidTotal: {
-    borderColor: '#FED7AA',
-    backgroundColor: '#FFFBF7',
-  },
-  metricVal: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  metricValNominal: {
-    fontSize: 18,
-  },
-  metricLbl: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#334155',
-  },
-  metricDesc: {
-    fontSize: 11,
-    color: '#64748B',
   },
   filterRow: {
     gap: 8,

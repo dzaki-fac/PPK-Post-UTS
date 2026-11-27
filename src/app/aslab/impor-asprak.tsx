@@ -196,7 +196,7 @@ export default function AslabImporAsprakScreen() {
 
       <Text style={styles.title}>Impor Asprak</Text>
       <Text style={styles.subtitle}>
-        Distribusikan asisten praktikum ke satu atau beberapa laboratorium pengampu melalui alur terpisah dari praktikan.
+        Distribusikan Asprak ke satu atau beberapa laboratorium pengampu melalui alur terpisah dari praktikan.
       </Text>
 
       {banner ? (

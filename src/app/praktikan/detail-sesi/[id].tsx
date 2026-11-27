@@ -205,7 +205,7 @@ export default function PraktikanDetailSesiScreen() {
                   ? 'Sesi Sedang Dibuka'
                   : sesi.status === 'ditutup'
                   ? 'Sesi Telah Ditutup'
-                  : 'Belum Dibuka Asisten'}
+                  : 'Belum Dibuka Asprak'}
               </Text>
             </View>
           </View>
@@ -256,9 +256,9 @@ export default function PraktikanDetailSesiScreen() {
                     leaveRecord.status === 'ditolak' && { color: '#DC2626' },
                   ]}>
                   {leaveRecord.status === 'disetujui'
-                    ? 'IZIN DISETUJUI ASISTEN'
+                    ? 'IZIN DISETUJUI ASPRAK'
                     : leaveRecord.status === 'menunggu'
-                    ? 'MENUNGGU VERIFIKASI ASISTEN'
+                    ? 'MENUNGGU VERIFIKASI ASPRAK'
                     : 'PERMOHONAN IZIN DITOLAK'}
                 </Text>
                 {leaveRecord.aiClassification?.category ? (
@@ -283,7 +283,7 @@ export default function PraktikanDetailSesiScreen() {
 
               {leaveRecord.reviewNotes ? (
                 <View style={styles.reviewNotesBox}>
-                  <Text style={styles.reviewNotesLabel}>Catatan Evaluasi Asisten:</Text>
+                  <Text style={styles.reviewNotesLabel}>Catatan Evaluasi Asprak:</Text>
                   <Text style={styles.reviewNotesText}>{leaveRecord.reviewNotes}</Text>
                 </View>
               ) : null}
@@ -364,7 +364,7 @@ export default function PraktikanDetailSesiScreen() {
                 <Text style={styles.actionBtnTextDisabled}>
                   {leaveRecord?.status === 'disetujui'
                     ? 'Izin Praktikum Disetujui'
-                    : 'Menunggu Keputusan Asisten'}
+                    : 'Menunggu Keputusan Asprak'}
                 </Text>
               </Pressable>
             </View>
@@ -373,8 +373,8 @@ export default function PraktikanDetailSesiScreen() {
             <View style={styles.warningBox}>
               <Text style={styles.warningTitle}>Sesi Belum Dibuka</Text>
               <Text style={styles.warningMessage}>
-                Asisten praktikum belum membuka sesi ini. Tombol presensi akan
-                aktif secara otomatis setelah sesi dibuka oleh asisten.
+                Asprak belum membuka sesi ini. Tombol presensi akan
+                aktif secara otomatis setelah sesi dibuka oleh Asprak.
               </Text>
               <Pressable
                 style={[styles.actionBtn, styles.actionBtnDisabled]}
@@ -405,7 +405,7 @@ export default function PraktikanDetailSesiScreen() {
               <Text style={styles.dangerTitle}>Sesi Telah Ditutup</Text>
               <Text style={styles.dangerMessage}>
                 Waktu sesi praktikum ini telah berakhir dan ditutup oleh
-                asisten. Anda tidak dapat melakukan presensi pada sesi yang
+                Asprak. Anda tidak dapat melakukan presensi pada sesi yang
                 sudah ditutup.
               </Text>
               <Pressable
@@ -508,7 +508,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 960,
     alignSelf: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: Platform.OS === 'web' ? 20 : 14,
     gap: 16,
   },
   topBar: {

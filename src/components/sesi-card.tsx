@@ -161,7 +161,7 @@ export function SesiCard({
               {leaveStatus === 'disetujui'
                 ? 'Pengajuan Izin Disetujui'
                 : leaveStatus === 'menunggu'
-                ? 'Izin Dalam Pemeriksaan Asisten'
+                ? 'Izin Dalam Pemeriksaan Asprak'
                 : 'Izin Tidak Disetujui'}
             </Text>
             {leaveCategory ? (

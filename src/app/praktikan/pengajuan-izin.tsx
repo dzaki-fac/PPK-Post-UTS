@@ -229,7 +229,7 @@ export default function PengajuanIzinScreen() {
             <Text style={styles.title}>Pengajuan Izin Praktikum</Text>
             <Text style={styles.subtitle}>
               Ajukan permohonan ketidakhadiran praktikum. Sistem AI akan menganalisis alasan Anda
-              secara instan untuk membantu asisten memverifikasi izin.
+              secara instan untuk membantu Asprak memverifikasi izin.
             </Text>
           </View>
 

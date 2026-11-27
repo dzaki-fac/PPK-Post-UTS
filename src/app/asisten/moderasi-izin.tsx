@@ -29,7 +29,7 @@ export default function ModerasiIzinScreen() {
   const { currentAsisten } = usePraktikum();
 
   const reviewerUid = userDoc?.uid || currentAsisten?.id || 'asisten-lab';
-  const reviewerName = userDoc?.nama || currentAsisten?.nama || 'Asisten Laboratorium';
+  const reviewerName = userDoc?.nama || currentAsisten?.nama || 'Asisten Praktikum';
 
   const [requests, setRequests] = useState<LeaveRequestDocument[]>([]);
   const [activeFilter, setActiveFilter] = useState<FilterType>('semua');

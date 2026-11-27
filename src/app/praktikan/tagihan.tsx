@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 
 import { EmptyState } from '@/components/empty-state';
+import { MetricGridItem, MetricsGrid } from '@/components/metrics-grid';
 import { StatusBadge } from '@/components/status-badge';
 import { useAuth } from '@/context/auth-context';
 import { subscribeStudentFines } from '@/services/payment-service';
@@ -73,6 +74,39 @@ export default function PraktikanTagihanScreen() {
     };
   }, [fines]);
 
+  const metricItems = useMemo<MetricGridItem[]>(
+    () => [
+      {
+        key: 'total',
+        label: 'Total Tagihan',
+        value: metrics.total,
+        hint: `${metrics.paid} lunas (${formatRupiah(metrics.paidAmount)})`,
+      },
+      {
+        key: 'unpaid',
+        label: 'Belum Dibayar',
+        value: metrics.unpaid,
+        tone: 'danger',
+        hint: formatRupiah(metrics.unpaidAmount),
+      },
+      {
+        key: 'pending',
+        label: 'Menunggu',
+        value: metrics.pending,
+        tone: 'warning',
+        hint: 'Verifikasi Midtrans',
+      },
+      {
+        key: 'outstanding',
+        label: 'Total Tunggakan',
+        value: formatRupiah(metrics.outstandingAmount),
+        tone: 'primary',
+        hint: 'Nominal belum lunas',
+      },
+    ],
+    [metrics]
+  );
+
   const filteredFines = useMemo(() => {
     if (filter === 'semua') return fines;
     return fines.filter((item) => item.status === filter);
@@ -104,39 +138,7 @@ export default function PraktikanTagihanScreen() {
         </View>
       ) : null}
 
-      <View style={styles.metricsGrid}>
-        <View style={styles.metricCard}>
-          <Text style={styles.metricVal}>{metrics.total}</Text>
-          <Text style={styles.metricLbl}>Total Tagihan</Text>
-          <Text style={styles.metricDesc}>Seluruh invoice denda</Text>
-        </View>
-
-        <View style={[styles.metricCard, styles.metricCardUnpaid]}>
-          <Text style={[styles.metricVal, { color: '#DC2626' }]}>{metrics.unpaid}</Text>
-          <Text style={styles.metricLbl}>Belum Dibayar</Text>
-          <Text style={styles.metricDesc}>{formatRupiah(metrics.unpaidAmount)}</Text>
-        </View>
-
-        <View style={[styles.metricCard, styles.metricCardPending]}>
-          <Text style={[styles.metricVal, { color: '#D97706' }]}>{metrics.pending}</Text>
-          <Text style={styles.metricLbl}>Menunggu</Text>
-          <Text style={styles.metricDesc}>Verifikasi Midtrans</Text>
-        </View>
-
-        <View style={[styles.metricCard, styles.metricCardPaid]}>
-          <Text style={[styles.metricVal, { color: '#16A34A' }]}>{metrics.paid}</Text>
-          <Text style={styles.metricLbl}>Lunas</Text>
-          <Text style={styles.metricDesc}>{formatRupiah(metrics.paidAmount)}</Text>
-        </View>
-
-        <View style={[styles.metricCard, styles.metricCardHighlight]}>
-          <Text style={[styles.metricVal, styles.metricValNominal, { color: '#EA580C' }]}>
-            {formatRupiah(metrics.outstandingAmount)}
-          </Text>
-          <Text style={styles.metricLbl}>Total Tunggakan</Text>
-          <Text style={styles.metricDesc}>Nominal belum lunas</Text>
-        </View>
-      </View>
+      <MetricsGrid items={metricItems} accentColor="#EA580C" />
 
       <View style={styles.filterSection}>
         <Text style={styles.filterTitle}>Filter Status Tagihan:</Text>
@@ -309,9 +311,9 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 960,
     alignSelf: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: Platform.OS === 'web' ? 20 : 14,
     paddingTop: 16,
-    paddingBottom: 32,
+    paddingBottom: 90,
     gap: 12,
   },
   loadingWrap: {
@@ -351,7 +353,7 @@ const styles = StyleSheet.create({
     color: '#EA580C',
   },
   bannerTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '800',
     color: '#0F172A',
   },
@@ -386,51 +388,6 @@ const styles = StyleSheet.create({
     color: '#B91C1C',
     fontSize: 13,
     fontWeight: '600',
-  },
-  metricsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  metricCard: {
-    flexGrow: 1,
-    flexBasis: 150,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    padding: 14,
-    gap: 3,
-  },
-  metricCardUnpaid: {
-    borderColor: '#FECACA',
-  },
-  metricCardPending: {
-    borderColor: '#FDE68A',
-  },
-  metricCardPaid: {
-    borderColor: '#BBF7D0',
-  },
-  metricCardHighlight: {
-    borderColor: '#FED7AA',
-    backgroundColor: '#FFFBF7',
-  },
-  metricVal: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  metricValNominal: {
-    fontSize: 18,
-  },
-  metricLbl: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#334155',
-  },
-  metricDesc: {
-    fontSize: 11,
-    color: '#64748B',
   },
   filterSection: {
     gap: 8,

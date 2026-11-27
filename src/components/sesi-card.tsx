@@ -32,144 +32,147 @@ export function SesiCard({
   const isAsisten = role === 'asisten' || role === 'asprak' || role === 'aslab';
 
   return (
-    <Pressable
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`Sesi ${sesi.praktikum}, status ${sesi.status}`}>
-      <View style={styles.headerRow}>
-        <View style={styles.titleContainer}>
-          <Text style={styles.praktikumTitle} numberOfLines={1}>
-            {sesi.praktikum}
-          </Text>
-          <View style={styles.kelasChip}>
-            <Text style={styles.kelasText}>{sesi.kelas}</Text>
-          </View>
-        </View>
-        <StatusBadge status={sesi.status} />
-      </View>
-
-      {sesi.materi ? (
-        <Text style={styles.materiText} numberOfLines={2}>
-          {sesi.materi}
-        </Text>
-      ) : null}
-
-      <View style={styles.metaDivider} />
-
-      <View style={styles.metaRow}>
-        <View style={styles.metaItem}>
-          <Text style={styles.metaLabel}>Tanggal:</Text>
-          <Text style={styles.metaText}>{sesi.tanggal}</Text>
-        </View>
-
-        <View style={styles.metaItem}>
-          <Text style={styles.metaLabel}>Waktu:</Text>
-          <Text style={styles.metaText}>
-            {sesi.waktuMulai} - {sesi.waktuSelesai} WIB
-          </Text>
-        </View>
-      </View>
-
-      {sesi.ruang ? (
-        <View style={styles.locationRow}>
-          <Text style={styles.metaLabel}>Ruang:</Text>
-          <Text style={styles.locationText}>{sesi.ruang}</Text>
-        </View>
-      ) : null}
-
-      {/* Asisten metadata banner */}
-      {isAsisten ? (
-        <View style={styles.asistenFooter}>
-          <View style={styles.asistenFooterLeft}>
-            <View style={styles.attendanceCountBadge}>
-              <Text style={styles.attendanceCountText}>
-                {totalHadir !== undefined ? `${totalHadir} Hadir` : 'Kelola'}
-              </Text>
+    <View style={styles.card}>
+      <Pressable
+        style={({ pressed }) => [pressed && styles.cardPressed]}
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`Sesi ${sesi.praktikum}, status ${sesi.status}`}>
+        <View style={styles.headerRow}>
+          <View style={styles.titleContainer}>
+            <Text style={styles.praktikumTitle} numberOfLines={1}>
+              {sesi.praktikum}
+            </Text>
+            <View style={styles.kelasChip}>
+              <Text style={styles.kelasText}>{sesi.kelas}</Text>
             </View>
-            {totalIzin && totalIzin > 0 ? (
-              <View style={styles.izinCountBadge}>
-                <Text style={styles.izinCountText}>{totalIzin} Izin</Text>
-              </View>
-            ) : null}
-            {sesi.status === 'dibuka' && sesi.kodeSesi ? (
-              <View style={styles.codePill}>
-                <Text style={styles.codePillLabel}>Kode:</Text>
-                <Text style={styles.codePillValue}>{sesi.kodeSesi}</Text>
-              </View>
-            ) : null}
           </View>
-          <View style={styles.actionHintWrap}>
-            <Text style={styles.actionHint}>Kelola sesi →</Text>
+          <StatusBadge status={sesi.status} />
+        </View>
+
+        {sesi.materi ? (
+          <Text style={styles.materiText} numberOfLines={2}>
+            {sesi.materi}
+          </Text>
+        ) : null}
+
+        <View style={styles.metaDivider} />
+
+        <View style={styles.metaRow}>
+          <View style={styles.metaItem}>
+            <Text style={styles.metaLabel}>Tanggal:</Text>
+            <Text style={styles.metaText}>{sesi.tanggal}</Text>
+          </View>
+
+          <View style={styles.metaItem}>
+            <Text style={styles.metaLabel}>Waktu:</Text>
+            <Text style={styles.metaText}>
+              {sesi.waktuMulai} - {sesi.waktuSelesai} WIB
+            </Text>
           </View>
         </View>
-      ) : null}
 
-      {/* Praktikan attendance banner if student already attended */}
-      {!isAsisten && isHadir ? (
-        <View style={styles.attendanceBanner}>
-          <View style={styles.attendanceTag}>
-            <Text style={styles.attendanceTagText}>TERVERIFIKASI</Text>
+        {sesi.ruang ? (
+          <View style={styles.locationRow}>
+            <Text style={styles.metaLabel}>Ruang:</Text>
+            <Text style={styles.locationText}>{sesi.ruang}</Text>
           </View>
-          <View style={styles.attendanceTextWrap}>
-            <Text style={styles.attendanceTitle}>Sudah Presensi</Text>
-            {waktuHadir ? (
-              <Text style={styles.attendanceSub}>{waktuHadir}</Text>
-            ) : null}
-          </View>
-        </View>
-      ) : null}
+        ) : null}
 
-      {/* Praktikan leave status banner if student filed leave */}
-      {!isAsisten && !isHadir && leaveStatus ? (
-        <View
-          style={[
-            styles.leaveBanner,
-            leaveStatus === 'disetujui' && styles.leaveBannerApproved,
-            leaveStatus === 'menunggu' && styles.leaveBannerPending,
-            leaveStatus === 'ditolak' && styles.leaveBannerRejected,
-          ]}>
+        {/* Asisten metadata banner */}
+        {isAsisten ? (
+          <View style={styles.asistenFooter}>
+            <View style={styles.asistenFooterLeft}>
+              <View style={styles.attendanceCountBadge}>
+                <Text style={styles.attendanceCountText}>
+                  {totalHadir !== undefined ? `${totalHadir} Hadir` : 'Kelola'}
+                </Text>
+              </View>
+              {totalIzin && totalIzin > 0 ? (
+                <View style={styles.izinCountBadge}>
+                  <Text style={styles.izinCountText}>{totalIzin} Izin</Text>
+                </View>
+              ) : null}
+              {sesi.status === 'dibuka' && sesi.kodeSesi ? (
+                <View style={styles.codePill}>
+                  <Text style={styles.codePillLabel}>Kode:</Text>
+                  <Text style={styles.codePillValue}>{sesi.kodeSesi}</Text>
+                </View>
+              ) : null}
+            </View>
+            <View style={styles.actionHintWrap}>
+              <Text style={styles.actionHint}>Kelola sesi →</Text>
+            </View>
+          </View>
+        ) : null}
+
+        {/* Praktikan attendance banner if student already attended */}
+        {!isAsisten && isHadir ? (
+          <View style={styles.attendanceBanner}>
+            <View style={styles.attendanceTag}>
+              <Text style={styles.attendanceTagText}>TERVERIFIKASI</Text>
+            </View>
+            <View style={styles.attendanceTextWrap}>
+              <Text style={styles.attendanceTitle}>Sudah Presensi</Text>
+              {waktuHadir ? (
+                <Text style={styles.attendanceSub}>{waktuHadir}</Text>
+              ) : null}
+            </View>
+          </View>
+        ) : null}
+
+        {/* Praktikan leave status banner if student filed leave */}
+        {!isAsisten && !isHadir && leaveStatus ? (
           <View
             style={[
-              styles.leaveTag,
-              leaveStatus === 'disetujui' && styles.leaveTagApproved,
-              leaveStatus === 'menunggu' && styles.leaveTagPending,
-              leaveStatus === 'ditolak' && styles.leaveTagRejected,
+              styles.leaveBanner,
+              leaveStatus === 'disetujui' && styles.leaveBannerApproved,
+              leaveStatus === 'menunggu' && styles.leaveBannerPending,
+              leaveStatus === 'ditolak' && styles.leaveBannerRejected,
             ]}>
-            <Text
+            <View
               style={[
-                styles.leaveTagText,
-                leaveStatus === 'disetujui' && styles.leaveTagTextApproved,
-                leaveStatus === 'menunggu' && styles.leaveTagTextPending,
-                leaveStatus === 'ditolak' && styles.leaveTagTextRejected,
+                styles.leaveTag,
+                leaveStatus === 'disetujui' && styles.leaveTagApproved,
+                leaveStatus === 'menunggu' && styles.leaveTagPending,
+                leaveStatus === 'ditolak' && styles.leaveTagRejected,
               ]}>
-              {leaveStatus === 'disetujui'
-                ? 'IZIN DISETUJUI'
-                : leaveStatus === 'menunggu'
-                ? 'MENUNGGU VERIFIKASI'
-                : 'IZIN DITOLAK'}
-            </Text>
+              <Text
+                style={[
+                  styles.leaveTagText,
+                  leaveStatus === 'disetujui' && styles.leaveTagTextApproved,
+                  leaveStatus === 'menunggu' && styles.leaveTagTextPending,
+                  leaveStatus === 'ditolak' && styles.leaveTagTextRejected,
+                ]}>
+                {leaveStatus === 'disetujui'
+                  ? 'IZIN DISETUJUI'
+                  : leaveStatus === 'menunggu'
+                  ? 'MENUNGGU VERIFIKASI'
+                  : 'IZIN DITOLAK'}
+              </Text>
+            </View>
+            <View style={styles.attendanceTextWrap}>
+              <Text
+                style={[
+                  styles.leaveTitle,
+                  leaveStatus === 'disetujui' && { color: '#1E40AF' },
+                  leaveStatus === 'menunggu' && { color: '#92400E' },
+                  leaveStatus === 'ditolak' && { color: '#991B1B' },
+                ]}>
+                {leaveStatus === 'disetujui'
+                  ? 'Pengajuan Izin Disetujui'
+                  : leaveStatus === 'menunggu'
+                  ? 'Izin Dalam Pemeriksaan Asprak'
+                  : 'Izin Tidak Disetujui'}
+              </Text>
+              {leaveCategory ? (
+                <Text style={styles.leaveSub}>Kategori AI: {leaveCategory}</Text>
+              ) : null}
+            </View>
           </View>
-          <View style={styles.attendanceTextWrap}>
-            <Text
-              style={[
-                styles.leaveTitle,
-                leaveStatus === 'disetujui' && { color: '#1E40AF' },
-                leaveStatus === 'menunggu' && { color: '#92400E' },
-                leaveStatus === 'ditolak' && { color: '#991B1B' },
-              ]}>
-              {leaveStatus === 'disetujui'
-                ? 'Pengajuan Izin Disetujui'
-                : leaveStatus === 'menunggu'
-                ? 'Izin Dalam Pemeriksaan Asprak'
-                : 'Izin Tidak Disetujui'}
-            </Text>
-            {leaveCategory ? (
-              <Text style={styles.leaveSub}>Kategori AI: {leaveCategory}</Text>
-            ) : null}
-          </View>
-        </View>
-      ) : null}
+        ) : null}
+      </Pressable>
+
       {/* Praktikan quick CTA to dedicated Geofencing Attendance Page */}
       {!isAsisten && !isHadir && !leaveStatus && sesi.status === 'dibuka' && onPresensiPress ? (
         <View style={styles.presensiCtaWrap}>
@@ -185,7 +188,7 @@ export function SesiCard({
           </Pressable>
         </View>
       ) : null}
-    </Pressable>
+    </View>
   );
 }
 

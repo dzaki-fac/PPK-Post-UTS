@@ -165,7 +165,7 @@ export function LabMapView({
                             : '#64748B',
                         },
                       ]}>
-                      <Text style={styles.markerPinCode}>{item.lab.kode}</Text>
+                      <Text style={styles.markerPinCode} numberOfLines={1}>{item.lab.kode}</Text>
                     </View>
                     <View style={styles.spatialTitleCol}>
                       <Text style={styles.spatialLabName}>{item.lab.nama}</Text>
@@ -355,8 +355,9 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   markerPinCircle: {
-    width: 32,
-    height: 32,
+    minWidth: 58,
+    height: 30,
+    paddingHorizontal: 8,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
@@ -365,6 +366,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '900',
     color: '#FFFFFF',
+    letterSpacing: 0.3,
   },
   spatialTitleCol: {
     flex: 1,

@@ -78,7 +78,7 @@ PPK-Post-UTS/
 ├── .env.example                      # Template variabel lingkungan (.env) untuk tim
 ├── .easignore                        # Berkas yang dikecualikan dari unggahan EAS Build
 ├── eas.json                          # Konfigurasi profil build EAS (development, preview APK, production)
-├── app.json                          # Konfigurasi Expo (owner sanftts-team, package, plugins native)
+├── app.json                          # Konfigurasi Expo (owner gregoriusseptiano, package, plugins native)
 ├── app.config.ts                     # Konfigurasi dinamis Maps API Key & google-services.json
 ├── google-services.json              # Konfigurasi Firebase Android (lokal/git-ignored, wajib ada saat build)
 ├── .firebaserc                       # Konfigurasi project ID Firebase CLI (praktikum-ppk-labportal)
@@ -265,24 +265,24 @@ npx expo start
 * **Android / iOS (Development Build):** Karena proyek menggunakan modul native (`react-native-maps`, `@react-native-firebase/*`, `@react-native-google-signin/google-signin`, `expo-location`, `expo-notifications`, `expo-camera`), gunakan **APK Preview** atau **Development Build** (`npx expo run:android` / `eas build`), bukan Expo Go standar.
 
 ### 4. Build Standalone Android APK (EAS Build)
-Proyek ini terhubung dengan akun EAS `sanftts-team` (slug: `ppk-post-uts`) dan mendukung kompilasi cloud ke berkas `.apk` siap pasang tanpa memerlukan Android Studio lokal:
+Proyek ini terhubung dengan akun EAS `gregoriusseptiano` (slug: `ppk-post-uts`) dan mendukung kompilasi cloud ke berkas `.apk` siap pasang tanpa memerlukan Android Studio lokal:
 ```bash
-# Login ke akun Expo EAS tim
+# Login ke akun Expo EAS
 npx eas-cli login
 
 # Mulai proses cloud build APK Android (profil preview)
 npx eas-cli build -p android --profile preview
 ```
 
-#### Tautan Build APK Terbaru (`sanftts-team` — Rilis Preview):
-- **Halaman Pantau & Unduh Build EAS Terbaru:** [expo.dev/@sanftts-team/ppk-post-uts/builds/76b47c1d-1b80-46c3-90b6-7c93698159ab](https://expo.dev/accounts/sanftts-team/projects/ppk-post-uts/builds/76b47c1d-1b80-46c3-90b6-7c93698159ab)
-- **Tautan Unduhan Langsung APK Terkini:** [Download LabPortal (_yMNTAoQ... .apk)](https://expo.dev/artifacts/eas/_yMNTAoQbYCbgseU2u3pYroRkuv1dIBEevvT5ye8GeQ.apk)
+#### Tautan Build APK Terbaru (`gregoriusseptiano` — Rilis Preview):
+- **Halaman Pantau & Unduh Build EAS Terbaru:** [expo.dev/@gregoriusseptiano/ppk-post-uts/builds/7151ab72-fd2e-47f3-9ebd-1f67dc8db441](https://expo.dev/accounts/gregoriusseptiano/projects/ppk-post-uts/builds/7151ab72-fd2e-47f3-9ebd-1f67dc8db441)
+- **Tautan Unduhan Langsung APK Terkini:** [Download LabPortal (LQ81pDSG... .apk)](https://expo.dev/artifacts/eas/LQ81pDSGcg9NenkM_DlaSDiI7-OT4eHz8naxQZvT6Tc.apk)
 
 > [!TIP]
 > **Registrasi SHA-1 Fingerprint untuk Google Sign-In:**  
-> Agar fitur Native Google Sign-In bekerja di APK Android tanpa error `DEVELOPER_ERROR`, kedua SHA-1 keystore berikut telah didaftarkan di **Firebase Console** -> **Project Settings** -> **Your Apps (Android `Praktikum.PPK_LabPortal`)**:
-> - Keystore EAS `sanftts-team` (aktif): `65:EB:20:28:17:68:EC:C5:AA:82:D5:34:56:71:22:8E:08:68:32:49`
-> - Keystore EAS lama (`gregoriusseptiano`): `58:3A:22:E2:5F:01:A3:82:E1:87:F2:8F:FB:F4:62:24:91:0F:7D:B2`
+> Pastikan SHA-1 keystore EAS proyek `gregoriusseptiano` terdaftar di **Firebase Console** -> **Project Settings** -> **Your Apps (Android `Praktikum.PPK_LabPortal`)** agar fitur Native Google Sign-In berjalan di APK Android tanpa error `DEVELOPER_ERROR`:
+> - Keystore EAS `sanftts-team` (sebelumnya): `65:EB:20:28:17:68:EC:C5:AA:82:D5:34:56:71:22:8E:08:68:32:49`
+> - Keystore EAS `gregoriusseptiano`: `58:3A:22:E2:5F:01:A3:82:E1:87:F2:8F:FB:F4:62:24:91:0F:7D:B2`
 
 ---
 

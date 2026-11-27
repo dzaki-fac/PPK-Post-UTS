@@ -339,7 +339,7 @@ export default function PraktikanPresensiScreen() {
         <EmptyState
           title="Belum Ada Sesi Praktikum"
           message="Jadwal sesi praktikum belum tersedia di Firestore. Silakan periksa kembali nanti."
-          actionText="Kembali ke Jadwal"
+          actionText="← Kembali ke Jadwal"
           onAction={() => router.replace('/praktikan/jadwal')}
         />
       </View>

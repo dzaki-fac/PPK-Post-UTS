@@ -272,7 +272,7 @@ export default function DetailSesiAsprakScreen() {
         <EmptyState
           title="Sesi Tidak Ditemukan"
           message="Sesi praktikum yang Anda cari tidak terdaftar dalam jadwal Firestore."
-          actionText="Kembali ke Jadwal"
+          actionText="← Kembali ke Jadwal"
           onAction={handleBack}
         />
       </View>
@@ -290,7 +290,7 @@ export default function DetailSesiAsprakScreen() {
         <EmptyState
           title="Akses Lab Dibatasi"
           message="Anda tidak mengampu laboratorium ini. Asprak hanya dapat mengelola sesi pada laboratorium yang ditugaskan."
-          actionText="Kembali ke Jadwal Saya"
+          actionText="← Kembali ke Jadwal Saya"
           onAction={() => router.replace('/asisten/jadwal')}
         />
       </View>

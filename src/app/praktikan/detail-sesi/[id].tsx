@@ -118,7 +118,7 @@ export default function PraktikanDetailSesiScreen() {
         <EmptyState
           title="Sesi Tidak Ditemukan"
           message="Sesi praktikum yang Anda cari tidak terdaftar atau telah dihapus."
-          actionText="Kembali ke Jadwal"
+          actionText="← Kembali ke Jadwal"
           onAction={handleBack}
         />
       </View>

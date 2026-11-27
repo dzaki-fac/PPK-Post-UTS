@@ -147,7 +147,7 @@ export default function PraktikanPembayaranHasilScreen() {
           <EmptyState
             title="Data Transaksi Tidak Ditemukan"
             message="ID transaksi atau tagihan tidak tersedia."
-            actionText="Kembali ke Tagihan"
+            actionText="← Kembali ke Tagihan"
             onAction={() => router.replace('/praktikan/tagihan' as Href)}
           />
         </View>
@@ -294,7 +294,7 @@ export default function PraktikanPembayaranHasilScreen() {
               )
             }
             style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}>
-            <Text style={styles.secondaryBtnText}>Kembali ke Rincian Tagihan</Text>
+            <Text style={styles.secondaryBtnText}>← Kembali ke Rincian Tagihan</Text>
           </Pressable>
 
           <Pressable

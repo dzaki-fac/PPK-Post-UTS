@@ -160,7 +160,7 @@ export default function PraktikanTagihanDetailScreen() {
           <EmptyState
             title="Tagihan Tidak Ditemukan"
             message="Data tagihan denda tidak ditemukan atau bukan milik akun Anda."
-            actionText="Kembali ke Daftar Tagihan"
+            actionText="← Kembali ke Daftar Tagihan"
             onAction={() => router.replace('/praktikan/tagihan' as Href)}
           />
         </View>

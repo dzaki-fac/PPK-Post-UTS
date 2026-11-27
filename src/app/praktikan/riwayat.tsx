@@ -76,7 +76,13 @@ export default function PraktikanRiwayatScreen() {
     };
   }, [studentId, userDoc?.nim]);
 
-  const effectiveSessions = firestoreSessions.length > 0 ? firestoreSessions : dummySesi;
+  const effectiveSessions = useMemo(() => {
+    const raw = firestoreSessions.length > 0 ? firestoreSessions : dummySesi;
+    const studentLabId = userDoc?.labId;
+    if (!studentLabId) return raw;
+    const scoped = raw.filter((s) => !('labId' in s && s.labId) || s.labId === studentLabId);
+    return scoped.length > 0 ? scoped : raw;
+  }, [firestoreSessions, dummySesi, userDoc?.labId]);
 
   const riwayatList: RiwayatItem[] = useMemo(() => {
     if (firestoreAttendances.length > 0) {
@@ -100,7 +106,18 @@ export default function PraktikanRiwayatScreen() {
     return [];
   }, [firestoreAttendances, effectiveSessions, currentPraktikan, getRiwayatPraktikan]);
 
-  const totalSesiTersedia = effectiveSessions.length;
+  const studentLabId = userDoc?.labId;
+  const studentClassUpper = (userDoc?.kelas ?? '').toUpperCase();
+  const scopedSessions = useMemo(() => {
+    if (!studentLabId) return effectiveSessions;
+    return effectiveSessions.filter((s) => {
+      const sLabId = 'labId' in s ? s.labId : undefined;
+      if (sLabId) return sLabId === studentLabId;
+      return !studentClassUpper || s.kelas.toUpperCase().includes(studentClassUpper);
+    });
+  }, [effectiveSessions, studentLabId, studentClassUpper]);
+
+  const totalSesiTersedia = scopedSessions.length;
   const totalHadir = riwayatList.filter((r) => r.attendanceStatus !== 'izin').length;
   const persentase =
     totalSesiTersedia > 0
@@ -311,7 +328,7 @@ export default function PraktikanRiwayatScreen() {
       <Text style={styles.headerTitle}>Riwayat & Izin Praktikum</Text>
       <Text style={styles.headerSubtitle}>
         Daftar kehadiran presensi dan pemantauan status permohonan izin untuk{' '}
-        {currentPraktikan?.nama ?? 'Praktikan'}
+        {userDoc?.nama ?? user?.displayName ?? currentPraktikan?.nama ?? 'Praktikan'}
       </Text>
 
       {/* Segmented Switcher Navigasi: Presensi vs Permohonan Izin */}

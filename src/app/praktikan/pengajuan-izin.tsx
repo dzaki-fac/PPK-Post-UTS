@@ -90,16 +90,24 @@ export default function PengajuanIzinScreen() {
   // State Modal Sukses
   const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
 
-  // Sesi yang relevan untuk kelas praktikan
+  // Sesi yang relevan untuk lab dan kelas praktikan
+  const studentLabId = userDoc?.labId;
   const availableSessions = useMemo(() => {
     if (!currentStudent) return sesiList;
     const kodeKelas = currentStudent.kelas.toUpperCase();
-    return sesiList.filter(
-      (s) =>
+    const scoped = sesiList.filter((s) => {
+      if (params.sessionId && s.id === params.sessionId) return true;
+      const sessionLabId = 'labId' in s ? s.labId : undefined;
+      if (studentLabId && sessionLabId) {
+        return sessionLabId === studentLabId;
+      }
+      return (
         s.kelas.toUpperCase().includes(kodeKelas) ||
         s.kelas.includes(currentStudent.kelas)
-    );
-  }, [sesiList, currentStudent]);
+      );
+    });
+    return scoped.length > 0 ? scoped : sesiList;
+  }, [sesiList, currentStudent, studentLabId, params.sessionId]);
 
   // ID sesi aktif (pilihan pengguna atau opsi pertama yang tersedia)
   const activeSessionId =

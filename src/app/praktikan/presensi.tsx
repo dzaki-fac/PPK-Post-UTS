@@ -156,9 +156,20 @@ export default function PraktikanPresensiScreen() {
     };
   }, [studentUid, userDoc?.nim]);
 
-  // Urutkan sesi: prioritaskan sesi kelas mahasiswa yang sedang dibuka, lalu sesi dibuka lain, lalu lainnya
+  const studentLabId = userDoc?.labId;
+
+  // Urutkan sesi: batasi ke lab terdaftar praktikan bila ada, lalu prioritaskan sesi kelas mahasiswa yang dibuka
   const orderedSessions = useMemo(() => {
-    return [...sessions].sort((a, b) => {
+    const scoped = studentLabId
+      ? sessions.filter((s) => {
+          if (paramSessionId && s.id === paramSessionId) return true;
+          if (s.labId) return s.labId === studentLabId;
+          return !studentClass || normalizeClassCode(s.kelas) === studentClass;
+        })
+      : sessions;
+    const baseList = scoped.length > 0 ? scoped : sessions;
+
+    return [...baseList].sort((a, b) => {
       const aMatch = studentClass && normalizeClassCode(a.kelas) === studentClass ? 1 : 0;
       const bMatch = studentClass && normalizeClassCode(b.kelas) === studentClass ? 1 : 0;
       const aOpen = a.status === 'dibuka' ? 2 : a.status === 'belum-dibuka' ? 1 : 0;
@@ -168,7 +179,7 @@ export default function PraktikanPresensiScreen() {
       }
       return b.createdAt.localeCompare(a.createdAt);
     });
-  }, [sessions, studentClass]);
+  }, [sessions, studentClass, studentLabId, paramSessionId]);
 
   const activeSession = useMemo(() => {
     if (selectedSessionId) {

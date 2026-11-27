@@ -149,6 +149,7 @@ export function LabMapView({
       labs: labsPayload,
       defaultCenter: { lat: -7.0486, lng: 110.4409 },
       accent: accentColor,
+      googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? '',
     }).replace(/<\/script>/gi, '<\\/script>');
 
     return `<!DOCTYPE html>
@@ -158,7 +159,7 @@ export function LabMapView({
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
-  html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #F1F5F9; }
+  html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #F1F5F9; overflow: hidden; }
   .lab-pin { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 999px; color: #fff; font-size: 11px; font-weight: 800; letter-spacing: 0.3px; border: 2px solid #fff; box-shadow: 0 2px 6px rgba(15,23,42,0.28); white-space: nowrap; cursor: pointer; }
   .lab-pin.selected { outline: 3px solid rgba(15,23,42,0.35); transform: scale(1.06); }
   .user-dot { width: 16px; height: 16px; border-radius: 999px; background: #2563EB; border: 3px solid #fff; box-shadow: 0 0 0 4px rgba(37,99,235,0.28); }
@@ -175,129 +176,312 @@ export function LabMapView({
   <button type="button" class="map-ctrl-btn" id="btn-focus-labs">Fokus Lab</button>
   <button type="button" class="map-ctrl-btn" id="btn-focus-user" style="display:none">Lokasi Saya</button>
 </div>
-<div class="map-badge">Peta Laboratorium Informatika FSM UNDIP</div>
+<div class="map-badge" id="map-badge">Peta Laboratorium Informatika FSM UNDIP</div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
   const DATA = ${payloadJson};
   const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const firstLab = DATA.labs[0] || DATA.defaultCenter;
-  const map = L.map('map', { zoomControl: true }).setView([firstLab.lat, firstLab.lng], 18);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 20,
-    attribution: '&copy; OpenStreetMap'
-  }).addTo(map);
+  let activeEngine = null; // 'google' | 'leaflet'
+  let latestSyncMsg = null;
 
-  const labBounds = [];
-  const placed = [];
-  const markersById = {};
-  const circlesById = {};
-
-  DATA.labs.forEach((lab) => {
-    labBounds.push([lab.lat, lab.lng]);
-    const color = lab.status === 'ongoing' ? '#16A34A' : lab.status === 'upcoming' ? '#D97706' : '#475569';
-    const circle = L.circle([lab.lat, lab.lng], {
-      radius: lab.radius,
-      color,
-      weight: 1.5,
-      fillColor: color,
-      fillOpacity: 0.1,
-    }).addTo(map);
-    circlesById[lab.id] = { circle, color, lab };
-
-    let sameCount = 0;
-    placed.forEach((p) => {
-      if (Math.abs(p.lat - lab.lat) < 0.00008 && Math.abs(p.lng - lab.lng) < 0.00008) sameCount++;
+  function computeSpreadPositions() {
+    const placed = [];
+    return DATA.labs.map((lab) => {
+      let sameCount = 0;
+      placed.forEach((p) => {
+        if (Math.abs(p.lat - lab.lat) < 0.00008 && Math.abs(p.lng - lab.lng) < 0.00008) sameCount++;
+      });
+      placed.push(lab);
+      const angle = sameCount * ((Math.PI * 2) / 5);
+      const visualLat = sameCount > 0 ? lab.lat + Math.sin(angle) * 0.00018 : lab.lat;
+      const visualLng = sameCount > 0 ? lab.lng + Math.cos(angle) * 0.00022 : lab.lng;
+      const color = lab.status === 'ongoing' ? '#16A34A' : lab.status === 'upcoming' ? '#D97706' : '#475569';
+      return { lab, visualLat, visualLng, color };
     });
-    placed.push(lab);
-    const angle = sameCount * ((Math.PI * 2) / 5);
-    const visualLat = sameCount > 0 ? lab.lat + Math.sin(angle) * 0.00018 : lab.lat;
-    const visualLng = sameCount > 0 ? lab.lng + Math.cos(angle) * 0.00022 : lab.lng;
-    labBounds.push([visualLat, visualLng]);
-
-    const icon = L.divIcon({
-      className: '',
-      html: '<div class="lab-pin" style="background:' + color + '">' + esc(lab.kode) + '</div>',
-      iconSize: [64, 28],
-      iconAnchor: [32, 14]
-    });
-    const marker = L.marker([visualLat, visualLng], { icon }).addTo(map);
-    marker.bindPopup('<strong>' + esc(lab.nama) + '</strong><br/>' + esc(lab.gedung) + '<br/>Radius: ' + esc(lab.radius) + ' m<br/><span style="color:' + color + ';font-weight:700">' + esc(lab.statusLabel) + '</span>');
-    marker.on('click', () => {
-      window.parent.postMessage({ type: 'SELECT_LAB', labId: lab.id }, '*');
-    });
-    markersById[lab.id] = { marker, color, lab };
-  });
-
-  function fitLabsView() {
-    if (labBounds.length > 1) {
-      map.fitBounds(labBounds, { padding: [45, 45], maxZoom: 18 });
-    } else if (labBounds.length === 1) {
-      map.setView(labBounds[0], 18);
-    }
   }
-  fitLabsView();
-  document.getElementById('btn-focus-labs').addEventListener('click', fitLabsView);
+  const SPREAD_LABS = computeSpreadPositions();
 
-  let userMarker = null;
-  let userAccCircle = null;
-  let routeLine = null;
-  let lastUser = null;
-  document.getElementById('btn-focus-user').addEventListener('click', () => {
-    if (lastUser) map.setView([lastUser.lat, lastUser.lng], 17);
-  });
+  // ---- ENGINE 1: Leaflet + OpenStreetMap (juga fallback otomatis bila Google Maps JS API dibatasi) ----
+  let lMap = null;
+  let lApplySync = null;
+  function startLeafletEngine() {
+    if (activeEngine === 'leaflet') return;
+    activeEngine = 'leaflet';
+    document.getElementById('map-badge').textContent = 'Peta Lab (OpenStreetMap)';
+    const mapEl = document.getElementById('map');
+    mapEl.innerHTML = '';
+    lMap = L.map('map', { zoomControl: true }).setView([firstLab.lat, firstLab.lng], 18);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 20,
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(lMap);
+
+    const labBounds = [];
+    const markersById = {};
+    const circlesById = {};
+
+    SPREAD_LABS.forEach(({ lab, visualLat, visualLng, color }) => {
+      labBounds.push([lab.lat, lab.lng]);
+      labBounds.push([visualLat, visualLng]);
+      const circle = L.circle([lab.lat, lab.lng], {
+        radius: lab.radius,
+        color,
+        weight: 1.5,
+        fillColor: color,
+        fillOpacity: 0.1,
+      }).addTo(lMap);
+      circlesById[lab.id] = { circle, color, lab };
+
+      const icon = L.divIcon({
+        className: '',
+        html: '<div class="lab-pin" style="background:' + color + '">' + esc(lab.kode) + '</div>',
+        iconSize: [64, 28],
+        iconAnchor: [32, 14]
+      });
+      const marker = L.marker([visualLat, visualLng], { icon }).addTo(lMap);
+      marker.bindPopup('<strong>' + esc(lab.nama) + '</strong><br/>' + esc(lab.gedung) + '<br/>Radius: ' + esc(lab.radius) + ' m<br/><span style="color:' + color + ';font-weight:700">' + esc(lab.statusLabel) + '</span>');
+      marker.on('click', () => {
+        window.parent.postMessage({ type: 'SELECT_LAB', labId: lab.id }, '*');
+      });
+      markersById[lab.id] = { marker, color, lab };
+    });
+
+    function fitLabsView() {
+      if (labBounds.length > 1) lMap.fitBounds(labBounds, { padding: [45, 45], maxZoom: 18 });
+      else if (labBounds.length === 1) lMap.setView(labBounds[0], 18);
+    }
+    fitLabsView();
+
+    let userMarker = null, userAccCircle = null, routeLine = null, lastUser = null;
+    document.getElementById('btn-focus-labs').onclick = fitLabsView;
+    document.getElementById('btn-focus-user').onclick = () => { if (lastUser) lMap.setView([lastUser.lat, lastUser.lng], 17); };
+
+    lApplySync = (msg) => {
+      Object.keys(markersById).forEach((id) => {
+        const entry = markersById[id];
+        const cEntry = circlesById[id];
+        const isSel = id === msg.selectedLabId;
+        const bg = isSel ? DATA.accent : entry.color;
+        entry.marker.setIcon(L.divIcon({
+          className: '',
+          html: '<div class="lab-pin ' + (isSel ? 'selected' : '') + '" style="background:' + bg + '">' + esc(entry.lab.kode) + '</div>',
+          iconSize: [64, 28],
+          iconAnchor: [32, 14]
+        }));
+        cEntry.circle.setStyle({
+          color: isSel ? DATA.accent : cEntry.color,
+          weight: isSel ? 2.5 : 1.5,
+          fillColor: isSel ? DATA.accent : cEntry.color,
+          fillOpacity: isSel ? 0.18 : 0.08,
+        });
+      });
+
+      lastUser = msg.user || null;
+      const btnUser = document.getElementById('btn-focus-user');
+      if (msg.user) {
+        btnUser.style.display = 'inline-block';
+        if (!userMarker) {
+          userAccCircle = L.circle([msg.user.lat, msg.user.lng], { radius: Math.min(msg.user.acc || 25, 100), color: '#2563EB', weight: 1, fillOpacity: 0.12 }).addTo(lMap);
+          userMarker = L.marker([msg.user.lat, msg.user.lng], {
+            icon: L.divIcon({ className: '', html: '<div class="user-dot"></div>', iconSize: [16, 16], iconAnchor: [8, 8] })
+          }).addTo(lMap).bindPopup('Lokasi Perangkat Anda');
+        } else {
+          userMarker.setLatLng([msg.user.lat, msg.user.lng]);
+          userAccCircle.setLatLng([msg.user.lat, msg.user.lng]);
+          userAccCircle.setRadius(Math.min(msg.user.acc || 25, 100));
+        }
+        if (msg.target) {
+          const pts = [[msg.user.lat, msg.user.lng], [msg.target.lat, msg.target.lng]];
+          if (!routeLine) routeLine = L.polyline(pts, { color: DATA.accent, weight: 2.5, dashArray: '6,6' }).addTo(lMap);
+          else routeLine.setLatLngs(pts);
+        }
+      } else {
+        btnUser.style.display = 'none';
+        if (userMarker) { lMap.removeLayer(userMarker); userMarker = null; }
+        if (userAccCircle) { lMap.removeLayer(userAccCircle); userAccCircle = null; }
+        if (routeLine) { lMap.removeLayer(routeLine); routeLine = null; }
+      }
+    };
+    if (latestSyncMsg) lApplySync(latestSyncMsg);
+  }
+
+  // ---- ENGINE 2: Google Maps JS API (Utama bila API key aktif & valid) ----
+  let gApplySync = null;
+  function makeSvgPin(code, bg, isSelected) {
+    const stroke = isSelected ? '#0F172A' : '#FFFFFF';
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="76" height="30" viewBox="0 0 76 30"><rect x="2" y="2" width="72" height="24" rx="12" fill="' + bg + '" stroke="' + stroke + '" stroke-width="2.5"/><text x="38" y="18" text-anchor="middle" fill="#FFFFFF" font-family="Arial,sans-serif" font-size="11" font-weight="800">' + esc(code) + '</text></svg>';
+    return {
+      url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+      scaledSize: new google.maps.Size(76, 30),
+      anchor: new google.maps.Point(38, 15),
+    };
+  }
+
+  window.__onGoogleMapsReady = function() {
+    if (activeEngine === 'leaflet' || !window.google || !window.google.maps) return;
+    activeEngine = 'google';
+    document.getElementById('map-badge').textContent = 'Google Maps — Lab FSM UNDIP';
+    const map = new google.maps.Map(document.getElementById('map'), {
+      center: { lat: firstLab.lat, lng: firstLab.lng },
+      zoom: 18,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
+    });
+
+    const infoWin = new google.maps.InfoWindow();
+    const bounds = new google.maps.LatLngBounds();
+    const gMarkers = {};
+    const gCircles = {};
+
+    SPREAD_LABS.forEach(({ lab, visualLat, visualLng, color }) => {
+      bounds.extend({ lat: lab.lat, lng: lab.lng });
+      bounds.extend({ lat: visualLat, lng: visualLng });
+      const circle = new google.maps.Circle({
+        map,
+        center: { lat: lab.lat, lng: lab.lng },
+        radius: lab.radius,
+        strokeColor: color,
+        strokeOpacity: 0.9,
+        strokeWeight: 1.5,
+        fillColor: color,
+        fillOpacity: 0.12,
+      });
+      gCircles[lab.id] = { circle, color, lab };
+
+      const marker = new google.maps.Marker({
+        map,
+        position: { lat: visualLat, lng: visualLng },
+        title: lab.nama,
+        icon: makeSvgPin(lab.kode, color, false),
+      });
+      marker.addListener('click', () => {
+        infoWin.setContent('<div style="font-family:sans-serif;font-size:12px;line-height:1.4;color:#0F172A"><strong>' + esc(lab.nama) + '</strong><br/>' + esc(lab.gedung) + '<br/>Radius: ' + esc(lab.radius) + ' m<br/><span style="color:' + color + ';font-weight:700">' + esc(lab.statusLabel) + '</span></div>');
+        infoWin.open(map, marker);
+        window.parent.postMessage({ type: 'SELECT_LAB', labId: lab.id }, '*');
+      });
+      gMarkers[lab.id] = { marker, color, lab };
+    });
+
+    function fitLabsView() {
+      if (SPREAD_LABS.length > 1) {
+        map.fitBounds(bounds, 40);
+        google.maps.event.addListenerOnce(map, 'idle', () => {
+          if (map.getZoom() > 18) map.setZoom(18);
+        });
+      } else {
+        map.setCenter({ lat: firstLab.lat, lng: firstLab.lng });
+        map.setZoom(18);
+      }
+    }
+    fitLabsView();
+
+    let gUserMarker = null, gUserCircle = null, gRouteLine = null, lastUser = null;
+    document.getElementById('btn-focus-labs').onclick = fitLabsView;
+    document.getElementById('btn-focus-user').onclick = () => {
+      if (lastUser) {
+        map.panTo({ lat: lastUser.lat, lng: lastUser.lng });
+        map.setZoom(17);
+      }
+    };
+
+    gApplySync = (msg) => {
+      if (activeEngine !== 'google') return;
+      Object.keys(gMarkers).forEach((id) => {
+        const m = gMarkers[id];
+        const c = gCircles[id];
+        const isSel = id === msg.selectedLabId;
+        const bg = isSel ? DATA.accent : m.color;
+        m.marker.setIcon(makeSvgPin(m.lab.kode, bg, isSel));
+        c.circle.setOptions({
+          strokeColor: isSel ? DATA.accent : c.color,
+          strokeWeight: isSel ? 2.5 : 1.5,
+          fillColor: isSel ? DATA.accent : c.color,
+          fillOpacity: isSel ? 0.18 : 0.1,
+        });
+      });
+
+      lastUser = msg.user || null;
+      const btnUser = document.getElementById('btn-focus-user');
+      if (msg.user) {
+        btnUser.style.display = 'inline-block';
+        const pos = { lat: msg.user.lat, lng: msg.user.lng };
+        if (!gUserMarker) {
+          gUserCircle = new google.maps.Circle({
+            map,
+            center: pos,
+            radius: Math.min(msg.user.acc || 25, 100),
+            strokeColor: '#2563EB',
+            strokeWeight: 1,
+            fillColor: '#2563EB',
+            fillOpacity: 0.12,
+          });
+          gUserMarker = new google.maps.Marker({
+            map,
+            position: pos,
+            title: 'Lokasi Perangkat Anda',
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 7,
+              fillColor: '#2563EB',
+              fillOpacity: 1,
+              strokeColor: '#FFFFFF',
+              strokeWeight: 2.5,
+            },
+          });
+        } else {
+          gUserMarker.setPosition(pos);
+          gUserCircle.setCenter(pos);
+          gUserCircle.setRadius(Math.min(msg.user.acc || 25, 100));
+        }
+        if (msg.target) {
+          const path = [pos, { lat: msg.target.lat, lng: msg.target.lng }];
+          if (!gRouteLine) {
+            gRouteLine = new google.maps.Polyline({
+              map,
+              path,
+              strokeColor: DATA.accent,
+              strokeOpacity: 0,
+              icons: [{ icon: { path: 'M 0,-1 0,1', strokeOpacity: 0.9, scale: 3 }, offset: '0', repeat: '12px' }],
+            });
+          } else {
+            gRouteLine.setPath(path);
+          }
+        }
+      } else {
+        btnUser.style.display = 'none';
+        if (gUserMarker) { gUserMarker.setMap(null); gUserMarker = null; }
+        if (gUserCircle) { gUserCircle.setMap(null); gUserCircle = null; }
+        if (gRouteLine) { gRouteLine.setMap(null); gRouteLine = null; }
+      }
+    };
+    if (latestSyncMsg) gApplySync(latestSyncMsg);
+  };
+
+  window.gm_authFailure = function() {
+    startLeafletEngine();
+  };
 
   window.addEventListener('message', (event) => {
     const msg = event.data;
     if (!msg || msg.type !== 'SYNC_MAP_STATE') return;
-
-    Object.keys(markersById).forEach((id) => {
-      const entry = markersById[id];
-      const cEntry = circlesById[id];
-      const isSel = id === msg.selectedLabId;
-      const bg = isSel ? DATA.accent : entry.color;
-      entry.marker.setIcon(L.divIcon({
-        className: '',
-        html: '<div class="lab-pin ' + (isSel ? 'selected' : '') + '" style="background:' + bg + '">' + esc(entry.lab.kode) + '</div>',
-        iconSize: [64, 28],
-        iconAnchor: [32, 14]
-      }));
-      cEntry.circle.setStyle({
-        color: isSel ? DATA.accent : cEntry.color,
-        weight: isSel ? 2.5 : 1.5,
-        fillColor: isSel ? DATA.accent : cEntry.color,
-        fillOpacity: isSel ? 0.18 : 0.08,
-      });
-    });
-
-    lastUser = msg.user || null;
-    const btnUser = document.getElementById('btn-focus-user');
-    if (msg.user) {
-      btnUser.style.display = 'inline-block';
-      if (!userMarker) {
-        userAccCircle = L.circle([msg.user.lat, msg.user.lng], { radius: Math.min(msg.user.acc || 25, 100), color: '#2563EB', weight: 1, fillOpacity: 0.12 }).addTo(map);
-        userMarker = L.marker([msg.user.lat, msg.user.lng], {
-          icon: L.divIcon({ className: '', html: '<div class="user-dot"></div>', iconSize: [16, 16], iconAnchor: [8, 8] })
-        }).addTo(map).bindPopup('Lokasi Perangkat Anda');
-      } else {
-        userMarker.setLatLng([msg.user.lat, msg.user.lng]);
-        userAccCircle.setLatLng([msg.user.lat, msg.user.lng]);
-        userAccCircle.setRadius(Math.min(msg.user.acc || 25, 100));
-      }
-      if (msg.target) {
-        const pts = [[msg.user.lat, msg.user.lng], [msg.target.lat, msg.target.lng]];
-        if (!routeLine) {
-          routeLine = L.polyline(pts, { color: DATA.accent, weight: 2.5, dashArray: '6,6' }).addTo(map);
-        } else {
-          routeLine.setLatLngs(pts);
-        }
-      }
-    } else {
-      btnUser.style.display = 'none';
-      if (userMarker) { map.removeLayer(userMarker); userMarker = null; }
-      if (userAccCircle) { map.removeLayer(userAccCircle); userAccCircle = null; }
-      if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
-    }
+    latestSyncMsg = msg;
+    if (activeEngine === 'google' && gApplySync) gApplySync(msg);
+    else if (activeEngine === 'leaflet' && lApplySync) lApplySync(msg);
   });
+
+  if (DATA.googleMapsApiKey) {
+    const gs = document.createElement('script');
+    gs.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(DATA.googleMapsApiKey) + '&callback=__onGoogleMapsReady';
+    gs.async = true;
+    gs.defer = true;
+    gs.onerror = () => startLeafletEngine();
+    document.head.appendChild(gs);
+    setTimeout(() => { if (!activeEngine) startLeafletEngine(); }, 4500);
+  } else {
+    startLeafletEngine();
+  }
 </script>
 </body>
 </html>`;
@@ -309,7 +493,7 @@ export function LabMapView({
       <View style={styles.webNoticeBanner}>
         <View style={styles.webNoticeDot} />
         <Text style={styles.webNoticeText}>
-          Google Maps Aktif: Pilih kartu laboratorium di bawah untuk melihat lokasi dan rute pada peta.
+          Peta Interaktif Aktif: Ketuk marker laboratorium pada peta atau pilih kartu di bawah untuk melihat aktivitas & radius.
         </Text>
       </View>
 
@@ -544,7 +728,7 @@ const styles = StyleSheet.create({
   },
   labGridContent: {
     gap: 10,
-    paddingBottom: 16,
+    paddingBottom: 96,
   },
   labSpatialCard: {
     backgroundColor: '#FFFFFF',

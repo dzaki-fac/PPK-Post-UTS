@@ -276,9 +276,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    ...(Platform.OS === 'web'
+      ? {
+          borderBottomLeftRadius: 20,
+          borderBottomRightRadius: 20,
+          marginBottom: 84,
+          maxWidth: 960,
+          width: '100%' as const,
+          alignSelf: 'center' as const,
+        }
+      : {}),
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    maxHeight: Platform.OS === 'web' ? 440 : 380,
+    maxHeight: Platform.OS === 'web' ? 400 : 380,
     shadowColor: '#0F172A',
     shadowOpacity: 0.12,
     shadowRadius: 16,

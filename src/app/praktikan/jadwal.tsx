@@ -275,35 +275,35 @@ export default function PraktikanJadwalScreen() {
           <FilterChip
             label="Semua"
             active={filter === 'semua'}
-            count={sesiList.length}
+            count={scopedSesiList.length}
             onPress={() => setFilter('semua')}
           />
           {userDoc && studentClass ? (
             <FilterChip
               label={`Kelas Saya (${studentClass})`}
               active={filter === 'kelas-saya'}
-              count={sesiList.filter((s) => normalizeClassCode(s.kelas) === studentClass).length}
+              count={scopedSesiList.filter((s) => normalizeClassCode(s.kelas) === studentClass).length}
               onPress={() => setFilter('kelas-saya')}
             />
           ) : null}
           <FilterChip
             label="Dibuka"
             active={filter === 'dibuka'}
-            count={sesiList.filter((s) => s.status === 'dibuka').length}
+            count={scopedSesiList.filter((s) => s.status === 'dibuka').length}
             variant="dibuka"
             onPress={() => setFilter('dibuka')}
           />
           <FilterChip
             label="Belum Dibuka"
             active={filter === 'belum-dibuka'}
-            count={sesiList.filter((s) => s.status === 'belum-dibuka').length}
+            count={scopedSesiList.filter((s) => s.status === 'belum-dibuka').length}
             variant="belum-dibuka"
             onPress={() => setFilter('belum-dibuka')}
           />
           <FilterChip
             label="Ditutup"
             active={filter === 'ditutup'}
-            count={sesiList.filter((s) => s.status === 'ditutup').length}
+            count={scopedSesiList.filter((s) => s.status === 'ditutup').length}
             variant="ditutup"
             onPress={() => setFilter('ditutup')}
           />

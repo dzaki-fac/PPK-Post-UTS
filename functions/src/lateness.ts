@@ -228,10 +228,14 @@ export async function evaluateAttendanceLateness(
     evaluatedBy: 'server' as const,
   };
 
+  const courseId = String(sessionData.courseId ?? labData.courseId ?? 'ppk-2026');
+
   if (!isLate) {
     await attRef.update({
       attendanceStatus: 'hadir',
       lateness: latenessPayload,
+      ...(labId ? { labId } : {}),
+      ...(courseId ? { courseId } : {}),
     });
     return {
       attendanceId,
@@ -251,7 +255,6 @@ export async function evaluateAttendanceLateness(
   const studentName = String(attData.studentName ?? 'Praktikan');
   const studentNim =
     typeof attData.studentNim === 'string' ? attData.studentNim : undefined;
-  const courseId = String(sessionData.courseId ?? labData.courseId ?? 'ppk-2026');
   const praktikum = String(sessionData.praktikum ?? 'Praktikum PPK');
   const sessionDate = toWibDateDashed(startAtMs);
 
@@ -295,6 +298,8 @@ export async function evaluateAttendanceLateness(
     attendanceStatus: 'terlambat',
     lateness: latenessPayload,
     fineId: attendanceId,
+    ...(labId ? { labId } : {}),
+    ...(courseId ? { courseId } : {}),
   });
 
   if (fineCreated && studentId) {

@@ -15,10 +15,12 @@ import {
 } from 'react-native';
 
 import { ConfirmationModal } from '@/components/confirmation-modal';
+import { DeviceStatusBanner } from '@/components/device-status-banner';
 import { EmptyState } from '@/components/empty-state';
 import { LocationStatusCard } from '@/components/location-status-card';
 import { StatusBadge } from '@/components/status-badge';
 import { useAuth } from '@/context/auth-context';
+import { useDeviceResilience } from '@/hooks/use-device-resilience';
 import {
   normalizeClassCode,
   submitAttendance,
@@ -59,6 +61,7 @@ export default function PraktikanPresensiScreen() {
     : params.sessionId;
 
   const { user, userDoc } = useAuth();
+  const device = useDeviceResilience({ checkLocation: false });
   const studentUid = userDoc?.uid || user?.uid;
   const studentClass = normalizeClassCode(userDoc?.kelas);
 
@@ -356,6 +359,7 @@ export default function PraktikanPresensiScreen() {
   const isSubmitDisabled =
     submitting ||
     checkingLocation ||
+    !device.isOnline ||
     !userDoc ||
     !agreementChecked ||
     isClassMismatch ||
@@ -367,6 +371,13 @@ export default function PraktikanPresensiScreen() {
 
   const handleConfirmPresensi = async () => {
     if (!userDoc || !activeSession) return;
+    if (!device.isOnline) {
+      setConfirmVisible(false);
+      setErrorMessage(
+        'Koneksi internet terputus. Presensi membutuhkan koneksi internet agar dapat tercatat di server.'
+      );
+      return;
+    }
     setSubmitting(true);
     try {
       const response = await submitAttendance({
@@ -403,6 +414,7 @@ export default function PraktikanPresensiScreen() {
   };
 
   const submitButtonLabel = (() => {
+    if (!device.isOnline) return 'Koneksi Terputus - Cek Jaringan';
     if (isClassMismatch) return 'Beda Kelas - Tidak Dapat Presensi';
     if (checkingLocation) return 'Memeriksa Lokasi GPS...';
     if (!isLocationValid) {
@@ -442,6 +454,10 @@ export default function PraktikanPresensiScreen() {
               Kehadiran hanya dicatat jika perangkat Anda berada di dalam radius laboratorium dan sesi sedang dibuka
             </Text>
           </View>
+
+          {!device.isOnline ? (
+            <DeviceStatusBanner type="offline" onRetry={device.refresh} />
+          ) : null}
 
           {/* Session Picker (ketika tersedia lebih dari 1 sesi) */}
           {orderedSessions.length > 1 ? (

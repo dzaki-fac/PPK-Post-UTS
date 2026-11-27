@@ -488,6 +488,18 @@ export async function reviewLeaveRequest(
     const attendanceId = `${targetDoc.sessionId}_${targetDoc.studentId}`;
     const attendanceRef = doc(db, 'attendances', attendanceId);
     const normalizedClass = targetDoc.studentClass.includes('B') ? 'B' : 'A';
+    let sessionLabId: string | undefined;
+    let sessionCourseId: string | undefined;
+    try {
+      const sessionSnap = await getDoc(doc(db, 'sessions', targetDoc.sessionId));
+      if (sessionSnap.exists()) {
+        const sData = sessionSnap.data() as Record<string, unknown>;
+        if (typeof sData.labId === 'string' && sData.labId) sessionLabId = sData.labId;
+        if (typeof sData.courseId === 'string' && sData.courseId) sessionCourseId = sData.courseId;
+      }
+    } catch {
+      // Abaikan bila offline
+    }
 
     await runTransaction(db, async (tx) => {
       const attSnap = await tx.get(attendanceRef);
@@ -505,6 +517,8 @@ export async function reviewLeaveRequest(
       tx.set(attendanceRef, {
         id: attendanceId,
         sessionId: targetDoc.sessionId,
+        ...(sessionLabId ? { labId: sessionLabId } : {}),
+        ...(sessionCourseId ? { courseId: sessionCourseId } : {}),
         studentId: targetDoc.studentId,
         studentName: targetDoc.studentName || 'Praktikan',
         studentNim: targetDoc.studentNim || '-',

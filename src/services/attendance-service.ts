@@ -125,6 +125,8 @@ function mapAttendanceSnapshot(id: string, raw: Record<string, unknown>): Attend
   return {
     id,
     sessionId: String(raw.sessionId ?? ''),
+    ...(raw.labId ? { labId: String(raw.labId) } : {}),
+    ...(raw.courseId ? { courseId: String(raw.courseId) } : {}),
     studentId: String(raw.studentId ?? ''),
     studentName: String(raw.studentName ?? 'Praktikan'),
     studentNim: String(raw.studentNim ?? '-'),
@@ -664,9 +666,13 @@ export async function submitAttendance({
     checkedAt: verifiedLoc.checkedAt,
   };
 
+  const resolvedCourseId = activeSession.courseId || resolvedLab.courseId;
+
   const payload: AttendanceDocument = {
     id: attendanceId,
     sessionId: activeSession.id,
+    labId: resolvedLab.id,
+    ...(resolvedCourseId ? { courseId: resolvedCourseId } : {}),
     studentId: student.uid,
     studentName: student.nama,
     studentNim: student.nim ?? '-',

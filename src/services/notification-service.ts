@@ -256,7 +256,7 @@ interface PushTarget {
   expoPushToken?: string;
 }
 
-async function getPraktikanTargets(kelas?: string): Promise<PushTarget[]> {
+async function getPraktikanTargets(kelas?: string, labId?: string): Promise<PushTarget[]> {
   try {
     const snap = await getDocs(
       query(collection(db, USERS_COLLECTION), where('peran', '==', 'praktikan'))
@@ -267,6 +267,15 @@ async function getPraktikanTargets(kelas?: string): Promise<PushTarget[]> {
     const normalizeClass = (value?: string) =>
       value ? value.replace(/[^A-Za-z]/g, '').slice(-1).toUpperCase() : '';
     const wantedClass = normalizeClass(kelas);
+    const cleanLabId = labId?.trim();
+
+    if (cleanLabId) {
+      return users.filter((user) => {
+        if (user.labId) return user.labId === cleanLabId;
+        return wantedClass ? normalizeClass(user.kelas) === wantedClass : true;
+      });
+    }
+
     return wantedClass
       ? users.filter((user) => normalizeClass(user.kelas) === wantedClass)
       : users;
@@ -331,10 +340,10 @@ async function dispatchAsync(input: {
   }
 }
 
-/** Peristiwa 1 — sesi praktikum dibuka. Target: praktikan pada kelas terkait. */
+/** Peristiwa 1 — sesi praktikum dibuka. Target: praktikan pada lab/kelas terkait. */
 export async function notifySessionOpened(session: SessionDocument): Promise<void> {
   await dispatchAsync({
-    targets: await getPraktikanTargets(session.kelas),
+    targets: await getPraktikanTargets(session.kelas, session.labId),
     targetRole: 'praktikan',
     eventType: 'session_opened',
     title: 'Sesi Praktikum Dibuka',
@@ -348,13 +357,13 @@ export async function notifySessionOpened(session: SessionDocument): Promise<voi
   });
 }
 
-/** Peristiwa 2 — jadwal sesi diubah. Target: praktikan pada kelas terkait. */
+/** Peristiwa 2 — jadwal sesi diubah. Target: praktikan pada lab/kelas terkait. */
 export async function notifyScheduleChanged(
   session: SessionDocument,
   summary: string
 ): Promise<void> {
   await dispatchAsync({
-    targets: await getPraktikanTargets(session.kelas),
+    targets: await getPraktikanTargets(session.kelas, session.labId),
     targetRole: 'praktikan',
     eventType: 'schedule_updated',
     title: 'Jadwal Praktikum Diubah',
@@ -538,7 +547,8 @@ export async function cancelSessionStartRemindersAsync(): Promise<void> {
  */
 export async function syncSessionStartRemindersAsync(
   sessions: SessionDocument[],
-  studentClass?: 'A' | 'B'
+  studentClass?: 'A' | 'B',
+  studentLabId?: string
 ): Promise<void> {
   if (Platform.OS === 'web') return;
 
@@ -551,12 +561,17 @@ export async function syncSessionStartRemindersAsync(
 
     const nowMs = Date.now();
     const normalizedStudentClass = studentClass?.trim().toUpperCase();
+    const cleanStudentLabId = studentLabId?.trim();
 
     const upcomingSessions = sessions.filter((session) => {
       if (session.status === 'ditutup') return false;
-      const sessionClass = session.kelas.replace(/[^A-Za-z]/g, '').slice(-1).toUpperCase();
-      if (normalizedStudentClass && sessionClass && sessionClass !== normalizedStudentClass) {
-        return false;
+      if (cleanStudentLabId && session.labId) {
+        if (session.labId !== cleanStudentLabId) return false;
+      } else {
+        const sessionClass = session.kelas.replace(/[^A-Za-z]/g, '').slice(-1).toUpperCase();
+        if (normalizedStudentClass && sessionClass && sessionClass !== normalizedStudentClass) {
+          return false;
+        }
       }
       const startDate = parseSessionStartDate(session.tanggal, session.waktuMulai);
       return startDate !== null && startDate.getTime() > nowMs;

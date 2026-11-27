@@ -9,12 +9,15 @@ import {
   View,
 } from 'react-native';
 
+import { DeviceStatusBanner } from '@/components/device-status-banner';
 import { LabActivitySheet } from '@/components/lab-activity-sheet';
 import { LabMapView, UserLocationState } from '@/components/lab-map-view';
+import { useDeviceResilience } from '@/hooks/use-device-resilience';
 import { subscribeLabActivities } from '@/services/lab-activity-service';
 import { LabWithActivity } from '@/types/praktikum';
 
 export default function AsistenPetaLabScreen() {
+  const device = useDeviceResilience({ checkLocation: false });
   const [activities, setActivities] = useState<LabWithActivity[]>([]);
   const [selectedLabId, setSelectedLabId] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -130,6 +133,11 @@ export default function AsistenPetaLabScreen() {
 
         {/* Map Area */}
         <View style={styles.mapArea}>
+          {!device.isOnline ? (
+            <View style={{ paddingHorizontal: Platform.OS === 'web' ? 20 : 14, paddingTop: 10 }}>
+              <DeviceStatusBanner type="offline" onRetry={device.refresh} />
+            </View>
+          ) : null}
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#0D9488" />

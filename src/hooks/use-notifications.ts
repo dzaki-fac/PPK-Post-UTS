@@ -82,13 +82,13 @@ export function useNotifications() {
     }
 
     const unsubscribeSessions = subscribeSessions((sessions) => {
-      void syncSessionStartRemindersAsync(sessions, userDoc?.kelas);
+      void syncSessionStartRemindersAsync(sessions, userDoc?.kelas, userDoc?.labId);
     });
 
     return () => {
       unsubscribeSessions();
     };
-  }, [user?.uid, isPraktikan, userDoc?.kelas]);
+  }, [user?.uid, isPraktikan, userDoc?.kelas, userDoc?.labId]);
 
   // Munculkan pop-up heads-up banner di HP seperti WhatsApp secara instan saat ada notifikasi baru
   useEffect(() => {

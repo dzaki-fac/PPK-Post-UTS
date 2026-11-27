@@ -69,6 +69,8 @@ export async function recordManualAttendance(
   const firestoreDoc: Record<string, unknown> = {
     id: attendanceId,
     sessionId: input.session.id,
+    ...(input.session.labId ? { labId: input.session.labId } : {}),
+    ...(input.session.courseId ? { courseId: input.session.courseId } : {}),
     studentId: input.studentId,
     studentName: input.studentName,
     studentNim: input.studentNim,
@@ -93,6 +95,8 @@ export async function recordManualAttendance(
   return {
     id: attendanceId,
     sessionId: input.session.id,
+    ...(input.session.labId ? { labId: input.session.labId } : {}),
+    ...(input.session.courseId ? { courseId: input.session.courseId } : {}),
     studentId: input.studentId,
     studentName: input.studentName,
     studentNim: input.studentNim,

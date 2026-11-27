@@ -265,6 +265,8 @@ export interface AttendanceDocument {
     | 'leave-approved';
   locationSnapshot?: AttendanceLocationSnapshot;
   // Perluasan Sprint 4 (Bab 3.7)
+  labId?: string;
+  courseId?: string;
   attendanceStatus?: AttendanceStatus;
   checkedInAt?: unknown;
   lateness?: AttendanceLatenessInfo;

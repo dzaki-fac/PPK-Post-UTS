@@ -282,7 +282,8 @@ npx eas-cli build -p android --profile preview
 > **Registrasi SHA-1 Fingerprint untuk Google Sign-In:**  
 > Pastikan SHA-1 keystore EAS proyek `gregoriusseptiano` terdaftar di **Firebase Console** -> **Project Settings** -> **Your Apps (Android `Praktikum.PPK_LabPortal`)** agar fitur Native Google Sign-In berjalan di APK Android tanpa error `DEVELOPER_ERROR`:
 > - Keystore EAS `sanftts-team` (sebelumnya): `65:EB:20:28:17:68:EC:C5:AA:82:D5:34:56:71:22:8E:08:68:32:49`
-> - Keystore EAS `gregoriusseptiano`: `58:3A:22:E2:5F:01:A3:82:E1:87:F2:8F:FB:F4:62:24:91:0F:7D:B2`
+> - Keystore EAS `gregoriusseptiano` (rilis APK aktual): `48:EE:A2:2D:40:10:33:58:39:93:C1:43:5E:13:D8:82:D7:4A:3F:16`
+> - Keystore EAS tambahan: `58:3A:22:E2:5F:01:A3:82:E1:87:F2:8F:FB:F4:62:24:91:0F:7D:B2`
 
 ---
 

@@ -52,14 +52,16 @@ export default function JadwalAsprakScreen() {
               setSesiList(items);
               setLoadingSessions(false);
             },
-            () => setLoadingSessions(false)
+            () => setLoadingSessions(false),
+            { autoCloseExpired: true }
           )
         : subscribeSessions(
             (items) => {
               setSesiList(items);
               setLoadingSessions(false);
             },
-            () => setLoadingSessions(false)
+            () => setLoadingSessions(false),
+            { autoCloseExpired: true }
           );
 
     const unsubLabs = subscribeLabs(

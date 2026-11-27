@@ -21,6 +21,7 @@ import { notifyScheduleChanged, notifySessionOpened } from './notification-servi
 
 const SESSIONS_COLLECTION = 'sessions';
 const ATTENDANCES_COLLECTION = 'attendances';
+const attemptedAutoCloseIds = new Set<string>();
 
 export interface CreateSessionInput {
   praktikum: string;
@@ -167,16 +168,21 @@ export function subscribeSessions(
   options?: { autoCloseExpired?: boolean }
 ): Unsubscribe {
   const sessionsRef = collection(db, SESSIONS_COLLECTION);
-  const allowAutoClose = options?.autoCloseExpired !== false;
+  const allowAutoClose = options?.autoCloseExpired === true;
 
   return onSnapshot(
     sessionsRef,
     (snapshot) => {
       const items = snapshot.docs.map((d) => {
         const item = mapSessionSnapshot(d.id, d.data() as Record<string, unknown>);
-        if (allowAutoClose && item.status === 'dibuka' && isSessionExpired(item)) {
+        if (
+          allowAutoClose &&
+          item.status === 'dibuka' &&
+          isSessionExpired(item) &&
+          !attemptedAutoCloseIds.has(item.id)
+        ) {
+          attemptedAutoCloseIds.add(item.id);
           updateSessionStatus(item.id, 'ditutup').catch(() => {});
-          item.status = 'ditutup';
         }
         return item;
       });
@@ -195,7 +201,8 @@ export function subscribeSessions(
 export function subscribeSessionsByLabIds(
   labIds: string[],
   onData: (sessions: SessionDocument[]) => void,
-  onError?: (error: Error) => void
+  onError?: (error: Error) => void,
+  options?: { autoCloseExpired?: boolean }
 ): Unsubscribe {
   const cleanIds = Array.from(new Set(labIds.map((id) => id.trim()).filter(Boolean)));
   if (cleanIds.length === 0) {
@@ -203,6 +210,7 @@ export function subscribeSessionsByLabIds(
     return () => {};
   }
 
+  const allowAutoClose = options?.autoCloseExpired === true;
   const chunks: string[][] = [];
   for (let i = 0; i < cleanIds.length; i += 30) {
     chunks.push(cleanIds.slice(i, i + 30));
@@ -229,9 +237,14 @@ export function subscribeSessionsByLabIds(
       (snapshot) => {
         const items = snapshot.docs.map((d) => {
           const item = mapSessionSnapshot(d.id, d.data() as Record<string, unknown>);
-          if (item.status === 'dibuka' && isSessionExpired(item)) {
+          if (
+            allowAutoClose &&
+            item.status === 'dibuka' &&
+            isSessionExpired(item) &&
+            !attemptedAutoCloseIds.has(item.id)
+          ) {
+            attemptedAutoCloseIds.add(item.id);
             updateSessionStatus(item.id, 'ditutup').catch(() => {});
-            item.status = 'ditutup';
           }
           return item;
         });
@@ -260,7 +273,7 @@ export function subscribeSessionById(
   options?: { autoCloseExpired?: boolean }
 ): Unsubscribe {
   const sessionRef = doc(db, SESSIONS_COLLECTION, sessionId);
-  const allowAutoClose = options?.autoCloseExpired !== false;
+  const allowAutoClose = options?.autoCloseExpired === true;
 
   return onSnapshot(
     sessionRef,
@@ -270,9 +283,14 @@ export function subscribeSessionById(
         return;
       }
       const item = mapSessionSnapshot(snapshot.id, snapshot.data() as Record<string, unknown>);
-      if (allowAutoClose && item.status === 'dibuka' && isSessionExpired(item)) {
+      if (
+        allowAutoClose &&
+        item.status === 'dibuka' &&
+        isSessionExpired(item) &&
+        !attemptedAutoCloseIds.has(item.id)
+      ) {
+        attemptedAutoCloseIds.add(item.id);
         updateSessionStatus(item.id, 'ditutup').catch(() => {});
-        item.status = 'ditutup';
       }
       onData(item);
     },

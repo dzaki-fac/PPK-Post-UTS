@@ -452,7 +452,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       if (error?.code === '10' || error?.message?.includes('DEVELOPER_ERROR')) {
         throw new Error(
-          'Konfigurasi SHA-1 belum terdaftar di Firebase Console (SHA-1: 58:3A:22:E2:5F:01:A3:82:E1:87:F2:8F:FB:F4:62:24:91:0F:7D:B2).'
+          'Konfigurasi Google Sign-In APK belum cocok dengan Firebase Console (pastikan SHA-1 keystore rilis terdaftar di Firebase Console).'
         );
       }
       throw new Error(mapFirebaseAuthError(error));

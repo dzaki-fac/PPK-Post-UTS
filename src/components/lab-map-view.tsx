@@ -1,5 +1,5 @@
 import * as Location from 'expo-location';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Linking,
@@ -9,19 +9,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import MapView, {
-  Circle,
-  Marker,
-  Polygon,
-  Polyline,
-  PROVIDER_DEFAULT,
-  PROVIDER_GOOGLE,
-  type LatLng,
-} from 'react-native-maps';
+import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 
 import { UNDIP_INFORMATIKA_COORDINATES } from '@/services/lab-activity-service';
 import { getRouteCoordinates, type RouteCoordinate } from '@/services/route-service';
 import { LabWithActivity } from '@/types/praktikum';
+import { buildLeafletMapHtml } from '@/utils/leaflet-map-html';
 
 export interface UserLocationState {
   latitude: number;
@@ -38,11 +31,11 @@ interface LabMapViewProps {
 }
 
 /** Zona poligon kawasan Gedung Teknik Informatika (Gedung E) FSM UNDIP */
-const INFORMATIKA_ZONE_POLYGON: LatLng[] = [
-  { latitude: -7.04780, longitude: 110.44060 },
-  { latitude: -7.04780, longitude: 110.44125 },
+const INFORMATIKA_ZONE_POLYGON = [
+  { latitude: -7.0478, longitude: 110.4406 },
+  { latitude: -7.0478, longitude: 110.44125 },
   { latitude: -7.04835, longitude: 110.44125 },
-  { latitude: -7.04835, longitude: 110.44060 },
+  { latitude: -7.04835, longitude: 110.4406 },
 ];
 
 export function LabMapView({
@@ -52,11 +45,10 @@ export function LabMapView({
   accentColor = '#0D9488',
   onUserLocationChange,
 }: LabMapViewProps) {
-  const mapRef = useRef<MapView>(null);
+  const webViewRef = useRef<WebView>(null);
   const [mapReady, setMapReady] = useState(false);
   const [userLocation, setUserLocation] = useState<UserLocationState | null>(null);
   const [routeCoords, setRouteCoords] = useState<RouteCoordinate[]>([]);
-  const [isFallbackDirectLine, setIsFallbackDirectLine] = useState(false);
   const [permissionStatus, setPermissionStatus] = useState<
     'loading' | 'granted' | 'denied' | 'disabled'
   >('loading');
@@ -64,22 +56,6 @@ export function LabMapView({
   const [isSimulatingRoute, setIsSimulatingRoute] = useState(false);
   const [simPoint, setSimPoint] = useState<RouteCoordinate | null>(null);
   const simTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const mapProvider = Platform.OS === 'android' ? PROVIDER_GOOGLE : PROVIDER_DEFAULT;
-
-  const zoneFillColor =
-    accentColor === '#EA580C'
-      ? 'rgba(234, 88, 12, 0.08)'
-      : accentColor === '#4F46E5'
-      ? 'rgba(79, 70, 229, 0.08)'
-      : 'rgba(13, 148, 136, 0.08)';
-
-  const radiusFillColor =
-    accentColor === '#EA580C'
-      ? 'rgba(234, 88, 12, 0.14)'
-      : accentColor === '#4F46E5'
-      ? 'rgba(79, 70, 229, 0.14)'
-      : 'rgba(13, 148, 136, 0.14)';
 
   // Subscribe live position watching selama halaman peta aktif
   useEffect(() => {
@@ -188,12 +164,10 @@ export function LabMapView({
       .then((result) => {
         if (!active) return;
         setRouteCoords(result.coordinates);
-        setIsFallbackDirectLine(result.isFallbackDirectLine);
       })
       .catch(() => {
         if (!active) return;
         setRouteCoords([]);
-        setIsFallbackDirectLine(false);
       });
 
     return () => {
@@ -205,20 +179,6 @@ export function LabMapView({
     () => (userLocation && selectedActivity ? routeCoords : []),
     [userLocation, selectedActivity, routeCoords]
   );
-
-  // Pusatkan kamera ke laboratorium saat dipilih
-  useEffect(() => {
-    if (!mapReady || !selectedActivity || !mapRef.current) return;
-    mapRef.current.animateToRegion(
-      {
-        latitude: selectedActivity.lab.latitude,
-        longitude: selectedActivity.lab.longitude,
-        latitudeDelta: 0.0022,
-        longitudeDelta: 0.0022,
-      },
-      450
-    );
-  }, [mapReady, selectedActivity]);
 
   // Bersihkan timer simulasi rute saat unmount
   useEffect(() => {
@@ -260,24 +220,102 @@ export function LabMapView({
     }, 500);
   };
 
-  const centerToUser = () => {
-    if (!userLocation || !mapRef.current) return;
-    setIsLocating(true);
-    mapRef.current.animateToRegion(
-      {
-        latitude: userLocation.latitude,
-        longitude: userLocation.longitude,
-        latitudeDelta: 0.0022,
-        longitudeDelta: 0.0022,
+  const mapHtml = useMemo(() => {
+    const labsPayload = activities.map((item) => {
+      const status = item.ongoingSession
+        ? ('ongoing' as const)
+        : item.nextSession
+        ? ('upcoming' as const)
+        : ('idle' as const);
+      const statusLabel = item.ongoingSession
+        ? `Sedang Berlangsung: ${item.ongoingSession.praktikum}`
+        : item.nextSession
+        ? `Berikutnya: ${item.nextSession.praktikum}`
+        : 'Tidak ada sesi aktif';
+      return {
+        id: item.lab.id,
+        kode: item.lab.kode || item.lab.nama,
+        nama: item.lab.nama,
+        gedung: item.lab.gedung,
+        lat: item.lab.latitude,
+        lng: item.lab.longitude,
+        radius: item.lab.radiusMeter || 50,
+        status,
+        statusLabel,
+      };
+    });
+
+    return buildLeafletMapHtml({
+      labs: labsPayload,
+      defaultCenter: {
+        lat: UNDIP_INFORMATIKA_COORDINATES.latitude,
+        lng: UNDIP_INFORMATIKA_COORDINATES.longitude,
       },
-      450
+      accentColor,
+      zonePolygon: INFORMATIKA_ZONE_POLYGON,
+    });
+  }, [activities, accentColor]);
+
+  const syncWebViewState = useCallback(() => {
+    if (!mapReady || !webViewRef.current) return;
+    const target = selectedActivity
+      ? { lat: selectedActivity.lab.latitude, lng: selectedActivity.lab.longitude }
+      : null;
+    const payload = {
+      selectedLabId: selectedActivity?.lab.id ?? null,
+      target,
+      user: userLocation
+        ? {
+            lat: userLocation.latitude,
+            lng: userLocation.longitude,
+            acc: userLocation.accuracy ?? 25,
+          }
+        : null,
+      routeCoords: activeRouteCoords,
+      simPoint,
+    };
+    const serialized = JSON.stringify(payload).replace(/</g, '\\u003c');
+    webViewRef.current.injectJavaScript(
+      `window.__syncLabMapState && window.__syncLabMapState(${serialized}); true;`
     );
-    setTimeout(() => setIsLocating(false), 500);
+  }, [mapReady, selectedActivity, userLocation, activeRouteCoords, simPoint]);
+
+  useEffect(() => {
+    syncWebViewState();
+  }, [syncWebViewState]);
+
+  const handleWebViewMessage = useCallback(
+    (event: WebViewMessageEvent) => {
+      try {
+        const parsed = JSON.parse(event.nativeEvent.data) as {
+          type?: string;
+          labId?: string;
+        };
+        if (parsed.type === 'SELECT_LAB' && parsed.labId) {
+          const found = activities.find((a) => a.lab.id === parsed.labId);
+          if (found) onSelectLab(found);
+        }
+      } catch {
+        // Abaikan pesan non-JSON
+      }
+    },
+    [activities, onSelectLab]
+  );
+
+  const centerToUser = () => {
+    if (!userLocation || !webViewRef.current) return;
+    setIsLocating(true);
+    webViewRef.current.injectJavaScript(
+      `window.__focusUser && window.__focusUser(); true;`
+    );
+    setTimeout(() => setIsLocating(false), 450);
   };
 
   const centerToCampus = () => {
-    if (!mapRef.current) return;
-    mapRef.current.animateToRegion(UNDIP_INFORMATIKA_COORDINATES, 450);
+    if (!webViewRef.current) return;
+    webViewRef.current.injectJavaScript(
+      `window.__focusLabs && window.__focusLabs(); true;`
+    );
   };
 
   return (
@@ -310,95 +348,19 @@ export function LabMapView({
         </View>
       )}
 
-      <MapView
-        ref={mapRef}
-        provider={mapProvider}
+      <WebView
+        ref={webViewRef}
+        originWhitelist={['*']}
+        source={{ html: mapHtml }}
         style={styles.map}
-        initialRegion={UNDIP_INFORMATIKA_COORDINATES}
-        onMapReady={() => setMapReady(true)}
-        showsUserLocation={permissionStatus === 'granted'}
-        showsCompass
-        showsScale
-        toolbarEnabled={false}
-        showsMyLocationButton={false}>
-        {/* Zona Poligon Kawasan Departemen Informatika FSM UNDIP */}
-        <Polygon
-          coordinates={INFORMATIKA_ZONE_POLYGON}
-          strokeColor={accentColor}
-          strokeWidth={1.5}
-          fillColor={zoneFillColor}
-        />
-
-        {/* Lingkaran Radius Laboratorium Terpilih */}
-        {selectedActivity ? (
-          <Circle
-            key={`lab-circle-${selectedActivity.lab.id}-${selectedActivity.lab.radiusMeter || 50}`}
-            center={{
-              latitude: selectedActivity.lab.latitude,
-              longitude: selectedActivity.lab.longitude,
-            }}
-            radius={selectedActivity.lab.radiusMeter || 50}
-            strokeColor={accentColor}
-            strokeWidth={2}
-            fillColor={radiusFillColor}
-            zIndex={2}
-          />
-        ) : null}
-
-        {/* Rute Jalan Kaki Menuju Lab Terpilih */}
-        {activeRouteCoords.length >= 2 ? (
-          <Polyline
-            coordinates={activeRouteCoords}
-            strokeColor={accentColor}
-            strokeWidth={4}
-            geodesic
-            lineDashPattern={isFallbackDirectLine ? [8, 6] : undefined}
-          />
-        ) : null}
-
-        {/* Marker Laboratorium Aktif */}
-        {activities.map((item) => {
-          const isSelected = item.lab.id === selectedLabId;
-          const hasOngoing = Boolean(item.ongoingSession);
-          const badgeBg = isSelected
-            ? accentColor
-            : hasOngoing
-            ? '#16A34A'
-            : '#475569';
-
-          return (
-            <Marker
-              key={`${item.lab.id}-${isSelected ? 'sel' : 'idle'}-${hasOngoing ? 'on' : 'off'}`}
-              coordinate={{
-                latitude: item.lab.latitude,
-                longitude: item.lab.longitude,
-              }}
-              onPress={() => onSelectLab(item)}
-              anchor={{ x: 0.5, y: 1 }}
-              tracksViewChanges={false}>
-              <View style={styles.labPinWrap}>
-                <View
-                  style={[
-                    styles.labPinBadge,
-                    { backgroundColor: badgeBg },
-                    isSelected && styles.labPinSelected,
-                  ]}>
-                  {hasOngoing ? <View style={styles.labOngoingDot} /> : null}
-                  <Text style={styles.labPinText}>{item.lab.kode}</Text>
-                </View>
-                <View style={[styles.labPinTip, { borderTopColor: badgeBg }]} />
-              </View>
-            </Marker>
-          );
-        })}
-
-        {/* Marker Simulasi Pergerakan Rute */}
-        {simPoint ? (
-          <Marker coordinate={simPoint} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
-            <View style={[styles.simMarker, { borderColor: accentColor }]} />
-          </Marker>
-        ) : null}
-      </MapView>
+        javaScriptEnabled
+        domStorageEnabled
+        onLoadEnd={() => {
+          setMapReady(true);
+          syncWebViewState();
+        }}
+        onMessage={handleWebViewMessage}
+      />
 
       {/* Floating Control Buttons */}
       <View style={styles.floatingControls}>
@@ -452,60 +414,6 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
     backgroundColor: '#E2E8F0',
-  },
-  labPinWrap: {
-    alignItems: 'center',
-  },
-  labPinBadge: {
-    position: 'relative',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
-  },
-  labPinSelected: {
-    borderWidth: 2,
-    transform: [{ scale: 1.08 }],
-  },
-  labPinText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.3,
-  },
-  labPinTip: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 5,
-    borderRightWidth: 5,
-    borderTopWidth: 6,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    marginTop: -1,
-  },
-  labOngoingDot: {
-    position: 'absolute',
-    top: -3,
-    right: -3,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#22C55E',
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-  },
-  simMarker: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 3,
   },
   resilienceBanner: {
     position: 'absolute',

@@ -55,8 +55,8 @@ export default function AslabLaboratoriumScreen() {
   const [gedung, setGedung] = useState('');
   const [kapasitasText, setKapasitasText] = useState('');
   const [kelasText, setKelasText] = useState('');
-  const [latText, setLatText] = useState('-7.049120');
-  const [lngText, setLngText] = useState('110.440820');
+  const [latText, setLatText] = useState('-7.048036');
+  const [lngText, setLngText] = useState('110.440912');
   const [radiusText, setRadiusText] = useState(String(DEFAULT_RADIUS_METER));
   const [graceText, setGraceText] = useState(String(DEFAULT_GRACE_MINUTES));
   const [fineText, setFineText] = useState(String(DEFAULT_FINE_AMOUNT));

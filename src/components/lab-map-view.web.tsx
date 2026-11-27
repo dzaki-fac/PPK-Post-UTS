@@ -77,8 +77,8 @@ export function LabMapView({
   }, [onUserLocationChange]);
 
   const selectedActivity = activities.find((a) => a.lab.id === selectedLabId) ?? activities[0] ?? null;
-  const mapTargetLat = selectedActivity?.lab.latitude ?? -7.04912;
-  const mapTargetLng = selectedActivity?.lab.longitude ?? 110.44089;
+  const mapTargetLat = selectedActivity?.lab.latitude ?? -7.048036;
+  const mapTargetLng = selectedActivity?.lab.longitude ?? 110.440912;
   const iframeRef = React.useRef<HTMLIFrameElement | null>(null);
 
   // Terima klik marker dari Leaflet iframe untuk memilih laboratorium
@@ -147,9 +147,12 @@ export function LabMapView({
 
     const payloadJson = JSON.stringify({
       labs: labsPayload,
-      defaultCenter: { lat: -7.0486, lng: 110.4409 },
+      defaultCenter: { lat: -7.048036, lng: 110.440912 },
       accent: accentColor,
-      googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? '',
+      googleMapsApiKey:
+        process.env.EXPO_PUBLIC_WEB_USE_GOOGLE_MAPS === 'true'
+          ? process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? ''
+          : '',
     }).replace(/<\/script>/gi, '<\\/script>');
 
     return `<!DOCTYPE html>
@@ -212,10 +215,16 @@ export function LabMapView({
     const mapEl = document.getElementById('map');
     mapEl.innerHTML = '';
     lMap = L.map('map', { zoomControl: true }).setView([firstLab.lat, firstLab.lng], 18);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 20,
       attribution: '&copy; OpenStreetMap'
-    }).addTo(lMap);
+    });
+    const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 20,
+      attribution: '&copy; Esri Satellite'
+    });
+    streetLayer.addTo(lMap);
+    L.control.layers({ 'Peta Jalan': streetLayer, 'Satelit': satLayer }, {}, { position: 'topleft' }).addTo(lMap);
 
     const labBounds = [];
     const markersById = {};

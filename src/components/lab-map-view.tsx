@@ -37,12 +37,12 @@ interface LabMapViewProps {
   onUserLocationChange?: (location: UserLocationState | null) => void;
 }
 
-/** Zona poligon kawasan Gedung E & F Departemen Informatika FSM UNDIP */
+/** Zona poligon kawasan Gedung Teknik Informatika (Gedung E) FSM UNDIP */
 const INFORMATIKA_ZONE_POLYGON: LatLng[] = [
-  { latitude: -7.0489, longitude: 110.44 },
-  { latitude: -7.0489, longitude: 110.4414 },
-  { latitude: -7.0503, longitude: 110.4414 },
-  { latitude: -7.0503, longitude: 110.44 },
+  { latitude: -7.04780, longitude: 110.44060 },
+  { latitude: -7.04780, longitude: 110.44125 },
+  { latitude: -7.04835, longitude: 110.44125 },
+  { latitude: -7.04835, longitude: 110.44060 },
 ];
 
 export function LabMapView({

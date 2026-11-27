@@ -227,8 +227,12 @@ export function buildHybridMapHtml(params: BuildHybridMapHtmlParams): string {
     clearGoogleWatchdogs();
     activeEngine = 'leaflet';
 
-    const mapEl = document.getElementById('map');
-    mapEl.innerHTML = '';
+    const oldMapEl = document.getElementById('map');
+    if (oldMapEl && oldMapEl.parentNode) {
+      const freshMapEl = document.createElement('div');
+      freshMapEl.id = 'map';
+      oldMapEl.parentNode.replaceChild(freshMapEl, oldMapEl);
+    }
     setBadge(fallbackMeta ? 'Beralih ke Peta Leaflet...' : 'Memuat Peta Leaflet...');
 
     ensureLeafletLoaded()
@@ -562,7 +566,7 @@ export function buildHybridMapHtml(params: BuildHybridMapHtmlParams): string {
       return { reason: 'google_dom_error', message: 'Google Maps gagal memuat peta dengan benar. Beralih otomatis ke peta Leaflet.' };
     }
     const text = mapEl.innerText || '';
-    if (/can't load google maps|maps demo key limit reached|for development purposes only|billingnotenabled|apinotactivated|referernotallowed|invalidkeymaperror|overquerylimit/i.test(text)) {
+    if (/can't load google maps|halaman ini tidak dapat memuat google maps|oops! something went wrong|ups! terjadi masalah|maps demo key|limit reached|for development purposes only|keperluan pengembangan|billingnotenabled|apinotactivated|referernotallowed|invalidkeymaperror|overquerylimit/i.test(text)) {
       return { reason: 'google_text_error', message: 'Google Maps dibatasi atau melebihi kuota. Beralih otomatis ke peta Leaflet.' };
     }
     return null;

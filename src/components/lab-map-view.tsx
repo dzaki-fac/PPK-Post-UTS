@@ -365,6 +365,11 @@ export function LabMapView({
     );
   };
 
+  const hasActiveBanner =
+    permissionStatus === 'denied' ||
+    permissionStatus === 'disabled' ||
+    Boolean(mapNotice);
+
   return (
     <View style={styles.container}>
       {/* Banner Status GPS / Fallback / Error Peta */}
@@ -451,15 +456,15 @@ export function LabMapView({
         onMessage={handleWebViewMessage}
       />
 
-      {/* Floating Control Pills (jelas, tidak bertumpuk, dan di atas watermark footer peta) */}
-      <View style={styles.floatingControls}>
+      {/* Compact Control Chips di pojok kanan atas agar tidak menimpa kontrol bawah & pin lab */}
+      <View style={[styles.floatingControls, hasActiveBanner && styles.floatingControlsWithBanner]}>
         {activeRouteCoords.length >= 2 && (
           <TouchableOpacity
             style={[styles.floatingPillBtn, isSimulatingRoute && styles.floatingBtnActive]}
             onPress={handleSimulateRoute}
             accessibilityLabel="Simulasi Pergerakan Rute">
             <Text style={[styles.floatingPillText, { color: accentColor }]}>
-              {isSimulatingRoute ? 'Hentikan Rute' : 'Simulasi Rute'}
+              {isSimulatingRoute ? 'Stop Rute' : 'Rute'}
             </Text>
           </TouchableOpacity>
         )}
@@ -566,35 +571,37 @@ const styles = StyleSheet.create({
   },
   floatingControls: {
     position: 'absolute',
-    right: 12,
-    bottom: 42,
+    right: 10,
+    top: 10,
     zIndex: 15,
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'flex-end',
-    gap: 8,
+    alignItems: 'center',
+    gap: 6,
+  },
+  floatingControlsWithBanner: {
+    top: 72,
   },
   floatingPillBtn: {
-    minHeight: 36,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
+    minHeight: 30,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.96)',
     borderWidth: 1,
     borderColor: '#CBD5E1',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#0F172A',
-    shadowOpacity: 0.14,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 5,
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 3,
   },
   floatingBtnActive: {
     backgroundColor: '#F8FAFC',
   },
   floatingPillText: {
-    fontSize: 11.5,
+    fontSize: 11,
     fontWeight: '700',
     color: '#0F172A',
   },

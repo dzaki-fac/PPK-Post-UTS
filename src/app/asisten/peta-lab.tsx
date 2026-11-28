@@ -141,7 +141,7 @@ export default function AsistenPetaLabScreen() {
                   styles.metricValue,
                   { fontSize: 13, color: userLocation ? '#0D9488' : '#64748B' },
                 ]}>
-                {userLocation ? 'Terkunci' : 'Mencari'}
+                {userLocation ? 'Aktif' : 'Mencari'}
               </Text>
               <Text style={styles.metricLabel}>GPS Live</Text>
             </View>

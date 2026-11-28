@@ -138,7 +138,7 @@ export default function AslabPetaLabScreen() {
                   styles.metricValue,
                   { fontSize: 13, color: userLocation ? Colors.aslabPrimary : '#64748B' },
                 ]}>
-                {userLocation ? 'Terkunci' : 'Mencari'}
+                {userLocation ? 'Aktif' : 'Mencari'}
               </Text>
               <Text style={styles.metricLabel}>GPS Live</Text>
             </View>

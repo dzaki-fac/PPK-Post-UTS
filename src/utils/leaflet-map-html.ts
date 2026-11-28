@@ -245,7 +245,7 @@ export function buildHybridMapHtml(params: BuildHybridMapHtmlParams): string {
           : DATA.labs;
         const firstCenter = initialLabs[0] || DATA.defaultCenter;
 
-        lMap = L.map('map', { zoomControl: true }).setView([firstCenter.lat, firstCenter.lng], 18);
+        lMap = L.map('map', { zoomControl: Boolean(DATA.showBuiltInControls) }).setView([firstCenter.lat, firstCenter.lng], 18);
 
         const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           maxZoom: 20,
@@ -619,6 +619,9 @@ export function buildHybridMapHtml(params: BuildHybridMapHtmlParams): string {
       center: { lat: firstCenter.lat, lng: firstCenter.lng },
       zoom: 18,
       mapTypeControl: true,
+      cameraControl: false,
+      zoomControl: false,
+      keyboardShortcuts: false,
       streetViewControl: false,
       fullscreenControl: false,
     });

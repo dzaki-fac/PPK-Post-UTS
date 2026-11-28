@@ -150,7 +150,7 @@ export default function PraktikanPetaLabScreen() {
                   styles.metricValue,
                   { fontSize: 13, color: userLocation ? '#16A34A' : '#64748B' },
                 ]}>
-                {userLocation ? 'Terkunci' : 'Mencari'}
+                {userLocation ? 'Aktif' : 'Mencari'}
               </Text>
               <Text style={styles.metricLabel}>GPS Live</Text>
             </View>

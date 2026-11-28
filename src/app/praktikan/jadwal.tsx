@@ -19,19 +19,29 @@ import {
   subscribeStudentAttendances,
 } from '@/services/attendance-service';
 import {
+  buildFallbackDefaultLabs,
+  subscribeLabs,
+} from '@/services/lab-service';
+import {
   LeaveRequestDocument,
   subscribeStudentLeaveRequests,
 } from '@/services/leave-service';
 import {
   subscribeSessions,
 } from '@/services/session-service';
-import { AttendanceDocument, SessionDocument, SessionStatus } from '@/types/praktikum';
+import {
+  AttendanceDocument,
+  LabLocationDocument,
+  SessionDocument,
+  SessionStatus,
+} from '@/types/praktikum';
 
 type FilterType = 'semua' | 'kelas-saya' | SessionStatus;
 
 export default function PraktikanJadwalScreen() {
   const { user, userDoc } = useAuth();
   const [sesiList, setSesiList] = useState<SessionDocument[]>([]);
+  const [labs, setLabs] = useState<LabLocationDocument[]>(() => buildFallbackDefaultLabs());
   const [myAttendances, setMyAttendances] = useState<AttendanceDocument[]>([]);
   const [myLeaves, setMyLeaves] = useState<LeaveRequestDocument[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
@@ -49,6 +59,11 @@ export default function PraktikanJadwalScreen() {
         setLoadingSessions(false);
       },
       { autoCloseExpired: false }
+    );
+
+    const unsubLabs = subscribeLabs(
+      (items) => setLabs(items.length > 0 ? items : buildFallbackDefaultLabs()),
+      () => setLabs(buildFallbackDefaultLabs())
     );
 
     let unsubAttendances: (() => void) | null = null;
@@ -69,6 +84,7 @@ export default function PraktikanJadwalScreen() {
 
     return () => {
       unsubSessions();
+      unsubLabs();
       if (unsubAttendances) {
         unsubAttendances();
       }
@@ -80,6 +96,10 @@ export default function PraktikanJadwalScreen() {
 
   const studentClass = normalizeClassCode(userDoc?.kelas);
   const studentLabId = userDoc?.labId;
+  const studentLabName = useMemo(() => {
+    if (!studentLabId) return 'Semua Lab';
+    return labs.find((l) => l.id === studentLabId)?.nama ?? studentLabId;
+  }, [labs, studentLabId]);
 
   const scopedSesiList = useMemo(() => {
     if (!studentLabId) return sesiList;
@@ -88,6 +108,22 @@ export default function PraktikanJadwalScreen() {
       return !studentClass || normalizeClassCode(s.kelas) === studentClass;
     });
   }, [sesiList, studentLabId, studentClass]);
+
+  const otherLabOpenSessions = useMemo(() => {
+    if (!studentLabId) return [];
+    return sesiList.filter((s) => s.status === 'dibuka' && s.labId && s.labId !== studentLabId);
+  }, [sesiList, studentLabId]);
+
+  const otherOpenLabNames = useMemo(() => {
+    const names = Array.from(
+      new Set(
+        otherLabOpenSessions.map(
+          (s) => labs.find((l) => l.id === s.labId)?.nama || s.ruang || s.labId || 'Lab Lain'
+        )
+      )
+    );
+    return names.join(', ');
+  }, [otherLabOpenSessions, labs]);
 
   const filteredSesiList = useMemo(() => {
     if (filter === 'semua') return scopedSesiList;
@@ -161,6 +197,12 @@ export default function PraktikanJadwalScreen() {
       <Text style={styles.headerSubtitle}>
         Pilih sesi praktikum untuk mengisi formulir presensi mandiri atau melihat detail materi
       </Text>
+      <View style={styles.scopePill}>
+        <Text style={styles.scopePillText}>
+          Lab Terdaftar: {studentLabName}
+          {studentClass ? ` • Kelas ${studentClass}` : ''}
+        </Text>
+      </View>
 
       {/* Banner Ajukan Izin */}
       <Pressable
@@ -200,6 +242,18 @@ export default function PraktikanJadwalScreen() {
           <Text style={styles.mapBannerBtnText}>Buka Peta →</Text>
         </View>
       </Pressable>
+
+      {/* Info bila di lab sendiri belum ada sesi dibuka, tetapi ada sesi dibuka di lab lain */}
+      {totalDibuka === 0 && otherLabOpenSessions.length > 0 && (
+        <View style={styles.otherLabNotice}>
+          <Text style={styles.otherLabTitle}>
+            Belum ada sesi dibuka di {studentLabName}
+          </Text>
+          <Text style={styles.otherLabSub}>
+            Saat ini terdapat {otherLabOpenSessions.length} sesi dibuka di lab lain ({otherOpenLabNames}). Untuk mencoba presensi dari akun ini, buka sesi di {studentLabName} pada akun Asprak.
+          </Text>
+        </View>
+      )}
 
       {/* Notice jika ada izin yang sedang menunggu keputusan */}
       {totalIzinMenunggu > 0 && (
@@ -454,6 +508,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
     color: '#64748B',
+  },
+  scopePill: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  scopePillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  otherLabNotice: {
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    borderRadius: 12,
+    padding: 12,
+    gap: 3,
+  },
+  otherLabTitle: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: '#9A3412',
+  },
+  otherLabSub: {
+    fontSize: 11.5,
+    lineHeight: 17,
+    color: '#C2410C',
   },
   metricsGrid: {
     flexDirection: 'row',

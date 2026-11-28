@@ -12,7 +12,7 @@ Untuk mempermudah pemahaman arsitektur dan kolaborasi pengembang, dokumentasi pr
 
 | Berkas | Fokus Utama | Tautan |
 |---|---|:---:|
-| **`DESIGN.md`** | **Single Source of Truth Desain:** Token warna resmi (Terracotta Orange `#EA580C`, Academic Teal `#0D9488`), standar responsif desktop `maxWidth: 960px`, tipografi, dan aturan mutlak *anti-slop* (tanpa emoji generik). | [Baca DESIGN.md](./DESIGN.md) |
+| **`DESIGN.md`** | **Single Source of Truth Desain:** Token warna resmi 3 peran (`#EA580C`, `#0D9488`, `#4F46E5`), navbar 2 baris responsif, ukuran seragam pill `← Kembali ...`, kontrol peta rapi, serta larangan emoji & titik bulat status dekoratif (*anti-slop*). | [Baca DESIGN.md](./DESIGN.md) |
 | **`SRS.md`** | **Spesifikasi Kebutuhan Sprint 1:** Antarmuka, tata letak Flexbox, navigasi Expo Router, simulasi alur asisten & praktikan, serta state runtime in-memory. | [Baca SRS.md](./SRS.md) |
 | **`SRS2.md`** | **Spesifikasi Kebutuhan Sprint 2:** Integrasi Firebase Authentication multi-metode, Cloud Firestore real-time, modul pengajuan izin, klasifikasi AI Model EDOM, dan pembagian tugas 2 programmer. | [Baca SRS2.md](./SRS2.md) |
 | **`SRS3.md`** | **Spesifikasi Kebutuhan Sprint 3:** Validasi lokasi presensi (*geofencing*) & QR Code, pengelolaan koordinat lab, peta laboratorium interaktif + live tracking & rute, push notification berbasis peristiwa, serta ketahanan perangkat. | [Baca SRS3.md](./SRS3.md) |
@@ -54,7 +54,7 @@ Aplikasi dirancang secara adaptif dari perspektif peran pengguna:
 ### C. Device Capabilities, Geofencing, Maps & Push Notification (Sprint 3 — Selesai & Terintegrasi)
 * **Halaman Presensi Khusus & Geofencing (`src/app/praktikan/presensi.tsx`):** Halaman presensi terpisah dengan pemeriksaan koordinat perangkat terhadap koordinat & radius laboratorium di `/labs` menggunakan jarak Haversine (`src/services/location-service.ts`), mendukung input kode 4 digit maupun pemindaian QR Code (`expo-camera`), serta *hard-validation* berlapis di `src/services/attendance-service.ts`.
 * **Manajemen Lokasi & Radius Laboratorium (`src/app/asisten/lokasi-lab.tsx`):** Asisten dapat mengelola koordinat (`latitude`, `longitude`) dan batas radius (meter) seluruh ruang lab Informatika di Firestore `/labs` (`src/services/lab-service.ts`), termasuk fitur ambil lokasi saat ini dan keterhubungan `labId` pada sesi.
-* **Peta Laboratorium Interaktif & Aktivitas Real-Time (`src/app/praktikan/peta-lab.tsx`, `src/app/asisten/peta-lab.tsx`):** Menampilkan peta `react-native-maps` berpusat di area laboratorium Informatika FSM UNDIP, marker status tiap lab, lingkaran radius lab terpilih, marker posisi pengguna *live tracking* (`watchPositionAsync`), estimasi rute jalan kaki via Google Routes API dengan fallback garis lurus (`src/services/route-service.ts`), sheet info praktikum yang *sedang berlangsung* & *berikutnya* (`src/services/lab-activity-service.ts`), serta fallback interaktif untuk Web (`lab-map-view.web.tsx`).
+* **Peta Laboratorium Hybrid & Aktivitas Real-Time (`src/app/praktikan/peta-lab.tsx`, `src/app/asisten/peta-lab.tsx`, `src/app/aslab/peta-lab.tsx`):** Menampilkan peta interaktif berbasis `<WebView>` (Android/iOS) & `<iframe>` (Web) melalui generator bersama `src/utils/leaflet-map-html.ts` — mencoba **Google Maps JS API** terlebih dahulu lalu otomatis *fallback* ke **Leaflet** multi-CDN & multi-tile (**OpenStreetMap → CARTO Voyager → Satelit Esri**) bila tidak ada billing / kuota Demo Key habis / dibatasi jaringan. Dilengkapi marker status tiap lab, lingkaran radius khusus lab terpilih, *live tracking* GPS pengguna (`Aktif` / `Mencari`), tombol kontrol ringkas `Lokasi Saya` & `Fokus Lab` di pojok kanan atas, estimasi rute jalan kaki (`src/services/route-service.ts`), dan sheet info praktikum *sedang berlangsung* & *berikutnya* (`src/services/lab-activity-service.ts`).
 * **Push Notification Berbasis Peristiwa & Pusat Notifikasi (`src/app/notifikasi.tsx`):** Menggunakan Firebase Cloud Messaging (`@react-native-firebase/app`, `@react-native-firebase/messaging`) dan `expo-notifications` untuk mengirim notifikasi saat sesi dibuka/dimulai, jadwal diubah, atau izin disetujui/ditolak, sekaligus mencatat riwayat real-time di `/notifications`.
 * **Ketahanan Izin & Kondisi Perangkat (`src/hooks/use-device-resilience.ts`, `src/components/device-status-banner.tsx`):** Penanganan terpadu saat izin lokasi/notifikasi ditolak, layanan GPS nonaktif, lokasi belum tersedia, atau perangkat offline (`@react-native-community/netinfo`), lengkap dengan tombol pintasan buka pengaturan perangkat.
 
@@ -77,10 +77,11 @@ PPK-Post-UTS/
 ├── README.md                         # Dokumentasi utama proyek
 ├── .env.example                      # Template variabel lingkungan (.env) untuk tim
 ├── .easignore                        # Berkas yang dikecualikan dari unggahan EAS Build
-├── eas.json                          # Konfigurasi profil build EAS (development, preview APK, production)
-├── app.json                          # Konfigurasi Expo (owner gregoriusseptiano, package, plugins native)
+├── eas.json                          # Konfigurasi profil build EAS (preview APK dengan credentialsSource local)
+├── app.json                          # Konfigurasi Expo (owner bedoprabo, package Praktikum.PPK_LabPortal, plugins)
 ├── app.config.ts                     # Konfigurasi dinamis Maps API Key & google-services.json
 ├── google-services.json              # Konfigurasi Firebase Android (lokal/git-ignored, wajib ada saat build)
+├── credentials.json                  # Konfigurasi keystore lokal Android untuk EAS Build (git-ignored)
 ├── .firebaserc                       # Konfigurasi project ID Firebase CLI (praktikum-ppk-labportal)
 ├── firebase.json                     # Konfigurasi rilis layanan Firebase
 ├── firestore.rules                   # Aturan keamanan database Cloud Firestore (RBAC)
@@ -155,8 +156,8 @@ PPK-Post-UTS/
     │   ├── google-profile-modal.tsx  # Dialog kelengkapan profil pengguna baru Google Sign-In
     │   ├── import-review-list.tsx    # Daftar tinjauan impor interaktif per baris
     │   ├── lab-activity-sheet.tsx    # Panel detail aktivitas lab (sedang berlangsung & berikutnya)
-    │   ├── lab-map-view.tsx          # Peta native Android/iOS (react-native-maps + rute polyline)
-    │   ├── lab-map-view.web.tsx      # Fallback peta laboratorium interaktif untuk Web
+    │   ├── lab-map-view.tsx          # Peta WebView Android/iOS (hybrid Google Maps JS + Leaflet & rute polyline)
+    │   ├── lab-map-view.web.tsx      # Peta iframe Web (hybrid Google Maps JS + auto-fallback multi-tile Leaflet)
     │   ├── leave-card.tsx            # Kartu antrean izin dengan rekomendasi AI & aksi moderasi
     │   ├── location-status-card.tsx  # Kartu status pemeriksaan radius geofencing pengguna
     │   ├── metrics-grid.tsx          # Komponen kartu metrik ringkasan standar DESIGN.md
@@ -206,6 +207,7 @@ PPK-Post-UTS/
     └── utils/
         ├── format.ts                 # Format Rupiah (formatRupiah) & normalisasi teks
         ├── lateness.ts               # Evaluasi keterlambatan presensi murni (evaluateLateness)
+        ├── leaflet-map-html.ts       # Generator HTML peta hybrid (Google Maps JS API -> multi-tile Leaflet)
         ├── qr-payload.ts             # Pembentuk & parser payload QR Code presensi sesi
         ├── role.ts                   # Normalisasi 3 peran (normalizeRole, getHomeRouteByRole)
         └── wib.ts                    # Parsing & pemformatan waktu WIB + rentang periode dashboard
@@ -243,7 +245,7 @@ EXPO_PUBLIC_FIREBASE_APP_ID=1:123456789012:web:...
 EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID=G-XXXXXXXXXX
 EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=123456789012-xxxx.apps.googleusercontent.com
 
-# Google Maps SDK for Android & Routes API (react-native-maps)
+# Google Maps JS API / Routes API (opsional set EXPO_PUBLIC_USE_GOOGLE_MAPS=false untuk langsung Leaflet)
 EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=AIzaSy...
 
 # Backend Pembayaran & Evaluasi Keterlambatan (Express / Vercel)
@@ -262,28 +264,28 @@ Untuk menjalankan backend secara lokal (bila tidak memakai deployment Vercel), s
 npx expo start
 ```
 * **Web Browser:** Tekan tombol `w` di terminal atau buka `http://localhost:8081` di browser.
-* **Android / iOS (Development Build):** Karena proyek menggunakan modul native (`react-native-maps`, `@react-native-firebase/*`, `@react-native-google-signin/google-signin`, `expo-location`, `expo-notifications`, `expo-camera`), gunakan **APK Preview** atau **Development Build** (`npx expo run:android` / `eas build`), bukan Expo Go standar.
+* **Android / iOS (Development Build):** Karena proyek menggunakan modul native (`react-native-webview`, `@react-native-firebase/*`, `@react-native-google-signin/google-signin`, `expo-location`, `expo-notifications`, `expo-camera`), gunakan **APK Preview** atau **Development Build** (`npx expo run:android` / `eas build`), bukan Expo Go standar.
 
 ### 4. Build Standalone Android APK (EAS Build)
-Proyek ini terhubung dengan akun EAS `gregoriusseptiano` (slug: `ppk-post-uts`) dan mendukung kompilasi cloud ke berkas `.apk` siap pasang tanpa memerlukan Android Studio lokal:
+Proyek ini terhubung dengan akun EAS `bedoprabo` (project ID `c322811a-1263-4056-9949-b704adbb016b`, slug `ppk-post-uts`) menggunakan keystore Android lokal terkonfigurasi di `credentials.json` (`credentialsSource: "local"` pada profil `preview`):
 ```bash
 # Login ke akun Expo EAS
-npx eas-cli login
+npx eas-cli@latest login
 
 # Mulai proses cloud build APK Android (profil preview)
-npx eas-cli build -p android --profile preview
+npx eas-cli@latest build -p android --profile preview
 ```
 
-#### Tautan Build APK Terbaru (`gregoriusseptiano` — Rilis Preview):
-- **Halaman Pantau & Unduh Build EAS Terbaru:** [expo.dev/@gregoriusseptiano/ppk-post-uts/builds/d2f39e21-54e9-4787-b785-f46d5fbda787](https://expo.dev/accounts/gregoriusseptiano/projects/ppk-post-uts/builds/d2f39e21-54e9-4787-b785-f46d5fbda787)
-- **Tautan Unduhan Langsung APK Terkini:** [Download LabPortal (tnpT_Z9C... .apk)](https://expo.dev/artifacts/eas/tnpT_Z9Cp1fbMo07snWrAgBU-1O78HK1MiSgJiEDfpU.apk)
+#### Tautan Build APK Terbaru (`bedoprabo` — Rilis Preview):
+- **Build ID Sebelumnya (27 Nov 2026):** [expo.dev/@bedoprabo/ppk-post-uts/builds/8a6f27b5-6e08-4d37-8b4a-4aebee8b55b8](https://expo.dev/accounts/bedoprabo/projects/ppk-post-uts/builds/8a6f27b5-6e08-4d37-8b4a-4aebee8b55b8)
+- **Tautan Unduhan APK Sebelumnya:** [Download LabPortal (WsBfzNrN... .apk)](https://expo.dev/artifacts/eas/WsBfzNrN2-6QYbgICUkDSD62xQ3YFthpyb2q4OThB0A.apk)
 
 > [!TIP]
 > **Registrasi SHA-1 Fingerprint untuk Google Sign-In:**  
-> Pastikan SHA-1 keystore EAS proyek `gregoriusseptiano` terdaftar di **Firebase Console** -> **Project Settings** -> **Your Apps (Android `Praktikum.PPK_LabPortal`)** agar fitur Native Google Sign-In berjalan di APK Android tanpa error `DEVELOPER_ERROR`:
-> - Keystore EAS `sanftts-team` (sebelumnya): `65:EB:20:28:17:68:EC:C5:AA:82:D5:34:56:71:22:8E:08:68:32:49`
-> - Keystore EAS `gregoriusseptiano` (rilis APK aktual): `48:EE:A2:2D:40:10:33:58:39:93:C1:43:5E:13:D8:82:D7:4A:3F:16`
-> - Keystore EAS tambahan: `58:3A:22:E2:5F:01:A3:82:E1:87:F2:8F:FB:F4:62:24:91:0F:7D:B2`
+> Pastikan SHA-1 keystore rilis terdaftar di **Firebase Console** -> **Project Settings** -> **Your Apps (Android `Praktikum.PPK_LabPortal`)** agar fitur Native Google Sign-In berjalan di APK Android tanpa error `DEVELOPER_ERROR`:
+> - Keystore lokal `bedoprabo` (`bedoprabo-release.jks`, aktif): `5B:21:98:F1:EC:18:CE:C7:AE:2E:CC:54:A6:79:4B:93:0E:8B:5A:AE`
+> - Keystore EAS `gregoriusseptiano` (sebelumnya): `48:EE:A2:2D:40:10:33:58:39:93:C1:43:5E:13:D8:82:D7:4A:3F:16`
+> - Keystore tambahan terdaftar: `58:3A:22:E2:5F:01:A3:82:E1:87:F2:8F:FB:F4:62:24:91:0F:7D:B2` & `65:EB:20:28:17:68:EC:C5:AA:82:D5:34:56:71:22:8E:08:68:32:49`
 
 ---
 
@@ -324,7 +326,7 @@ npm --prefix functions run build
 | 9 | **Badge Rekomendasi AI** | Programmer 2 | **Selesai (100%)** | Tampilan label visual rapi sesuai token palet warna `DESIGN.md`. |
 | 10 | **Panel Moderasi Izin Asisten** | Programmer 2 | **Selesai (100%)** | Review izin live dengan rekomendasi AI dan aksi Setujui / Tolak izin. |
 | 11 | **Rekapitulasi Presensi & Izin** | Programmer 2 | **Selesai (100%)** | Mahasiswa izin berstatus disetujui tercatat resmi izin (bukan alpa). |
-| 12 | **Proteksi Saling Kunci & Auto-Close Sesi 2 Jam** | Programmer 2 | **Selesai (100%)** | Sesi otomatis ditutup setelah 2 jam, serta isolasi dan pencegahan tumpang tindih izin & presensi. |
+| 12 | **Proteksi Saling Kunci & Auto-Close Sesi 2 Jam** | Programmer 2 | **Selesai (100%)** | Sesi otomatis ditutup setelah jadwal selesai / 2 jam sejak `openedAt` (khusus sesi yang dibuka setelah jam jadwal selesai, diberi durasi 2 jam dari `openedAt` agar presensi susulan/uji coba tetap berjalan), serta pencegahan tumpang tindih izin & presensi. |
 
 ### B. Sprint 3 (Geofencing, Peta Lab Interaktif & Push Notification — Selesai & Terintegrasi di `main`)
 
@@ -332,7 +334,7 @@ npm --prefix functions run build
 |---|---|:---:|:---:|---|
 | 1 | **Halaman Presensi Khusus, QR & Hard-Validation Geofencing** | Programmer 1 | **Selesai (100%)** | Validasi jarak Haversine terhadap koordinat & radius `/labs` di `attendance-service.ts`, plus QR scanner (`expo-camera`). |
 | 2 | **Manajemen Lokasi & Radius Laboratorium (`/labs`)** | Programmer 1 | **Selesai (100%)** | Asisten dapat mengatur koordinat & radius tiap laboratorium dan menautkan `labId` ke sesi. |
-| 3 | **Peta Laboratorium Interaktif, Live Tracking & Rute** | Programmer 2 | **Selesai (100%)** | Peta `react-native-maps`, marker aktivitas real-time (`/labs` + `/sessions`), rute jalan kaki Google Routes API, & fallback web. |
+| 3 | **Peta Laboratorium Hybrid, Live Tracking & Rute** | Programmer 2 | **Selesai (100%)** | Peta hybrid WebView/iframe (`leaflet-map-html.ts`: Google Maps JS API → auto-fallback multi-tile Leaflet OSM/CARTO/Esri), marker aktivitas real-time (`/labs` + `/sessions`), 1 lingkaran radius lab terpilih, dan rute jalan kaki Google Routes API. |
 | 4 | **Push Notification Berbasis Peristiwa (FCM/Expo)** | Programmer 3 | **Selesai (100%)** | Notifikasi real-time saat sesi dibuka/dimulai, jadwal berubah, dan izin diputuskan, plus Pusat Notifikasi `/notifications`. |
 | 5 | **Ketahanan Izin, Kondisi Perangkat & Rules RBAC** | Programmer 3 | **Selesai (100%)** | Penanganan izin ditolak, GPS nonaktif, lokasi belum tersedia, mode offline (`NetInfo`), dan pembaruan `firestore.rules`. |
 
@@ -349,9 +351,9 @@ npm --prefix functions run build
 ## 8. Panduan Skenario Pengujian (Demonstrasi Alur)
 
 ### Skenario 1: Alur Presensi Terintegrasi Real-Time & Geofencing
-1. **Asisten Mengatur Lokasi & Membuka Sesi:** Masuk sebagai Asisten Lab -> buka tab **Lokasi** untuk memastikan koordinat & radius lab sesuai lokasi pengujian -> buka tab **Sesi** -> pilih sesi berstatus `Belum Dibuka` -> klik **Buka Sesi Praktikum** (status berubah menjadi `Dibuka`, kode numerik 4 digit & QR aktif).
-2. **Praktikan Melakukan Presensi Geofencing:** Beralih ke peran Praktikan -> buka tab **Presensi** -> pastikan kartu status lokasi menampilkan jarak di dalam radius laboratorium (`within_radius`) -> masukkan 4 digit kode sesi (atau pindai QR Code) -> klik **Kirim Presensi Hadir**. Jika di luar radius, presensi otomatis ditolak di `attendance-service.ts`.
-3. **Asisten Memantau Rekap & Menutup Sesi:** Kembali ke peran Asisten -> buka detail sesi -> nama praktikan langsung tercatat **Hadir** lengkap dengan jam dan snapshot lokasi -> tekan **Tutup Sesi Praktikum** untuk mengunci sesi.
+1. **Aslab Mengatur Lokasi Lab & Asprak Membuka Sesi:** Masuk sebagai Aslab (`aslab.ppk@if.undip.ac.id`) bila perlu mengubah koordinat/radius lab di tab **Lab** atau menjadwalkan sesi di tab **Sesi** -> masuk sebagai Asprak -> buka tab **Sesi** -> pilih sesi berstatus `Belum Dibuka` pada lab yang sesuai -> klik **Buka Sesi Praktikum** (status berubah menjadi `Dibuka`, kode numerik 4 digit & QR aktif).
+2. **Praktikan Melakukan Presensi Geofencing:** Beralih ke peran Praktikan yang terdaftar pada **lab yang sama** (terlihat pada badge `Lab Terdaftar` di tab Jadwal) -> buka tab **Presensi** -> pastikan kartu status lokasi menampilkan jarak di dalam radius laboratorium (`within_radius`) -> masukkan 4 digit kode sesi (atau pindai QR Code) -> klik **Kirim Presensi Hadir**. Jika di luar radius, presensi otomatis ditolak di `attendance-service.ts`.
+3. **Asprak Memantau Rekap & Menutup Sesi:** Kembali ke peran Asprak -> buka detail sesi -> nama praktikan langsung tercatat **Hadir** (atau **Terlambat** beserta tagihan denda bila melewati *grace period*) lengkap dengan jam dan snapshot lokasi -> tekan **Tutup Sesi Praktikum** untuk mengunci sesi.
 
 ### Skenario 2: Alur Pengajuan Izin Berbantuan AI
 1. **Praktikan Mengajukan Izin:** Praktikan membuka tab **Izin** -> memilih sesi praktikum -> mengisi alasan ketidakhadiran (misal: sakit demam).

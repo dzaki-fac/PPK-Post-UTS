@@ -158,26 +158,38 @@ export default function PraktikanPresensiScreen() {
 
   const studentLabId = userDoc?.labId;
 
-  // Urutkan sesi: batasi ke lab terdaftar praktikan bila ada, lalu prioritaskan sesi kelas mahasiswa yang dibuka
+  // Urutkan sesi: tampilkan seluruh sesi dibuka (termasuk lintas lab bila baru dibuka),
+  // lalu prioritaskan sesi kelas mahasiswa & lab terdaftar terbaru
   const orderedSessions = useMemo(() => {
-    const scoped = studentLabId
-      ? sessions.filter((s) => {
-          if (paramSessionId && s.id === paramSessionId) return true;
-          if (s.labId) return s.labId === studentLabId;
-          return !studentClass || normalizeClassCode(s.kelas) === studentClass;
-        })
-      : sessions;
-    const baseList = scoped.length > 0 ? scoped : sessions;
+    const relevant = sessions.filter((s) => {
+      if (paramSessionId && s.id === paramSessionId) return true;
+      if (s.status === 'dibuka') return true;
+      if (!studentLabId) return true;
+      if (s.labId) return s.labId === studentLabId;
+      return !studentClass || normalizeClassCode(s.kelas) === studentClass;
+    });
+    const baseList = relevant.length > 0 ? relevant : sessions;
+
+    const statusRank = (status: SessionDocument['status']) =>
+      status === 'dibuka' ? 0 : status === 'belum-dibuka' ? 1 : 2;
 
     return [...baseList].sort((a, b) => {
-      const aMatch = studentClass && normalizeClassCode(a.kelas) === studentClass ? 1 : 0;
-      const bMatch = studentClass && normalizeClassCode(b.kelas) === studentClass ? 1 : 0;
-      const aOpen = a.status === 'dibuka' ? 2 : a.status === 'belum-dibuka' ? 1 : 0;
-      const bOpen = b.status === 'dibuka' ? 2 : b.status === 'belum-dibuka' ? 1 : 0;
-      if (bOpen + bMatch !== aOpen + aMatch) {
-        return bOpen + bMatch - (aOpen + aMatch);
+      const rankDiff = statusRank(a.status) - statusRank(b.status);
+      if (rankDiff !== 0) return rankDiff;
+
+      const aClassMatch = studentClass && normalizeClassCode(a.kelas) === studentClass ? 0 : 1;
+      const bClassMatch = studentClass && normalizeClassCode(b.kelas) === studentClass ? 0 : 1;
+      if (aClassMatch !== bClassMatch) return aClassMatch - bClassMatch;
+
+      if (studentLabId) {
+        const aLabMatch = a.labId === studentLabId ? 0 : 1;
+        const bLabMatch = b.labId === studentLabId ? 0 : 1;
+        if (aLabMatch !== bLabMatch) return aLabMatch - bLabMatch;
       }
-      return b.createdAt.localeCompare(a.createdAt);
+
+      const aTime = a.openedAt || a.updatedAt || a.createdAt;
+      const bTime = b.openedAt || b.updatedAt || b.createdAt;
+      return bTime.localeCompare(aTime);
     });
   }, [sessions, studentClass, studentLabId, paramSessionId]);
 
@@ -304,9 +316,11 @@ export default function PraktikanPresensiScreen() {
       return;
     }
 
-    // Jika QR merujuk sesi lain yang ada di daftar, arahkan otomatis ke sesi tersebut
+    // Jika QR merujuk sesi lain yang terdaftar di database, arahkan otomatis ke sesi tersebut
     if (activeSession && parsed.sessionId !== activeSession.id) {
-      const matchedSession = orderedSessions.find((s) => s.id === parsed.sessionId);
+      const matchedSession =
+        orderedSessions.find((s) => s.id === parsed.sessionId) ??
+        sessions.find((s) => s.id === parsed.sessionId);
       if (matchedSession) {
         setSelectedSessionId(matchedSession.id);
       } else {

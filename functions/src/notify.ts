@@ -63,7 +63,17 @@ export async function sendToUser(
           }),
         });
 
-        deliveryStatus = res.ok ? 'sent' : 'failed';
+        if (!res.ok) {
+          deliveryStatus = 'failed';
+        } else {
+          const ticketPayload = (await res.json()) as {
+            data?: { status?: string } | { status?: string }[];
+          };
+          const ticket = Array.isArray(ticketPayload.data)
+            ? ticketPayload.data[0]
+            : ticketPayload.data;
+          deliveryStatus = ticket?.status === 'ok' ? 'sent' : 'failed';
+        }
       } catch {
         deliveryStatus = 'failed';
       }

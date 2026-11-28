@@ -276,6 +276,7 @@ export default function ModerasiIzinScreen() {
     <View style={styles.container}>
       <FlatList
         data={filteredRequests}
+        extraData={activeFilter}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <LeaveCard
@@ -289,7 +290,7 @@ export default function ModerasiIzinScreen() {
             }}
           />
         )}
-        ListHeaderComponent={renderHeader}
+        ListHeaderComponent={renderHeader()}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={

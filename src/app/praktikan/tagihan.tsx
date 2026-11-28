@@ -248,8 +248,9 @@ export default function PraktikanTagihanScreen() {
       ) : (
         <FlatList
           data={filteredFines}
+          extraData={filter}
           keyExtractor={(item) => item.id}
-          ListHeaderComponent={renderHeader}
+          ListHeaderComponent={renderHeader()}
           renderItem={renderFineCard}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={

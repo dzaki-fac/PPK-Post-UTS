@@ -207,8 +207,9 @@ export default function AsprakKelasSayaScreen() {
     <View style={styles.root}>
       <FlatList
         data={filteredStudents}
+        extraData={`${selectedLabId}:${searchQuery}`}
         keyExtractor={(item) => item.id}
-        ListHeaderComponent={renderHeader}
+        ListHeaderComponent={renderHeader()}
         contentContainerStyle={styles.listContent}
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
         renderItem={({ item }) => (

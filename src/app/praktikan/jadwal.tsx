@@ -36,7 +36,9 @@ import {
   SessionStatus,
 } from '@/types/praktikum';
 
-type FilterType = 'semua' | 'semua-lab' | 'kelas-saya' | SessionStatus;
+type StatusFilter = 'semua' | SessionStatus;
+type ClassScope = 'semua' | 'kelas-saya';
+type LabScope = 'lab-saya' | 'semua-lab';
 
 export default function PraktikanJadwalScreen() {
   const { user, userDoc } = useAuth();
@@ -45,7 +47,9 @@ export default function PraktikanJadwalScreen() {
   const [myAttendances, setMyAttendances] = useState<AttendanceDocument[]>([]);
   const [myLeaves, setMyLeaves] = useState<LeaveRequestDocument[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
-  const [filter, setFilter] = useState<FilterType>('semua');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('semua');
+  const [classScope, setClassScope] = useState<ClassScope>('semua');
+  const [labScope, setLabScope] = useState<LabScope>('lab-saya');
 
   const studentUid = userDoc?.uid || user?.uid;
 
@@ -125,16 +129,42 @@ export default function PraktikanJadwalScreen() {
     return names.join(', ');
   }, [otherLabOpenSessions, labs]);
 
-  const filteredSesiList = useMemo(() => {
-    if (filter === 'semua') return scopedSesiList;
-    if (filter === 'semua-lab') return sesiList;
-    if (filter === 'kelas-saya') {
-      if (studentLabId) return scopedSesiList;
-      if (!studentClass) return scopedSesiList;
-      return scopedSesiList.filter((s) => normalizeClassCode(s.kelas) === studentClass);
+  const baseLabSesiList = useMemo(() => {
+    if (labScope === 'semua-lab' || !studentLabId) return sesiList;
+    return scopedSesiList;
+  }, [labScope, studentLabId, sesiList, scopedSesiList]);
+
+  const classScopedList = useMemo(() => {
+    if (classScope === 'kelas-saya' && studentClass) {
+      return baseLabSesiList.filter((s) => normalizeClassCode(s.kelas) === studentClass);
     }
-    return scopedSesiList.filter((s) => s.status === filter);
-  }, [scopedSesiList, sesiList, filter, studentClass, studentLabId]);
+    return baseLabSesiList;
+  }, [baseLabSesiList, classScope, studentClass]);
+
+  const filteredSesiList = useMemo(() => {
+    const byStatus =
+      statusFilter === 'semua'
+        ? classScopedList
+        : classScopedList.filter((s) => s.status === statusFilter);
+
+    const statusRank = (status: SessionStatus) =>
+      status === 'dibuka' ? 0 : status === 'belum-dibuka' ? 1 : 2;
+
+    return [...byStatus].sort((a, b) => {
+      const rankDiff = statusRank(a.status) - statusRank(b.status);
+      if (rankDiff !== 0) return rankDiff;
+
+      if (studentClass) {
+        const aClass = normalizeClassCode(a.kelas) === studentClass ? 0 : 1;
+        const bClass = normalizeClassCode(b.kelas) === studentClass ? 0 : 1;
+        if (aClass !== bClass) return aClass - bClass;
+      }
+
+      const aTime = a.openedAt || a.updatedAt || a.createdAt;
+      const bTime = b.openedAt || b.updatedAt || b.createdAt;
+      return bTime.localeCompare(aTime);
+    });
+  }, [classScopedList, statusFilter, studentClass]);
 
   const totalSesi = scopedSesiList.length;
   const totalDibuka = scopedSesiList.filter((s) => s.status === 'dibuka').length;
@@ -239,10 +269,10 @@ export default function PraktikanJadwalScreen() {
       </Pressable>
 
       {/* Info bila ada sesi dibuka di lab lain di luar lab terdaftar praktikan */}
-      {otherLabOpenSessions.length > 0 && (
+      {otherLabOpenSessions.length > 0 && labScope !== 'semua-lab' && (
         <Pressable
           accessibilityRole="button"
-          onPress={() => setFilter('semua-lab')}
+          onPress={() => setLabScope('semua-lab')}
           style={({ pressed }) => [styles.otherLabNotice, pressed && styles.cardPressed]}>
           <Text style={styles.otherLabTitle}>
             Terdapat {otherLabOpenSessions.length} sesi dibuka di lab lain ({otherOpenLabNames})
@@ -319,66 +349,98 @@ export default function PraktikanJadwalScreen() {
 
       {/* Filter Section */}
       <View style={styles.filterSection}>
-        <Text style={styles.filterTitle}>Filter Berdasarkan Status & Kelas:</Text>
+        <Text style={styles.filterTitle}>Filter Status Sesi:</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterRow}>
           <FilterChip
-            label="Semua"
-            active={filter === 'semua'}
-            count={scopedSesiList.length}
-            onPress={() => setFilter('semua')}
+            label="Semua Status"
+            active={statusFilter === 'semua'}
+            count={classScopedList.length}
+            onPress={() => setStatusFilter('semua')}
           />
-          {studentLabId && sesiList.length > scopedSesiList.length ? (
-            <FilterChip
-              label="Semua Lab"
-              active={filter === 'semua-lab'}
-              count={sesiList.length}
-              onPress={() => setFilter('semua-lab')}
-            />
-          ) : null}
-          {userDoc && studentClass ? (
-            <FilterChip
-              label={`Kelas Saya (${studentClass})`}
-              active={filter === 'kelas-saya'}
-              count={scopedSesiList.filter((s) => normalizeClassCode(s.kelas) === studentClass).length}
-              onPress={() => setFilter('kelas-saya')}
-            />
-          ) : null}
           <FilterChip
             label="Dibuka"
-            active={filter === 'dibuka'}
-            count={scopedSesiList.filter((s) => s.status === 'dibuka').length}
+            active={statusFilter === 'dibuka'}
+            count={classScopedList.filter((s) => s.status === 'dibuka').length}
             variant="dibuka"
-            onPress={() => setFilter('dibuka')}
+            onPress={() => setStatusFilter('dibuka')}
           />
           <FilterChip
             label="Belum Dibuka"
-            active={filter === 'belum-dibuka'}
-            count={scopedSesiList.filter((s) => s.status === 'belum-dibuka').length}
+            active={statusFilter === 'belum-dibuka'}
+            count={classScopedList.filter((s) => s.status === 'belum-dibuka').length}
             variant="belum-dibuka"
-            onPress={() => setFilter('belum-dibuka')}
+            onPress={() => setStatusFilter('belum-dibuka')}
           />
           <FilterChip
             label="Ditutup"
-            active={filter === 'ditutup'}
-            count={scopedSesiList.filter((s) => s.status === 'ditutup').length}
+            active={statusFilter === 'ditutup'}
+            count={classScopedList.filter((s) => s.status === 'ditutup').length}
             variant="ditutup"
-            onPress={() => setFilter('ditutup')}
+            onPress={() => setStatusFilter('ditutup')}
           />
         </ScrollView>
+
+        {(studentClass || (studentLabId && sesiList.length > scopedSesiList.length)) ? (
+          <>
+            <Text style={styles.filterTitle}>Filter Kelas & Ruang Lab:</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterRow}>
+              <FilterChip
+                label="Semua Kelas"
+                active={classScope === 'semua'}
+                count={baseLabSesiList.length}
+                onPress={() => setClassScope('semua')}
+              />
+              {userDoc && studentClass ? (
+                <FilterChip
+                  label={`Kelas Saya (${studentClass})`}
+                  active={classScope === 'kelas-saya'}
+                  count={
+                    baseLabSesiList.filter((s) => normalizeClassCode(s.kelas) === studentClass)
+                      .length
+                  }
+                  onPress={() => setClassScope('kelas-saya')}
+                />
+              ) : null}
+              {studentLabId && sesiList.length > scopedSesiList.length ? (
+                <>
+                  <FilterChip
+                    label="Lab Saya"
+                    active={labScope === 'lab-saya'}
+                    count={scopedSesiList.length}
+                    onPress={() => setLabScope('lab-saya')}
+                  />
+                  <FilterChip
+                    label="Semua Lab"
+                    active={labScope === 'semua-lab'}
+                    count={sesiList.length}
+                    onPress={() => setLabScope('semua-lab')}
+                  />
+                </>
+              ) : null}
+            </ScrollView>
+          </>
+        ) : null}
       </View>
     </View>
   );
+
+  const hasActiveFilter =
+    statusFilter !== 'semua' || classScope !== 'semua' || labScope === 'semua-lab';
 
   return (
     <View style={styles.container}>
       <FlatList
         data={filteredSesiList}
+        extraData={`${statusFilter}:${classScope}:${labScope}`}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
-        ListHeaderComponent={renderHeader}
+        ListHeaderComponent={renderHeader()}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
@@ -393,14 +455,24 @@ export default function PraktikanJadwalScreen() {
             <EmptyState
               title="Tidak Ada Sesi"
               message={
-                filter === 'kelas-saya'
+                classScope === 'kelas-saya' && statusFilter !== 'semua'
+                  ? `Tidak ada sesi Kelas ${studentClass || '-'} dengan status "${statusFilter}".`
+                  : classScope === 'kelas-saya'
                   ? `Tidak ada sesi praktikum yang terdaftar untuk Kelas ${studentClass || '-'}.`
-                  : filter === 'semua' || filter === 'semua-lab'
+                  : statusFilter === 'semua'
                   ? 'Belum ada jadwal praktikum yang tersedia saat ini.'
-                  : `Tidak ada sesi praktikum dengan status "${filter}".`
+                  : `Tidak ada sesi praktikum dengan status "${statusFilter}".`
               }
-              actionText={filter !== 'semua' ? 'Tampilkan Semua Sesi' : undefined}
-              onAction={filter !== 'semua' ? () => setFilter('semua') : undefined}
+              actionText={hasActiveFilter ? 'Reset Filter' : undefined}
+              onAction={
+                hasActiveFilter
+                  ? () => {
+                      setStatusFilter('semua');
+                      setClassScope('semua');
+                      setLabScope('lab-saya');
+                    }
+                  : undefined
+              }
             />
           )
         }

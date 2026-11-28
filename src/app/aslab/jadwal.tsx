@@ -23,6 +23,7 @@ import {
 } from '@/constants/praktikum-config';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
+import { normalizeClassCode } from '@/services/attendance-service';
 import { buildFallbackDefaultLabs, subscribeLabs } from '@/services/lab-service';
 import {
   createSession,
@@ -34,6 +35,7 @@ import { LabLocationDocument, SessionDocument, SessionStatus } from '@/types/pra
 import { toWibDateString } from '@/utils/wib';
 
 type FilterType = 'semua' | SessionStatus;
+type ClassFilterType = 'semua' | 'A' | 'B';
 
 export default function AslabJadwalScreen() {
   const { userDoc } = useAuth();
@@ -41,6 +43,7 @@ export default function AslabJadwalScreen() {
   const [labs, setLabs] = useState<LabLocationDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<FilterType>('semua');
+  const [filterClass, setFilterClass] = useState<ClassFilterType>('semua');
   const [filterLabId, setFilterLabId] = useState<string>('semua');
 
   // Form Modal State (Tambah / Edit)
@@ -106,12 +109,22 @@ export default function AslabJadwalScreen() {
   }, [sessions, managedCourseIds]);
 
   const filteredSessions = useMemo(() => {
-    return scopedSessions.filter((s) => {
+    const matched = scopedSessions.filter((s) => {
       const matchStatus = filterStatus === 'semua' || s.status === filterStatus;
+      const matchClass = filterClass === 'semua' || normalizeClassCode(s.kelas) === filterClass;
       const matchLab = filterLabId === 'semua' || s.labId === filterLabId;
-      return matchStatus && matchLab;
+      return matchStatus && matchClass && matchLab;
     });
-  }, [scopedSessions, filterStatus, filterLabId]);
+    const statusRank = (status: SessionStatus) =>
+      status === 'dibuka' ? 0 : status === 'belum-dibuka' ? 1 : 2;
+    return [...matched].sort((a, b) => {
+      const rankDiff = statusRank(a.status) - statusRank(b.status);
+      if (rankDiff !== 0) return rankDiff;
+      const aTime = a.openedAt || a.updatedAt || a.createdAt;
+      const bTime = b.openedAt || b.updatedAt || b.createdAt;
+      return bTime.localeCompare(aTime);
+    });
+  }, [scopedSessions, filterStatus, filterClass, filterLabId]);
 
   const totalSesi = scopedSessions.length;
   const totalDibuka = scopedSessions.filter((s) => s.status === 'dibuka').length;
@@ -321,6 +334,36 @@ export default function AslabJadwalScreen() {
         })}
       </ScrollView>
 
+      {/* Filter Kelas */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filterRow}>
+        {(
+          [
+            { key: 'semua', label: 'Semua Kelas' },
+            { key: 'A', label: 'Kelas A' },
+            { key: 'B', label: 'Kelas B' },
+          ] as const
+        ).map((item) => {
+          const active = filterClass === item.key;
+          return (
+            <Pressable
+              key={item.key}
+              onPress={() => setFilterClass(item.key)}
+              style={({ pressed }) => [
+                styles.chip,
+                active && styles.chipActive,
+                pressed && styles.pressed,
+              ]}>
+              <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                {item.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
       {/* Filter Lab */}
       {scopedLabs.length > 0 ? (
         <ScrollView
@@ -368,8 +411,9 @@ export default function AslabJadwalScreen() {
     <View style={styles.root}>
       <FlatList
         data={filteredSessions}
+        extraData={`${filterStatus}:${filterClass}:${filterLabId}`}
         keyExtractor={(item) => item.id}
-        ListHeaderComponent={renderHeader}
+        ListHeaderComponent={renderHeader()}
         contentContainerStyle={styles.listContent}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         renderItem={({ item }) => (

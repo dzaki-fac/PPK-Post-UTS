@@ -226,8 +226,9 @@ export default function PraktikanRiwayatPembayaranScreen() {
       ) : (
         <FlatList
           data={filteredPayments}
+          extraData={filter}
           keyExtractor={(item) => item.id}
-          ListHeaderComponent={renderHeader}
+          ListHeaderComponent={renderHeader()}
           renderItem={renderPaymentItem}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={

@@ -162,11 +162,6 @@ export async function registerForPushNotificationsAsync(
     return 'granted';
   } catch (error) {
     console.warn('Registrasi push token dilewati:', error);
-    try {
-      await updateUserPushFields(uid, { notificationsEnabled: false });
-    } catch {
-      // Abaikan: pengguna masih memakai Pusat Notifikasi in-app.
-    }
     return 'unavailable';
   }
 }
@@ -178,49 +173,60 @@ async function updateUserPushFields(uid: string, fields: Partial<UserDocument>):
   });
 }
 
-/** Kirim ke Expo Push Service. Mengembalikan status pengiriman, tidak pernah melempar. */
+/** Kirim ke Expo Push Service. Mengembalikan status pengiriman per token, tidak pernah melempar. */
 async function sendPushMessagesAsync(
   tokens: string[],
   title: string,
   body: string,
   data: Record<string, string>
-): Promise<NotificationDeliveryStatus> {
-  if (tokens.length === 0 || Platform.OS === 'web') return 'in_app_only';
+): Promise<Map<string, NotificationDeliveryStatus>> {
+  const statusByToken = new Map<string, NotificationDeliveryStatus>();
+  const uniqueTokens = Array.from(new Set(tokens.map((t) => t.trim()).filter(Boolean)));
+  if (uniqueTokens.length === 0 || Platform.OS === 'web') {
+    return statusByToken;
+  }
 
   try {
-    const messages = [];
-    for (let i = 0; i < tokens.length; i += 100) {
-      messages.push(
-        ...tokens.slice(i, i + 100).map((to) => ({
-          to,
-          title,
-          body,
-          sound: 'default' as const,
-          priority: 'high' as const,
-          channelId: NOTIFICATION_CHANNEL_ID,
-          data,
-        }))
-      );
+    for (let i = 0; i < uniqueTokens.length; i += 100) {
+      const chunk = uniqueTokens.slice(i, i + 100);
+      const messages = chunk.map((to) => ({
+        to,
+        title,
+        body,
+        sound: 'default' as const,
+        priority: 'high' as const,
+        channelId: NOTIFICATION_CHANNEL_ID,
+        data,
+      }));
+
+      const response = await fetch(EXPO_PUSH_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(messages),
+      });
+
+      if (!response.ok) {
+        chunk.forEach((t) => statusByToken.set(t, 'failed'));
+        continue;
+      }
+
+      const result = (await response.json()) as { data?: { status?: string }[] };
+      const tickets = result.data ?? [];
+      chunk.forEach((t, idx) => {
+        statusByToken.set(t, tickets[idx]?.status === 'ok' ? 'sent' : 'failed');
+      });
     }
 
-    if (messages.length === 0) return 'in_app_only';
-
-    const response = await fetch(EXPO_PUSH_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(messages),
-    });
-
-    if (!response.ok) return 'failed';
-    const result = (await response.json()) as { data?: { status?: string }[] };
-    const tickets = result.data ?? [];
-    return tickets.some((ticket) => ticket.status === 'ok') ? 'sent' : 'failed';
+    return statusByToken;
   } catch (error) {
     console.warn('Pengiriman push notification gagal:', error);
-    return 'failed';
+    uniqueTokens.forEach((t) => {
+      if (!statusByToken.has(t)) statusByToken.set(t, 'failed');
+    });
+    return statusByToken;
   }
 }
 
@@ -254,6 +260,7 @@ async function writeNotificationLog(input: LogInput): Promise<void> {
 interface PushTarget {
   uid: string;
   expoPushToken?: string;
+  notificationsEnabled?: boolean;
 }
 
 async function getPraktikanTargets(kelas?: string, labId?: string): Promise<PushTarget[]> {
@@ -269,16 +276,12 @@ async function getPraktikanTargets(kelas?: string, labId?: string): Promise<Push
     const wantedClass = normalizeClass(kelas);
     const cleanLabId = labId?.trim();
 
-    if (cleanLabId) {
-      return users.filter((user) => {
-        if (user.labId) return user.labId === cleanLabId;
-        return wantedClass ? normalizeClass(user.kelas) === wantedClass : true;
-      });
-    }
-
-    return wantedClass
-      ? users.filter((user) => normalizeClass(user.kelas) === wantedClass)
-      : users;
+    return users.filter((user) => {
+      const userClass = normalizeClass(user.kelas);
+      const classMatch = !wantedClass || !userClass || userClass === wantedClass;
+      const labMatch = !cleanLabId || !user.labId || user.labId === cleanLabId;
+      return classMatch && labMatch;
+    });
   } catch (error) {
     console.warn('Gagal mengambil target notifikasi:', error);
     return [];
@@ -293,7 +296,11 @@ async function getTargetByUid(uid: string): Promise<PushTarget | null> {
     const data = snap.data() as UserDocument;
     // Pastikan push notification hanya ditujukan ke role mahasiswa (praktikan)
     if (data.peran !== 'praktikan') return null;
-    return { uid, expoPushToken: data.expoPushToken };
+    return {
+      uid,
+      expoPushToken: data.expoPushToken,
+      notificationsEnabled: data.notificationsEnabled,
+    };
   } catch {
     return null;
   }
@@ -315,25 +322,28 @@ async function dispatchAsync(input: {
 }): Promise<void> {
   try {
     const tokens = input.targets
-      .map((target) => target.expoPushToken)
+      .filter((target) => target.notificationsEnabled !== false)
+      .map((target) => target.expoPushToken?.trim())
       .filter((token): token is string => Boolean(token));
-    const deliveryStatus = await sendPushMessagesAsync(tokens, input.title, input.body, input.data);
+    const statusByToken = await sendPushMessagesAsync(tokens, input.title, input.body, input.data);
 
     await Promise.all(
-      input.targets.map((target) =>
-        writeNotificationLog({
+      input.targets.map((target) => {
+        const token = target.notificationsEnabled !== false ? target.expoPushToken?.trim() : '';
+        const deliveryStatus: NotificationDeliveryStatus = token
+          ? (statusByToken.get(token) ?? 'in_app_only')
+          : 'in_app_only';
+        return writeNotificationLog({
           targetUserId: target.uid,
           targetRole: input.targetRole,
           eventType: input.eventType,
           title: input.title,
           body: input.body,
-          deliveryStatus: tokens.includes(target.expoPushToken ?? '')
-            ? deliveryStatus
-            : 'in_app_only',
+          deliveryStatus,
           relatedSessionId: input.relatedSessionId,
           relatedLeaveId: input.relatedLeaveId,
-        }).catch((error) => console.warn('Gagal menulis log notifikasi:', error))
-      )
+        }).catch((error) => console.warn('Gagal menulis log notifikasi:', error));
+      })
     );
   } catch (error) {
     console.warn('Dispatcher notifikasi dilewati:', error);

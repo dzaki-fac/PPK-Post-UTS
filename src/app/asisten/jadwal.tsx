@@ -14,7 +14,7 @@ import {
 import { EmptyState } from '@/components/empty-state';
 import { SesiCard } from '@/components/sesi-card';
 import { useAuth } from '@/context/auth-context';
-import { subscribeAllAttendances } from '@/services/attendance-service';
+import { normalizeClassCode, subscribeAllAttendances } from '@/services/attendance-service';
 import { buildFallbackDefaultLabs, subscribeLabs } from '@/services/lab-service';
 import { LeaveRequestDocument, subscribeLeaveRequests } from '@/services/leave-service';
 import {
@@ -31,6 +31,7 @@ import {
 } from '@/types/praktikum';
 
 type FilterType = 'semua' | SessionStatus;
+type ClassFilterType = 'semua' | 'A' | 'B';
 
 export default function JadwalAsprakScreen() {
   const { userDoc } = useAuth();
@@ -40,6 +41,7 @@ export default function JadwalAsprakScreen() {
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequestDocument[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [filter, setFilter] = useState<FilterType>('semua');
+  const [classFilter, setClassFilter] = useState<ClassFilterType>('semua');
 
   const assignedLabIds = useMemo(() => userDoc?.labIds ?? [], [userDoc?.labIds]);
 
@@ -123,10 +125,26 @@ export default function JadwalAsprakScreen() {
     return matched.map((l) => l.nama).join(', ');
   }, [assignedLabIds, labs]);
 
+  const classScopedSesiList = useMemo(() => {
+    if (classFilter === 'semua') return sesiList;
+    return sesiList.filter((s) => normalizeClassCode(s.kelas) === classFilter);
+  }, [sesiList, classFilter]);
+
   const filteredSesiList = useMemo(() => {
-    if (filter === 'semua') return sesiList;
-    return sesiList.filter((s) => s.status === filter);
-  }, [sesiList, filter]);
+    const byStatus =
+      filter === 'semua'
+        ? classScopedSesiList
+        : classScopedSesiList.filter((s) => s.status === filter);
+    const statusRank = (status: SessionStatus) =>
+      status === 'dibuka' ? 0 : status === 'belum-dibuka' ? 1 : 2;
+    return [...byStatus].sort((a, b) => {
+      const rankDiff = statusRank(a.status) - statusRank(b.status);
+      if (rankDiff !== 0) return rankDiff;
+      const aTime = a.openedAt || a.updatedAt || a.createdAt;
+      const bTime = b.openedAt || b.updatedAt || b.createdAt;
+      return bTime.localeCompare(aTime);
+    });
+  }, [classScopedSesiList, filter]);
 
   const totalSesi = sesiList.length;
   const totalDibuka = sesiList.filter((s) => s.status === 'dibuka').length;
@@ -275,10 +293,19 @@ export default function JadwalAsprakScreen() {
           contentContainerStyle={styles.filterRow}>
           {(
             [
-              { key: 'semua', label: 'Semua' },
-              { key: 'dibuka', label: 'Dibuka' },
-              { key: 'belum-dibuka', label: 'Belum Dibuka' },
-              { key: 'ditutup', label: 'Ditutup' },
+              { key: 'semua', label: `Semua (${classScopedSesiList.length})` },
+              {
+                key: 'dibuka',
+                label: `Dibuka (${classScopedSesiList.filter((s) => s.status === 'dibuka').length})`,
+              },
+              {
+                key: 'belum-dibuka',
+                label: `Belum Dibuka (${classScopedSesiList.filter((s) => s.status === 'belum-dibuka').length})`,
+              },
+              {
+                key: 'ditutup',
+                label: `Ditutup (${classScopedSesiList.filter((s) => s.status === 'ditutup').length})`,
+              },
             ] as const
           ).map((f) => {
             const active = filter === f.key;
@@ -302,6 +329,46 @@ export default function JadwalAsprakScreen() {
             );
           })}
         </ScrollView>
+
+        <Text style={styles.filterTitle}>Filter Kelas:</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterRow}>
+          {(
+            [
+              { key: 'semua', label: `Semua Kelas (${sesiList.length})` },
+              {
+                key: 'A',
+                label: `Kelas A (${sesiList.filter((s) => normalizeClassCode(s.kelas) === 'A').length})`,
+              },
+              {
+                key: 'B',
+                label: `Kelas B (${sesiList.filter((s) => normalizeClassCode(s.kelas) === 'B').length})`,
+              },
+            ] as const
+          ).map((c) => {
+            const active = classFilter === c.key;
+            return (
+              <Pressable
+                key={c.key}
+                onPress={() => setClassFilter(c.key)}
+                style={({ pressed }) => [
+                  styles.filterChip,
+                  active && styles.filterChipActive,
+                  pressed && styles.chipPressed,
+                ]}>
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    active && styles.filterChipTextActive,
+                  ]}>
+                  {c.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
       </View>
     </View>
   );
@@ -310,9 +377,10 @@ export default function JadwalAsprakScreen() {
     <View style={styles.root}>
       <FlatList
         data={filteredSesiList}
+        extraData={`${filter}:${classFilter}`}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
-        ListHeaderComponent={renderHeader}
+        ListHeaderComponent={renderHeader()}
         contentContainerStyle={styles.listContent}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         ListEmptyComponent={

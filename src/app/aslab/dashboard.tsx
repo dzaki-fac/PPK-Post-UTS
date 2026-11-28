@@ -505,21 +505,26 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 8,
   },
   sectionTitle: {
-    fontSize: 17,
+    flex: 1,
+    flexShrink: 1,
+    fontSize: 16,
     fontWeight: '800',
     color: '#0F172A',
   },
   sectionCount: {
+    flexShrink: 0,
     fontSize: 12,
     fontWeight: '700',
     color: Colors.aslabPrimary,
   },
   inlineLinkBtn: {
+    flexShrink: 0,
     minHeight: 36,
     paddingHorizontal: 10,
     borderRadius: 8,

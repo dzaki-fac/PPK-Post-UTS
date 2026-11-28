@@ -134,12 +134,37 @@ export default function PraktikanJadwalScreen() {
     return scopedSesiList;
   }, [labScope, studentLabId, sesiList, scopedSesiList]);
 
+  const statusScopedList = useMemo(() => {
+    if (statusFilter === 'semua') return baseLabSesiList;
+    return baseLabSesiList.filter((s) => s.status === statusFilter);
+  }, [baseLabSesiList, statusFilter]);
+
   const classScopedList = useMemo(() => {
     if (classScope === 'kelas-saya' && studentClass) {
       return baseLabSesiList.filter((s) => normalizeClassCode(s.kelas) === studentClass);
     }
     return baseLabSesiList;
   }, [baseLabSesiList, classScope, studentClass]);
+
+  const statusAndClassAcrossAllLabs = useMemo(() => {
+    const byClass =
+      classScope === 'kelas-saya' && studentClass
+        ? sesiList.filter((s) => normalizeClassCode(s.kelas) === studentClass)
+        : sesiList;
+    return statusFilter === 'semua'
+      ? byClass
+      : byClass.filter((s) => s.status === statusFilter);
+  }, [sesiList, classScope, studentClass, statusFilter]);
+
+  const statusAndClassInMyLab = useMemo(() => {
+    const byClass =
+      classScope === 'kelas-saya' && studentClass
+        ? scopedSesiList.filter((s) => normalizeClassCode(s.kelas) === studentClass)
+        : scopedSesiList;
+    return statusFilter === 'semua'
+      ? byClass
+      : byClass.filter((s) => s.status === statusFilter);
+  }, [scopedSesiList, classScope, studentClass, statusFilter]);
 
   const filteredSesiList = useMemo(() => {
     const byStatus =
@@ -383,9 +408,9 @@ export default function PraktikanJadwalScreen() {
           />
         </ScrollView>
 
-        {(studentClass || (studentLabId && sesiList.length > scopedSesiList.length)) ? (
+        {userDoc && studentClass ? (
           <>
-            <Text style={styles.filterTitle}>Filter Kelas & Ruang Lab:</Text>
+            <Text style={styles.filterTitle}>Filter Kelas:</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -393,36 +418,41 @@ export default function PraktikanJadwalScreen() {
               <FilterChip
                 label="Semua Kelas"
                 active={classScope === 'semua'}
-                count={baseLabSesiList.length}
+                count={statusScopedList.length}
                 onPress={() => setClassScope('semua')}
               />
-              {userDoc && studentClass ? (
-                <FilterChip
-                  label={`Kelas Saya (${studentClass})`}
-                  active={classScope === 'kelas-saya'}
-                  count={
-                    baseLabSesiList.filter((s) => normalizeClassCode(s.kelas) === studentClass)
-                      .length
-                  }
-                  onPress={() => setClassScope('kelas-saya')}
-                />
-              ) : null}
-              {studentLabId && sesiList.length > scopedSesiList.length ? (
-                <>
-                  <FilterChip
-                    label="Lab Saya"
-                    active={labScope === 'lab-saya'}
-                    count={scopedSesiList.length}
-                    onPress={() => setLabScope('lab-saya')}
-                  />
-                  <FilterChip
-                    label="Semua Lab"
-                    active={labScope === 'semua-lab'}
-                    count={sesiList.length}
-                    onPress={() => setLabScope('semua-lab')}
-                  />
-                </>
-              ) : null}
+              <FilterChip
+                label={`Kelas Saya (${studentClass})`}
+                active={classScope === 'kelas-saya'}
+                count={
+                  statusScopedList.filter((s) => normalizeClassCode(s.kelas) === studentClass)
+                    .length
+                }
+                onPress={() => setClassScope('kelas-saya')}
+              />
+            </ScrollView>
+          </>
+        ) : null}
+
+        {studentLabId && sesiList.length > scopedSesiList.length ? (
+          <>
+            <Text style={styles.filterTitle}>Filter Ruang Lab:</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterRow}>
+              <FilterChip
+                label="Lab Saya"
+                active={labScope === 'lab-saya'}
+                count={statusAndClassInMyLab.length}
+                onPress={() => setLabScope('lab-saya')}
+              />
+              <FilterChip
+                label="Semua Lab"
+                active={labScope === 'semua-lab'}
+                count={statusAndClassAcrossAllLabs.length}
+                onPress={() => setLabScope('semua-lab')}
+              />
             </ScrollView>
           </>
         ) : null}

@@ -2,6 +2,7 @@ import {
   arrayRemove,
   arrayUnion,
   collection,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -68,6 +69,7 @@ export async function linkLabMembersOnLogin(params: {
 
     let praktikanLabId: string | undefined;
     let praktikanNim: string | undefined;
+    let memberKelas: 'A' | 'B' | undefined;
     const asprakLabIds: string[] = [];
 
     for (const d of snap.docs) {
@@ -80,8 +82,10 @@ export async function linkLabMembersOnLogin(params: {
       if (data.role === 'praktikan') {
         praktikanLabId = data.labId;
         if (data.nim) praktikanNim = data.nim;
+        if (data.kelas === 'A' || data.kelas === 'B') memberKelas = data.kelas;
       } else if (data.role === 'asprak' && data.labId) {
         asprakLabIds.push(data.labId);
+        if (data.kelas === 'A' || data.kelas === 'B') memberKelas = data.kelas;
       }
     }
 
@@ -119,6 +123,10 @@ export async function linkLabMembersOnLogin(params: {
         userUpdates.labIds = arrayUnion(...asprakLabIds);
         needsUserUpdate = true;
       }
+    }
+    if (memberKelas && currentData.kelas !== memberKelas) {
+      userUpdates.kelas = memberKelas;
+      needsUserUpdate = true;
     }
 
     if (needsUserUpdate) {
@@ -182,7 +190,7 @@ export function subscribeAllActiveMembers(
 
 export async function updateLabMemberProfile(
   memberId: string,
-  updates: { nama: string; email: string }
+  updates: { nama: string; email: string; kelas?: 'A' | 'B' | null; uid?: string | null }
 ): Promise<void> {
   const cleanNama = updates.nama.trim();
   const cleanEmail = normalizeEmailLower(updates.email);
@@ -193,12 +201,27 @@ export async function updateLabMemberProfile(
     throw new Error('Format email anggota tidak valid.');
   }
 
+  const now = new Date().toISOString();
   await updateDoc(doc(db, LAB_MEMBERS_COLLECTION, memberId), {
     nama: cleanNama,
     email: cleanEmail,
     emailLower: cleanEmail,
-    updatedAt: new Date().toISOString(),
+    ...(updates.kelas !== undefined
+      ? { kelas: updates.kelas ? updates.kelas : deleteField() }
+      : {}),
+    updatedAt: now,
   });
+
+  if (updates.uid && updates.kelas !== undefined) {
+    try {
+      await updateDoc(doc(db, USERS_COLLECTION, updates.uid), {
+        kelas: updates.kelas ? updates.kelas : deleteField(),
+        updatedAt: now,
+      });
+    } catch {
+      // non-fatal
+    }
+  }
 }
 
 export async function softRemoveLabMember(member: LabMemberDocument): Promise<void> {
@@ -380,6 +403,7 @@ export async function upsertSingleLabMember(params: {
   nama: string;
   email: string;
   nim?: string;
+  kelas?: 'A' | 'B' | null;
   createdBy: string;
 }): Promise<LabMemberDocument> {
   const cleanNama = params.nama.trim();
@@ -420,6 +444,7 @@ export async function upsertSingleLabMember(params: {
     labId: params.lab.id,
     role: params.role,
     ...(cleanNim ? { nim: cleanNim } : {}),
+    ...(params.kelas === 'A' || params.kelas === 'B' ? { kelas: params.kelas } : {}),
     nama: cleanNama,
     email: emailLower,
     emailLower,
@@ -434,14 +459,20 @@ export async function upsertSingleLabMember(params: {
 
   if (matchedUid) {
     try {
+      const kelasUpdate =
+        params.kelas !== undefined
+          ? { kelas: params.kelas ? params.kelas : deleteField() }
+          : {};
       if (params.role === 'praktikan') {
         await updateDoc(doc(db, USERS_COLLECTION, matchedUid), {
           labId: params.lab.id,
+          ...kelasUpdate,
           updatedAt: now,
         });
       } else {
         await updateDoc(doc(db, USERS_COLLECTION, matchedUid), {
           labIds: arrayUnion(params.lab.id),
+          ...kelasUpdate,
           updatedAt: now,
         });
       }
@@ -451,4 +482,103 @@ export async function upsertSingleLabMember(params: {
   }
 
   return payload;
+}
+
+/**
+ * Menyelaraskan seluruh laboratorium dan kelas (opsional A/B atau Semua) yang diampu
+ * oleh satu akun Asprak pada suatu mata kuliah.
+ */
+export async function syncAsprakLabAssignments(params: {
+  courseId: string;
+  nama: string;
+  email: string;
+  labIds: string[];
+  kelas?: 'A' | 'B' | null;
+  createdBy: string;
+  existingCourseMembers: LabMemberDocument[];
+  knownUid?: string | null;
+}): Promise<void> {
+  const cleanNama = params.nama.trim();
+  const emailLower = normalizeEmailLower(params.email);
+  const targetLabIds = Array.from(new Set(params.labIds.map((id) => id.trim()).filter(Boolean)));
+
+  if (cleanNama.length < 2) {
+    throw new Error('Nama asprak wajib diisi minimal 2 karakter.');
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailLower)) {
+    throw new Error('Format email asprak tidak valid.');
+  }
+  if (targetLabIds.length === 0) {
+    throw new Error('Pilih minimal satu laboratorium untuk diampu oleh asprak.');
+  }
+
+  let matchedUid: string | null = params.knownUid ?? null;
+  if (!matchedUid) {
+    try {
+      const userSnap = await getDocs(
+        query(collection(db, USERS_COLLECTION), where('email', '==', emailLower))
+      );
+      if (!userSnap.empty) {
+        matchedUid = userSnap.docs[0].id;
+      }
+    } catch {
+      matchedUid = null;
+    }
+  }
+
+  const now = new Date().toISOString();
+  const batch = writeBatch(db);
+  const targetSet = new Set(targetLabIds);
+
+  const existingForEmail = params.existingCourseMembers.filter(
+    (m) => m.role === 'asprak' && m.emailLower === emailLower && m.status === 'active'
+  );
+
+  for (const oldDoc of existingForEmail) {
+    if (!targetSet.has(oldDoc.labId)) {
+      batch.update(doc(db, LAB_MEMBERS_COLLECTION, oldDoc.id), {
+        status: 'removed',
+        updatedAt: now,
+      });
+    }
+  }
+
+  for (const labId of targetLabIds) {
+    const memberId = buildAsprakMemberId(labId, emailLower);
+    const existing = existingForEmail.find((m) => m.id === memberId || m.labId === labId);
+    batch.set(
+      doc(db, LAB_MEMBERS_COLLECTION, memberId),
+      {
+        id: memberId,
+        courseId: params.courseId,
+        labId,
+        role: 'asprak',
+        nama: cleanNama,
+        email: emailLower,
+        emailLower,
+        uid: matchedUid ?? existing?.uid ?? null,
+        status: 'active',
+        kelas: params.kelas ? params.kelas : deleteField(),
+        createdBy: existing?.createdBy ?? params.createdBy,
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+      },
+      { merge: true }
+    );
+  }
+
+  await batch.commit();
+
+  if (matchedUid) {
+    try {
+      await updateDoc(doc(db, USERS_COLLECTION, matchedUid), {
+        labIds: targetLabIds,
+        kelas: params.kelas ? params.kelas : deleteField(),
+        emailLower,
+        updatedAt: now,
+      });
+    } catch (err) {
+      console.warn('Gagal menyinkronkan labIds/kelas asprak ke /users:', err);
+    }
+  }
 }

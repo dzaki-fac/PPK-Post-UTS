@@ -97,6 +97,7 @@ export interface LabMemberDocument {
   labId: string;
   role: LabMemberRole;
   nim?: string;
+  kelas?: 'A' | 'B';
   nama: string;
   email: string;
   emailLower: string;

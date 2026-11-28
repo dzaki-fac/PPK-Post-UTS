@@ -22,6 +22,7 @@ import { ensureDefaultCourse, subscribeManagedCourses } from '@/services/course-
 import {
   softRemoveLabMember,
   subscribeMembersByCourse,
+  syncAsprakLabAssignments,
   updateLabMemberProfile,
   upsertSingleLabMember,
 } from '@/services/lab-member-service';
@@ -49,11 +50,20 @@ export default function AslabAnggotaScreen() {
   const [editingMember, setEditingMember] = useState<LabMemberDocument | null>(null);
   const [formRole, setFormRole] = useState<LabMemberRole>('praktikan');
   const [formLabId, setFormLabId] = useState('');
+  const [formLabIds, setFormLabIds] = useState<string[]>([]);
+  const [formKelas, setFormKelas] = useState<'all' | 'A' | 'B'>('all');
   const [formNama, setFormNama] = useState('');
   const [formEmail, setFormEmail] = useState('');
   const [formNim, setFormNim] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [savingForm, setSavingForm] = useState(false);
+
+  const [assignModalVisible, setAssignModalVisible] = useState(false);
+  const [assignTarget, setAssignTarget] = useState<LabMemberDocument | null>(null);
+  const [assignLabIds, setAssignLabIds] = useState<string[]>([]);
+  const [assignKelas, setAssignKelas] = useState<'all' | 'A' | 'B'>('all');
+  const [assignError, setAssignError] = useState<string | null>(null);
+  const [savingAssign, setSavingAssign] = useState(false);
 
   const [removeTarget, setRemoveTarget] = useState<LabMemberDocument | null>(null);
   const [removing, setRemoving] = useState(false);
@@ -132,9 +142,12 @@ export default function AslabAnggotaScreen() {
   }, [members]);
 
   const openAddModal = () => {
+    const defaultLabId = selectedLabId !== 'ALL' ? selectedLabId : labs[0]?.id ?? '';
     setEditingMember(null);
     setFormRole(roleFilter === 'asprak' ? 'asprak' : 'praktikan');
-    setFormLabId(selectedLabId !== 'ALL' ? selectedLabId : labs[0]?.id ?? '');
+    setFormLabId(defaultLabId);
+    setFormLabIds(defaultLabId ? [defaultLabId] : []);
+    setFormKelas('all');
     setFormNama('');
     setFormEmail('');
     setFormNim('');
@@ -146,6 +159,8 @@ export default function AslabAnggotaScreen() {
     setEditingMember(member);
     setFormRole(member.role);
     setFormLabId(member.labId);
+    setFormLabIds([member.labId]);
+    setFormKelas(member.kelas === 'A' || member.kelas === 'B' ? member.kelas : 'all');
     setFormNama(member.nama);
     setFormEmail(member.email);
     setFormNim(member.nim ?? '');
@@ -153,19 +168,70 @@ export default function AslabAnggotaScreen() {
     setFormVisible(true);
   };
 
+  const openAssignModal = (member: LabMemberDocument) => {
+    const currentLabs = members
+      .filter(
+        (m) =>
+          m.role === 'asprak' &&
+          m.emailLower === member.emailLower &&
+          m.status === 'active'
+      )
+      .map((m) => m.labId);
+    setAssignTarget(member);
+    setAssignLabIds(currentLabs.length > 0 ? currentLabs : [member.labId]);
+    setAssignKelas(member.kelas === 'A' || member.kelas === 'B' ? member.kelas : 'all');
+    setAssignError(null);
+    setAssignModalVisible(true);
+  };
+
+  const toggleFormLab = (id: string) => {
+    setFormLabIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const toggleAssignLab = (id: string) => {
+    setAssignLabIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
   const handleSaveForm = async () => {
     if (!selectedCourse || !userDoc?.uid) return;
     setFormError(null);
     setSavingForm(true);
     try {
+      const kelasValue = formKelas === 'all' ? null : formKelas;
       if (editingMember) {
         await updateLabMemberProfile(editingMember.id, {
           nama: formNama,
           email: formEmail,
+          kelas: kelasValue,
+          uid: editingMember.uid,
         });
         setBanner({
           type: 'success',
           text: `Data anggota "${formNama.trim()}" berhasil diperbarui.`,
+        });
+      } else if (formRole === 'asprak') {
+        if (formLabIds.length === 0) {
+          throw new Error('Pilih minimal satu laboratorium tujuan untuk asprak.');
+        }
+        await syncAsprakLabAssignments({
+          courseId: selectedCourse.id,
+          nama: formNama,
+          email: formEmail,
+          labIds: formLabIds,
+          kelas: kelasValue,
+          createdBy: userDoc.uid,
+          existingCourseMembers: members,
+        });
+        const labNames = formLabIds
+          .map((id) => labNameById.get(id) ?? id)
+          .join(', ');
+        setBanner({
+          type: 'success',
+          text: `Asprak "${formNama.trim()}" berhasil ditugaskan ke ${labNames}${kelasValue ? ` (Kelas ${kelasValue})` : ''}.`,
         });
       } else {
         const lab = labs.find((l) => l.id === formLabId);
@@ -175,15 +241,16 @@ export default function AslabAnggotaScreen() {
         await upsertSingleLabMember({
           courseId: selectedCourse.id,
           lab,
-          role: formRole,
+          role: 'praktikan',
           nama: formNama,
           email: formEmail,
           nim: formNim,
+          kelas: kelasValue,
           createdBy: userDoc.uid,
         });
         setBanner({
           type: 'success',
-          text: `${formRole === 'praktikan' ? 'Praktikan' : 'Asprak'} "${formNama.trim()}" berhasil ditambahkan ke ${lab.nama}.`,
+          text: `Praktikan "${formNama.trim()}" berhasil ditambahkan ke ${lab.nama}${kelasValue ? ` (Kelas ${kelasValue})` : ''}.`,
         });
       }
       setFormVisible(false);
@@ -191,6 +258,37 @@ export default function AslabAnggotaScreen() {
       setFormError(err instanceof Error ? err.message : 'Gagal menyimpan data anggota.');
     } finally {
       setSavingForm(false);
+    }
+  };
+
+  const handleSaveAssign = async () => {
+    if (!selectedCourse || !userDoc?.uid || !assignTarget) return;
+    setAssignError(null);
+    setSavingAssign(true);
+    try {
+      const kelasValue = assignKelas === 'all' ? null : assignKelas;
+      await syncAsprakLabAssignments({
+        courseId: selectedCourse.id,
+        nama: assignTarget.nama,
+        email: assignTarget.email,
+        labIds: assignLabIds,
+        kelas: kelasValue,
+        createdBy: userDoc.uid,
+        existingCourseMembers: members,
+        knownUid: assignTarget.uid,
+      });
+      const labNames = assignLabIds.map((id) => labNameById.get(id) ?? id).join(', ');
+      setBanner({
+        type: 'success',
+        text: `Penugasan Asprak "${assignTarget.nama}" diperbarui: ${labNames}${kelasValue ? ` • Kelas ${kelasValue}` : ' • Semua Kelas'}.`,
+      });
+      setAssignModalVisible(false);
+    } catch (err) {
+      setAssignError(
+        err instanceof Error ? err.message : 'Gagal memperbarui penugasan lab asprak.'
+      );
+    } finally {
+      setSavingAssign(false);
     }
   };
 
@@ -252,6 +350,7 @@ export default function AslabAnggotaScreen() {
         <Text style={styles.memberName}>{item.nama}</Text>
         <Text style={styles.memberMeta}>
           {item.nim ? `NIM ${item.nim} • ` : ''}
+          {item.kelas ? `Kelas ${item.kelas} • ` : ''}
           {item.email}
         </Text>
 
@@ -261,6 +360,13 @@ export default function AslabAnggotaScreen() {
             onPress={() => openEditModal(item)}>
             <Text style={styles.btnCardOutlineText}>Edit</Text>
           </Pressable>
+          {!isPraktikan ? (
+            <Pressable
+              style={({ pressed }) => [styles.btnCardIndigo, pressed && styles.pressed]}
+              onPress={() => openAssignModal(item)}>
+              <Text style={styles.btnCardIndigoText}>Atur Lab & Kelas</Text>
+            </Pressable>
+          ) : null}
           <Pressable
             style={({ pressed }) => [styles.btnCardIndigo, pressed && styles.pressed]}
             onPress={() =>
@@ -280,10 +386,20 @@ export default function AslabAnggotaScreen() {
     );
   };
 
+  const roleFilteredMembers = useMemo(
+    () => (roleFilter === 'all' ? members : members.filter((m) => m.role === roleFilter)),
+    [members, roleFilter]
+  );
+  const labFilteredMembers = useMemo(
+    () => (selectedLabId === 'ALL' ? members : members.filter((m) => m.labId === selectedLabId)),
+    [members, selectedLabId]
+  );
+
   return (
     <View style={styles.root}>
       <FlatList
         data={filteredMembers}
+        extraData={`${selectedCourseId}:${roleFilter}:${selectedLabId}:${searchQuery}`}
         keyExtractor={(item) => item.id}
         renderItem={renderMemberCard}
         contentContainerStyle={styles.listContent}
@@ -357,9 +473,15 @@ export default function AslabAnggotaScreen() {
             <View style={styles.segmentedRow}>
               {(
                 [
-                  { key: 'all', label: 'Semua' },
-                  { key: 'praktikan', label: 'Praktikan' },
-                  { key: 'asprak', label: 'Asprak' },
+                  { key: 'all', label: `Semua (${labFilteredMembers.length})` },
+                  {
+                    key: 'praktikan',
+                    label: `Praktikan (${labFilteredMembers.filter((m) => m.role === 'praktikan').length})`,
+                  },
+                  {
+                    key: 'asprak',
+                    label: `Asprak (${labFilteredMembers.filter((m) => m.role === 'asprak').length})`,
+                  },
                 ] as const
               ).map((seg) => {
                 const active = roleFilter === seg.key;
@@ -381,18 +503,19 @@ export default function AslabAnggotaScreen() {
                 style={[styles.chip, selectedLabId === 'ALL' && styles.chipActive]}
                 onPress={() => setSelectedLabId('ALL')}>
                 <Text style={[styles.chipText, selectedLabId === 'ALL' && styles.chipTextActive]}>
-                  Semua Lab ({labs.length})
+                  Semua Lab ({roleFilteredMembers.length})
                 </Text>
               </Pressable>
               {labs.map((lab) => {
                 const active = selectedLabId === lab.id;
+                const count = roleFilteredMembers.filter((m) => m.labId === lab.id).length;
                 return (
                   <Pressable
                     key={lab.id}
                     style={[styles.chip, active && styles.chipActive]}
                     onPress={() => setSelectedLabId(lab.id)}>
                     <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                      {lab.kode} • {lab.nama}
+                      {lab.kode} • {lab.nama} ({count})
                     </Text>
                   </Pressable>
                 );
@@ -470,19 +593,29 @@ export default function AslabAnggotaScreen() {
                   </View>
 
                   <View style={styles.fieldGroup}>
-                    <Text style={styles.fieldLabel}>Laboratorium Tujuan *</Text>
+                    <Text style={styles.fieldLabel}>
+                      {formRole === 'asprak'
+                        ? 'Laboratorium Diampu (bisa pilih lebih dari 1) *'
+                        : 'Laboratorium Tujuan *'}
+                    </Text>
                     <ScrollView
                       horizontal
                       showsHorizontalScrollIndicator={false}
                       contentContainerStyle={styles.chipRow}>
                       {labs.map((lab) => {
-                        const active = formLabId === lab.id;
+                        const active =
+                          formRole === 'asprak'
+                            ? formLabIds.includes(lab.id)
+                            : formLabId === lab.id;
                         return (
                           <Pressable
                             key={lab.id}
                             style={[styles.chip, active && styles.chipActive]}
-                            onPress={() => setFormLabId(lab.id)}>
+                            onPress={() =>
+                              formRole === 'asprak' ? toggleFormLab(lab.id) : setFormLabId(lab.id)
+                            }>
                             <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                              {active && formRole === 'asprak' ? '✓ ' : ''}
                               {lab.kode} • {lab.nama}
                             </Text>
                           </Pressable>
@@ -492,6 +625,33 @@ export default function AslabAnggotaScreen() {
                   </View>
                 </>
               ) : null}
+
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>
+                  {formRole === 'asprak' ? 'Kelas Diampu' : 'Kelas (Opsional)'}
+                </Text>
+                <View style={styles.segmentedRow}>
+                  {(
+                    [
+                      { key: 'all', label: 'Semua Kelas' },
+                      { key: 'A', label: 'Kelas A' },
+                      { key: 'B', label: 'Kelas B' },
+                    ] as const
+                  ).map((opt) => {
+                    const active = formKelas === opt.key;
+                    return (
+                      <Pressable
+                        key={opt.key}
+                        style={[styles.segBtn, active && styles.segBtnActive]}
+                        onPress={() => setFormKelas(opt.key)}>
+                        <Text style={[styles.segBtnText, active && styles.segBtnTextActive]}>
+                          {opt.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
 
               <View style={styles.fieldGroup}>
                 <Text style={styles.fieldLabel}>Nama Lengkap *</Text>
@@ -549,6 +709,104 @@ export default function AslabAnggotaScreen() {
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
                   <Text style={styles.btnIndigoText}>Simpan</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={assignModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAssignModalVisible(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Atur Lab & Kelas Asprak</Text>
+              <Pressable onPress={() => setAssignModalVisible(false)} style={styles.closeBtn}>
+                <Text style={styles.closeText}>Tutup</Text>
+              </Pressable>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.modalBody}>
+              {assignError ? (
+                <View style={[styles.bannerBox, styles.bannerError]}>
+                  <Text style={[styles.bannerText, styles.bannerErrorText]}>{assignError}</Text>
+                </View>
+              ) : null}
+
+              {assignTarget ? (
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.memberName}>{assignTarget.nama}</Text>
+                  <Text style={styles.memberMeta}>{assignTarget.email}</Text>
+                </View>
+              ) : null}
+
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>
+                  Laboratorium yang Diampu (ketuk untuk tambah / lepas) *
+                </Text>
+                <View style={styles.labCheckGrid}>
+                  {labs.map((lab) => {
+                    const active = assignLabIds.includes(lab.id);
+                    return (
+                      <Pressable
+                        key={lab.id}
+                        style={[styles.chip, active && styles.chipActive]}
+                        onPress={() => toggleAssignLab(lab.id)}>
+                        <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                          {active ? '✓ ' : ''}
+                          {lab.kode} • {lab.nama}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>Fokus Kelas Diampu</Text>
+                <View style={styles.segmentedRow}>
+                  {(
+                    [
+                      { key: 'all', label: 'Semua Kelas' },
+                      { key: 'A', label: 'Kelas A' },
+                      { key: 'B', label: 'Kelas B' },
+                    ] as const
+                  ).map((opt) => {
+                    const active = assignKelas === opt.key;
+                    return (
+                      <Pressable
+                        key={opt.key}
+                        style={[styles.segBtn, active && styles.segBtnActive]}
+                        onPress={() => setAssignKelas(opt.key)}>
+                        <Text style={[styles.segBtnText, active && styles.segBtnTextActive]}>
+                          {opt.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <Pressable
+                style={[styles.btnNeutral, { flex: 1 }]}
+                onPress={() => setAssignModalVisible(false)}
+                disabled={savingAssign}>
+                <Text style={styles.btnNeutralText}>Batal</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.btnIndigo, { flex: 1 }]}
+                onPress={handleSaveAssign}
+                disabled={savingAssign}>
+                {savingAssign ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.btnIndigoText}>Simpan Penugasan</Text>
                 )}
               </Pressable>
             </View>
@@ -619,6 +877,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   btnNeutralText: { fontSize: 13, fontWeight: '700', color: '#334155' },
+  labCheckGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   bannerBox: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 11 },
   bannerSuccess: { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' },
   bannerError: { backgroundColor: '#FEF2F2', borderColor: '#FECACA' },

@@ -125,6 +125,11 @@ export default function JadwalAsprakScreen() {
     return matched.map((l) => l.nama).join(', ');
   }, [assignedLabIds, labs]);
 
+  const statusScopedSesiList = useMemo(() => {
+    if (filter === 'semua') return sesiList;
+    return sesiList.filter((s) => s.status === filter);
+  }, [sesiList, filter]);
+
   const classScopedSesiList = useMemo(() => {
     if (classFilter === 'semua') return sesiList;
     return sesiList.filter((s) => normalizeClassCode(s.kelas) === classFilter);
@@ -191,7 +196,10 @@ export default function JadwalAsprakScreen() {
           Buka sesi saat praktikum dimulai, pantau dan kelola presensi mahasiswa, serta tutup sesi setelah selesai.
         </Text>
         <View style={styles.scopePill}>
-          <Text style={styles.scopePillText}>Lab Tanggung Jawab: {assignedLabLabels}</Text>
+          <Text style={styles.scopePillText}>
+            Lab Diampu: {assignedLabLabels}
+            {userDoc?.kelas ? ` • Fokus Kelas ${userDoc.kelas}` : ''}
+          </Text>
         </View>
       </View>
 
@@ -337,14 +345,14 @@ export default function JadwalAsprakScreen() {
           contentContainerStyle={styles.filterRow}>
           {(
             [
-              { key: 'semua', label: `Semua Kelas (${sesiList.length})` },
+              { key: 'semua', label: `Semua Kelas (${statusScopedSesiList.length})` },
               {
                 key: 'A',
-                label: `Kelas A (${sesiList.filter((s) => normalizeClassCode(s.kelas) === 'A').length})`,
+                label: `Kelas A (${statusScopedSesiList.filter((s) => normalizeClassCode(s.kelas) === 'A').length})`,
               },
               {
                 key: 'B',
-                label: `Kelas B (${sesiList.filter((s) => normalizeClassCode(s.kelas) === 'B').length})`,
+                label: `Kelas B (${statusScopedSesiList.filter((s) => normalizeClassCode(s.kelas) === 'B').length})`,
               },
             ] as const
           ).map((c) => {
@@ -373,6 +381,8 @@ export default function JadwalAsprakScreen() {
     </View>
   );
 
+  const hasActiveFilter = filter !== 'semua' || classFilter !== 'semua';
+
   return (
     <View style={styles.root}>
       <FlatList
@@ -391,8 +401,25 @@ export default function JadwalAsprakScreen() {
             </View>
           ) : (
             <EmptyState
-              title="Belum Ada Sesi di Lab Anda"
-              message="Jadwal sesi praktikum dibuat oleh Aslab untuk laboratorium yang Anda ampu."
+              title={
+                hasActiveFilter && sesiList.length > 0
+                  ? 'Tidak Ada Sesi Sesuai Filter'
+                  : 'Belum Ada Sesi di Lab Anda'
+              }
+              message={
+                hasActiveFilter && sesiList.length > 0
+                  ? 'Tidak ditemukan sesi untuk kombinasi filter status dan kelas saat ini.'
+                  : 'Jadwal sesi praktikum dibuat oleh Aslab untuk laboratorium yang Anda ampu.'
+              }
+              actionText={hasActiveFilter ? 'Reset Filter' : undefined}
+              onAction={
+                hasActiveFilter
+                  ? () => {
+                      setFilter('semua');
+                      setClassFilter('semua');
+                    }
+                  : undefined
+              }
             />
           )
         }

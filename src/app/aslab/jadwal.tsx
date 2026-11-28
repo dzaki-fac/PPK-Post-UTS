@@ -108,6 +108,36 @@ export default function AslabJadwalScreen() {
     return sessions.filter((s) => !s.courseId || set.has(s.courseId));
   }, [sessions, managedCourseIds]);
 
+  const forStatusCounts = useMemo(
+    () =>
+      scopedSessions.filter((s) => {
+        const matchClass = filterClass === 'semua' || normalizeClassCode(s.kelas) === filterClass;
+        const matchLab = filterLabId === 'semua' || s.labId === filterLabId;
+        return matchClass && matchLab;
+      }),
+    [scopedSessions, filterClass, filterLabId]
+  );
+
+  const forClassCounts = useMemo(
+    () =>
+      scopedSessions.filter((s) => {
+        const matchStatus = filterStatus === 'semua' || s.status === filterStatus;
+        const matchLab = filterLabId === 'semua' || s.labId === filterLabId;
+        return matchStatus && matchLab;
+      }),
+    [scopedSessions, filterStatus, filterLabId]
+  );
+
+  const forLabCounts = useMemo(
+    () =>
+      scopedSessions.filter((s) => {
+        const matchStatus = filterStatus === 'semua' || s.status === filterStatus;
+        const matchClass = filterClass === 'semua' || normalizeClassCode(s.kelas) === filterClass;
+        return matchStatus && matchClass;
+      }),
+    [scopedSessions, filterStatus, filterClass]
+  );
+
   const filteredSessions = useMemo(() => {
     const matched = scopedSessions.filter((s) => {
       const matchStatus = filterStatus === 'semua' || s.status === filterStatus;
@@ -304,16 +334,26 @@ export default function AslabJadwalScreen() {
       </View>
 
       {/* Filter Status */}
+      <Text style={styles.filterTitle}>Filter Status Sesi:</Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.filterRow}>
         {(
           [
-            { key: 'semua', label: 'Semua Status' },
-            { key: 'dibuka', label: 'Dibuka' },
-            { key: 'belum-dibuka', label: 'Belum Dibuka' },
-            { key: 'ditutup', label: 'Ditutup' },
+            { key: 'semua', label: `Semua Status (${forStatusCounts.length})` },
+            {
+              key: 'dibuka',
+              label: `Dibuka (${forStatusCounts.filter((s) => s.status === 'dibuka').length})`,
+            },
+            {
+              key: 'belum-dibuka',
+              label: `Belum Dibuka (${forStatusCounts.filter((s) => s.status === 'belum-dibuka').length})`,
+            },
+            {
+              key: 'ditutup',
+              label: `Ditutup (${forStatusCounts.filter((s) => s.status === 'ditutup').length})`,
+            },
           ] as const
         ).map((item) => {
           const active = filterStatus === item.key;
@@ -335,15 +375,22 @@ export default function AslabJadwalScreen() {
       </ScrollView>
 
       {/* Filter Kelas */}
+      <Text style={styles.filterTitle}>Filter Kelas:</Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.filterRow}>
         {(
           [
-            { key: 'semua', label: 'Semua Kelas' },
-            { key: 'A', label: 'Kelas A' },
-            { key: 'B', label: 'Kelas B' },
+            { key: 'semua', label: `Semua Kelas (${forClassCounts.length})` },
+            {
+              key: 'A',
+              label: `Kelas A (${forClassCounts.filter((s) => normalizeClassCode(s.kelas) === 'A').length})`,
+            },
+            {
+              key: 'B',
+              label: `Kelas B (${forClassCounts.filter((s) => normalizeClassCode(s.kelas) === 'B').length})`,
+            },
           ] as const
         ).map((item) => {
           const active = filterClass === item.key;
@@ -366,43 +413,47 @@ export default function AslabJadwalScreen() {
 
       {/* Filter Lab */}
       {scopedLabs.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterRow}>
-          <Pressable
-            onPress={() => setFilterLabId('semua')}
-            style={({ pressed }) => [
-              styles.chip,
-              filterLabId === 'semua' && styles.chipActive,
-              pressed && styles.pressed,
-            ]}>
-            <Text
-              style={[
-                styles.chipText,
-                filterLabId === 'semua' && styles.chipTextActive,
+        <>
+          <Text style={styles.filterTitle}>Filter Laboratorium:</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterRow}>
+            <Pressable
+              onPress={() => setFilterLabId('semua')}
+              style={({ pressed }) => [
+                styles.chip,
+                filterLabId === 'semua' && styles.chipActive,
+                pressed && styles.pressed,
               ]}>
-              Semua Lab
-            </Text>
-          </Pressable>
-          {scopedLabs.map((l) => {
-            const active = filterLabId === l.id;
-            return (
-              <Pressable
-                key={l.id}
-                onPress={() => setFilterLabId(l.id)}
-                style={({ pressed }) => [
-                  styles.chip,
-                  active && styles.chipActive,
-                  pressed && styles.pressed,
+              <Text
+                style={[
+                  styles.chipText,
+                  filterLabId === 'semua' && styles.chipTextActive,
                 ]}>
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                  {l.kode} • {l.nama}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+                Semua Lab ({forLabCounts.length})
+              </Text>
+            </Pressable>
+            {scopedLabs.map((l) => {
+              const active = filterLabId === l.id;
+              const labCount = forLabCounts.filter((s) => s.labId === l.id).length;
+              return (
+                <Pressable
+                  key={l.id}
+                  onPress={() => setFilterLabId(l.id)}
+                  style={({ pressed }) => [
+                    styles.chip,
+                    active && styles.chipActive,
+                    pressed && styles.pressed,
+                  ]}>
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                    {l.kode} • {l.nama} ({labCount})
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </>
       ) : null}
     </View>
   );
@@ -447,8 +498,30 @@ export default function AslabJadwalScreen() {
             </View>
           ) : (
             <EmptyState
-              title="Belum Ada Jadwal Sesi"
-              message="Tekan tombol + Tambah Sesi untuk menjadwalkan modul praktikum baru pada laboratorium."
+              title={
+                filterStatus !== 'semua' || filterClass !== 'semua' || filterLabId !== 'semua'
+                  ? 'Tidak Ada Sesi Sesuai Filter'
+                  : 'Belum Ada Jadwal Sesi'
+              }
+              message={
+                filterStatus !== 'semua' || filterClass !== 'semua' || filterLabId !== 'semua'
+                  ? 'Tidak ditemukan sesi praktikum untuk kombinasi filter status, kelas, dan lab ini.'
+                  : 'Tekan tombol + Tambah Sesi untuk menjadwalkan modul praktikum baru pada laboratorium.'
+              }
+              actionText={
+                filterStatus !== 'semua' || filterClass !== 'semua' || filterLabId !== 'semua'
+                  ? 'Reset Filter'
+                  : undefined
+              }
+              onAction={
+                filterStatus !== 'semua' || filterClass !== 'semua' || filterLabId !== 'semua'
+                  ? () => {
+                      setFilterStatus('semua');
+                      setFilterClass('semua');
+                      setFilterLabId('semua');
+                    }
+                  : undefined
+              }
             />
           )
         }
@@ -736,6 +809,12 @@ const styles = StyleSheet.create({
   metricDesc: {
     fontSize: 11,
     color: '#64748B',
+  },
+  filterTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
+    marginTop: 2,
   },
   filterRow: {
     gap: 8,

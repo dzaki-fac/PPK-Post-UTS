@@ -320,9 +320,6 @@ export default function PraktikanRiwayatScreen() {
         <View style={styles.eyebrowBadge}>
           <Text style={styles.eyebrowText}>REKAP PRIBADI</Text>
         </View>
-        <View style={styles.liveTag}>
-          <Text style={styles.liveTagText}>Data Tersinkron Real-Time</Text>
-        </View>
       </View>
 
       <Text style={styles.headerTitle}>Riwayat & Izin Praktikum</Text>

@@ -117,7 +117,7 @@ export default function JadwalAsprakScreen() {
   );
 
   const assignedLabLabels = useMemo(() => {
-    if (assignedLabIds.length === 0) return 'Semua Lab (Akun Legacy)';
+    if (assignedLabIds.length === 0) return 'Semua Lab';
     const matched = labs.filter((l) => assignedLabIds.includes(l.id));
     if (matched.length === 0) return `${assignedLabIds.length} Laboratorium`;
     return matched.map((l) => l.nama).join(', ');
@@ -164,9 +164,6 @@ export default function JadwalAsprakScreen() {
       <View style={styles.eyebrowRow}>
         <View style={styles.eyebrowBadge}>
           <Text style={styles.eyebrowText}>ASISTEN PRAKTIKUM (ASPRAK)</Text>
-        </View>
-        <View style={styles.liveTag}>
-          <Text style={styles.liveTagText}>Sinkron Real-Time</Text>
         </View>
       </View>
 
@@ -560,8 +557,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   filterChip: {
-    minHeight: 38,
-    paddingHorizontal: 14,
+    minHeight: 34,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 20,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,

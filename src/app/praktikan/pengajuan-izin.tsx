@@ -244,15 +244,11 @@ export default function PengajuanIzinScreen() {
               <View style={styles.eyebrowBadge}>
                 <Text style={styles.eyebrowText}>PORTAL MAHASISWA</Text>
               </View>
-              <View style={styles.aiTag}>
-                <Text style={styles.aiTagText}>Model EDOM On-Device</Text>
-              </View>
             </View>
 
             <Text style={styles.title}>Pengajuan Izin Praktikum</Text>
             <Text style={styles.subtitle}>
-              Ajukan permohonan ketidakhadiran praktikum. Sistem AI akan menganalisis alasan Anda
-              secara instan untuk membantu Asprak memverifikasi izin.
+              Ajukan permohonan ketidakhadiran untuk sesi praktikum Anda.
             </Text>
           </View>
 
@@ -443,10 +439,6 @@ export default function PengajuanIzinScreen() {
                   <View style={styles.aiMetaInfo}>
                     <Text style={styles.aiMetaItem}>
                       Sentimen: <Text style={styles.bold}>{aiResult.sentimen}</Text>
-                    </Text>
-                    <Text style={styles.aiMetaSeparator}>•</Text>
-                    <Text style={styles.aiMetaItem}>
-                      Engine: <Text style={styles.bold}>Model EDOM On-Device</Text>
                     </Text>
                   </View>
                 </View>

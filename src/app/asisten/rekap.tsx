@@ -313,9 +313,6 @@ export default function RekapAsistenScreen() {
         <View style={styles.eyebrowBadge}>
           <Text style={styles.eyebrowText}>REKAPITULASI KELAS</Text>
         </View>
-        <View style={styles.liveTag}>
-          <Text style={styles.liveTagText}>Sinkron Real-Time</Text>
-        </View>
       </View>
 
       <Text style={styles.headerTitle}>Rekapitulasi Presensi</Text>
@@ -332,7 +329,7 @@ export default function RekapAsistenScreen() {
         <View style={styles.moderasiBannerLeft}>
           <Text style={styles.moderasiBannerTitle}>Panel Moderasi Izin Praktikum</Text>
           <Text style={styles.moderasiBannerSub}>
-            Kelola permohonan izin praktikan berhalangan hadir dengan rekomendasi Model AI EDOM on-device
+            Tinjau dan putuskan permohonan izin ketidakhadiran praktikan.
           </Text>
         </View>
         <View style={styles.moderasiBannerButton}>

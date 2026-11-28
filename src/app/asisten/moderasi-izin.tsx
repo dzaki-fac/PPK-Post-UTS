@@ -177,15 +177,11 @@ export default function ModerasiIzinScreen() {
         <View style={styles.eyebrowBadge}>
           <Text style={styles.eyebrowText}>PANEL ASPRAK</Text>
         </View>
-        <View style={styles.liveTag}>
-          <Text style={styles.liveTagText}>Sinkronisasi Real-Time</Text>
-        </View>
       </View>
 
       <Text style={styles.headerTitle}>Moderasi Izin Praktikum</Text>
       <Text style={styles.headerSubtitle}>
-        Tinjau permohonan izin praktikan berhalangan hadir dengan rekomendasi awal dari Model AI
-        Pengajar (Model EDOM on-device).
+        Tinjau dan tetapkan persetujuan permohonan izin praktikan.
       </Text>
 
       {actionError ? (
@@ -194,16 +190,10 @@ export default function ModerasiIzinScreen() {
         </View>
       ) : null}
 
-      {/* Banner Human-in-the-Loop */}
       <View style={styles.hitlBanner}>
-        <View style={styles.hitlIconCircle}>
-          <Text style={styles.hitlIconText}>i</Text>
-        </View>
         <View style={styles.hitlTextWrap}>
-          <Text style={styles.hitlTitle}>Prinsip Human-in-the-Loop (Regulasi AI):</Text>
           <Text style={styles.hitlDesc}>
-            Hasil inferensi model AI bertindak semata-mata sebagai pendukung keputusan (decision support).
-            Izin disetujui dicatat sebagai tidak hadir dengan izin (excused absence), bebas denda, dan tidak berubah menjadi hadir.
+            Izin yang disetujui dicatat sebagai tidak hadir dengan izin dan bebas denda keterlambatan.
           </Text>
         </View>
       </View>
@@ -530,19 +520,22 @@ const styles = StyleSheet.create({
     paddingRight: 12,
   },
   filterChip: {
-    paddingHorizontal: 11,
+    minHeight: 34,
+    paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 20,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#CBD5E1',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   filterChipActive: {
     backgroundColor: '#0D9488',
     borderColor: '#0D9488',
   },
   filterChipText: {
-    fontSize: 11.5,
+    fontSize: 12,
     fontWeight: '700',
     color: '#475569',
   },

@@ -698,8 +698,9 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   chip: {
-    minHeight: 38,
-    paddingHorizontal: 14,
+    minHeight: 34,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 20,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,

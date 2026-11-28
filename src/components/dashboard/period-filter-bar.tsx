@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
   },
   segmentBtn: {
     flex: 1,
-    minHeight: 40,
+    minHeight: 34,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.aslabPrimary,
   },
   segmentText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     color: '#475569',
   },

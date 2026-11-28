@@ -57,6 +57,7 @@ export function LabMapView({
     'loading' | 'granted' | 'denied' | 'disabled'
   >('loading');
   const [isLocating, setIsLocating] = useState(false);
+  const [activeControl, setActiveControl] = useState<'user' | 'labs' | null>(null);
   const [isSimulatingRoute, setIsSimulatingRoute] = useState(false);
   const [simPoint, setSimPoint] = useState<RouteCoordinate | null>(null);
   const simTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -351,6 +352,7 @@ export function LabMapView({
 
   const centerToUser = () => {
     if (!userLocation || !webViewRef.current) return;
+    setActiveControl('user');
     setIsLocating(true);
     webViewRef.current.injectJavaScript(
       `window.__focusUser && window.__focusUser(); true;`
@@ -360,15 +362,11 @@ export function LabMapView({
 
   const centerToCampus = () => {
     if (!webViewRef.current) return;
+    setActiveControl('labs');
     webViewRef.current.injectJavaScript(
       `window.__focusLabs && window.__focusLabs(); true;`
     );
   };
-
-  const hasActiveBanner =
-    permissionStatus === 'denied' ||
-    permissionStatus === 'disabled' ||
-    Boolean(mapNotice);
 
   return (
     <View style={styles.container}>
@@ -456,37 +454,103 @@ export function LabMapView({
         onMessage={handleWebViewMessage}
       />
 
-      {/* Compact Control Chips di pojok kanan atas agar tidak menimpa kontrol bawah & pin lab */}
-      <View style={[styles.floatingControls, hasActiveBanner && styles.floatingControlsWithBanner]}>
+      {/* Tombol Ikon Kontrol Peta Seragam di Pojok Kanan Bawah */}
+      <View style={styles.floatingControls}>
         {activeRouteCoords.length >= 2 && (
           <TouchableOpacity
-            style={[styles.floatingPillBtn, isSimulatingRoute && styles.floatingBtnActive]}
+            style={[
+              styles.floatingBtn,
+              isSimulatingRoute && { borderColor: accentColor, backgroundColor: '#F8FAFC' },
+            ]}
             onPress={handleSimulateRoute}
             accessibilityLabel="Simulasi Pergerakan Rute">
-            <Text style={[styles.floatingPillText, { color: accentColor }]}>
-              {isSimulatingRoute ? 'Stop Rute' : 'Rute'}
-            </Text>
+            <View style={styles.routeIconWrap}>
+              <View
+                style={[
+                  styles.routeNode,
+                  { backgroundColor: isSimulatingRoute ? accentColor : '#1E293B' },
+                ]}
+              />
+              <View
+                style={[
+                  styles.routeConnector,
+                  { backgroundColor: isSimulatingRoute ? accentColor : '#1E293B' },
+                ]}
+              />
+              <View
+                style={[
+                  styles.routeNode,
+                  { backgroundColor: isSimulatingRoute ? accentColor : '#1E293B' },
+                ]}
+              />
+            </View>
           </TouchableOpacity>
         )}
 
         {userLocation && (
           <TouchableOpacity
-            style={[styles.floatingPillBtn, isLocating && styles.floatingBtnActive]}
+            style={[
+              styles.floatingBtn,
+              activeControl === 'user' && { borderColor: accentColor, backgroundColor: '#F8FAFC' },
+            ]}
             onPress={centerToUser}
             accessibilityLabel="Pusatkan ke Lokasi Saya">
             {isLocating ? (
               <ActivityIndicator size="small" color={accentColor} />
             ) : (
-              <Text style={[styles.floatingPillText, { color: accentColor }]}>Lokasi Saya</Text>
+              <View
+                style={[
+                  styles.locateIconOuter,
+                  { borderColor: activeControl === 'user' ? accentColor : '#1E293B' },
+                ]}>
+                <View
+                  style={[
+                    styles.locateIconInner,
+                    { backgroundColor: activeControl === 'user' ? accentColor : '#1E293B' },
+                  ]}
+                />
+              </View>
             )}
           </TouchableOpacity>
         )}
 
         <TouchableOpacity
-          style={styles.floatingPillBtn}
+          style={[
+            styles.floatingBtn,
+            activeControl === 'labs' && { borderColor: accentColor, backgroundColor: '#F8FAFC' },
+          ]}
           onPress={centerToCampus}
           accessibilityLabel="Pusatkan ke Kampus Informatika">
-          <Text style={styles.floatingPillText}>Fokus Lab</Text>
+          <View style={styles.labGridIcon}>
+            <View style={styles.labGridRow}>
+              <View
+                style={[
+                  styles.labGridCell,
+                  { backgroundColor: activeControl === 'labs' ? accentColor : '#1E293B' },
+                ]}
+              />
+              <View
+                style={[
+                  styles.labGridCell,
+                  { backgroundColor: activeControl === 'labs' ? accentColor : '#1E293B' },
+                ]}
+              />
+            </View>
+            <View style={styles.labGridRow}>
+              <View
+                style={[
+                  styles.labGridCell,
+                  { backgroundColor: activeControl === 'labs' ? accentColor : '#1E293B' },
+                ]}
+              />
+              <View
+                style={[
+                  styles.labGridCell,
+                  { backgroundColor: activeControl === 'labs' ? accentColor : '#1E293B' },
+                ]}
+              />
+            </View>
+          </View>
         </TouchableOpacity>
       </View>
     </View>
@@ -571,38 +635,62 @@ const styles = StyleSheet.create({
   },
   floatingControls: {
     position: 'absolute',
-    right: 10,
-    top: 10,
+    right: 12,
+    bottom: 34,
     zIndex: 15,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
-  floatingControlsWithBanner: {
-    top: 72,
-  },
-  floatingPillBtn: {
-    minHeight: 30,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.96)',
-    borderWidth: 1,
+  floatingBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
     borderColor: '#CBD5E1',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#0F172A',
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 3,
+    shadowOpacity: 0.14,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
   },
-  floatingBtnActive: {
-    backgroundColor: '#F8FAFC',
+  locateIconOuter: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  floatingPillText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#0F172A',
+  locateIconInner: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  labGridIcon: {
+    gap: 3,
+  },
+  labGridRow: {
+    flexDirection: 'row',
+    gap: 3,
+  },
+  labGridCell: {
+    width: 6,
+    height: 6,
+    borderRadius: 1.5,
+  },
+  routeIconWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  routeNode: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+  },
+  routeConnector: {
+    width: 8,
+    height: 2,
   },
 });

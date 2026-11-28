@@ -136,16 +136,13 @@ export default function AsprakKelasSayaScreen() {
     <View style={styles.header}>
       <View style={styles.eyebrowRow}>
         <View style={styles.eyebrowBadge}>
-          <Text style={styles.eyebrowText}>KELAS SAYA (BACA SAJA)</Text>
-        </View>
-        <View style={styles.readOnlyPill}>
-          <Text style={styles.readOnlyText}>Distribusi dikelola Aslab</Text>
+          <Text style={styles.eyebrowText}>KELAS SAYA</Text>
         </View>
       </View>
 
       <Text style={styles.screenTitle}>Daftar Praktikan Lab Diampu</Text>
       <Text style={styles.screenSubtitle}>
-        Menampilkan praktikan pada laboratorium yang menjadi tanggung jawab Anda. Penambahan atau pemindahan praktikan dikelola oleh Aslab.
+        Daftar praktikan pada laboratorium yang Anda ampu.
       </Text>
 
       <View style={styles.metricsGrid}>
@@ -344,8 +341,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chip: {
-    minHeight: 38,
-    paddingHorizontal: 14,
+    minHeight: 34,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 20,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,

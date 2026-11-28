@@ -72,9 +72,6 @@ export default function AslabDashboardScreen() {
             <View style={styles.eyebrowBadge}>
               <Text style={styles.eyebrowText}>ASISTEN LABORATORIUM (ASLAB)</Text>
             </View>
-            <View style={styles.liveTag}>
-              <Text style={styles.liveText}>Data Real-Time Firebase</Text>
-            </View>
           </View>
 
           <View style={styles.titleRow}>

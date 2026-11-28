@@ -471,9 +471,6 @@ export default function PraktikanPresensiScreen() {
               <View style={styles.eyebrowBadge}>
                 <Text style={styles.eyebrowText}>PRESENSI GEOFENCING</Text>
               </View>
-              <View style={styles.liveTag}>
-                <Text style={styles.liveTagText}>Validasi GPS Real-Time</Text>
-              </View>
             </View>
             <Text style={styles.pageTitle}>Halaman Presensi Praktikum</Text>
             <Text style={styles.pageSubtitle}>

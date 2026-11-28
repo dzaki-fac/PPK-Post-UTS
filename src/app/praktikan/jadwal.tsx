@@ -36,7 +36,7 @@ import {
   SessionStatus,
 } from '@/types/praktikum';
 
-type FilterType = 'semua' | 'kelas-saya' | SessionStatus;
+type FilterType = 'semua' | 'semua-lab' | 'kelas-saya' | SessionStatus;
 
 export default function PraktikanJadwalScreen() {
   const { user, userDoc } = useAuth();
@@ -127,13 +127,14 @@ export default function PraktikanJadwalScreen() {
 
   const filteredSesiList = useMemo(() => {
     if (filter === 'semua') return scopedSesiList;
+    if (filter === 'semua-lab') return sesiList;
     if (filter === 'kelas-saya') {
       if (studentLabId) return scopedSesiList;
       if (!studentClass) return scopedSesiList;
       return scopedSesiList.filter((s) => normalizeClassCode(s.kelas) === studentClass);
     }
     return scopedSesiList.filter((s) => s.status === filter);
-  }, [scopedSesiList, filter, studentClass, studentLabId]);
+  }, [scopedSesiList, sesiList, filter, studentClass, studentLabId]);
 
   const totalSesi = scopedSesiList.length;
   const totalDibuka = scopedSesiList.filter((s) => s.status === 'dibuka').length;
@@ -188,14 +189,11 @@ export default function PraktikanJadwalScreen() {
         <View style={styles.eyebrowBadge}>
           <Text style={styles.eyebrowText}>PORTAL MAHASISWA</Text>
         </View>
-        <View style={styles.liveTag}>
-          <Text style={styles.liveTagText}>Sesi Real-Time</Text>
-        </View>
       </View>
 
       <Text style={styles.headerTitle}>Jadwal Praktikum</Text>
       <Text style={styles.headerSubtitle}>
-        Pilih sesi praktikum untuk mengisi formulir presensi mandiri atau melihat detail materi
+        Pilih sesi praktikum untuk mengisi presensi atau melihat detail materi.
       </Text>
       <View style={styles.scopePill}>
         <Text style={styles.scopePillText}>
@@ -213,7 +211,7 @@ export default function PraktikanJadwalScreen() {
         <View style={styles.izinBannerLeft}>
           <Text style={styles.izinBannerTitle}>Pengajuan Izin Praktikum</Text>
           <Text style={styles.izinBannerSub}>
-            Berhalangan hadir? Ajukan izin dengan analisis rekomendasi Model AI EDOM
+            Berhalangan hadir? Ajukan permohonan izin untuk sesi praktikum Anda.
           </Text>
         </View>
         <View style={styles.izinBannerBtn}>
@@ -229,13 +227,10 @@ export default function PraktikanJadwalScreen() {
         style={({ pressed }) => [styles.mapBanner, pressed && styles.cardPressed]}>
         <View style={styles.mapBannerLeft}>
           <View style={styles.mapBannerTagRow}>
-            <Text style={styles.mapBannerTitle}>Peta Laboratorium Interaktif</Text>
-            <View style={styles.mapTag}>
-              <Text style={styles.mapTagText}>LIVE</Text>
-            </View>
+            <Text style={styles.mapBannerTitle}>Peta Laboratorium</Text>
           </View>
           <Text style={styles.mapBannerSub}>
-            Lihat ruang lab Informatika, posisi Anda secara langsung, dan status aktivitas sesi
+            Lihat ruang lab Informatika, posisi Anda, dan status sesi aktif.
           </Text>
         </View>
         <View style={styles.mapBannerBtn}>
@@ -243,16 +238,19 @@ export default function PraktikanJadwalScreen() {
         </View>
       </Pressable>
 
-      {/* Info bila di lab sendiri belum ada sesi dibuka, tetapi ada sesi dibuka di lab lain */}
-      {totalDibuka === 0 && otherLabOpenSessions.length > 0 && (
-        <View style={styles.otherLabNotice}>
+      {/* Info bila ada sesi dibuka di lab lain di luar lab terdaftar praktikan */}
+      {otherLabOpenSessions.length > 0 && (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setFilter('semua-lab')}
+          style={({ pressed }) => [styles.otherLabNotice, pressed && styles.cardPressed]}>
           <Text style={styles.otherLabTitle}>
-            Belum ada sesi dibuka di {studentLabName}
+            Terdapat {otherLabOpenSessions.length} sesi dibuka di lab lain ({otherOpenLabNames})
           </Text>
           <Text style={styles.otherLabSub}>
-            Saat ini terdapat {otherLabOpenSessions.length} sesi dibuka di lab lain ({otherOpenLabNames}). Untuk mencoba presensi dari akun ini, buka sesi di {studentLabName} pada akun Asprak.
+            Akun Anda terdaftar di {studentLabName}. Ketuk untuk melihat seluruh jadwal lintas lab.
           </Text>
-        </View>
+        </Pressable>
       )}
 
       {/* Notice jika ada izin yang sedang menunggu keputusan */}
@@ -267,19 +265,19 @@ export default function PraktikanJadwalScreen() {
               {totalIzinMenunggu} Pengajuan Izin Menunggu Verifikasi Asprak
             </Text>
             <Text style={styles.pendingStudentSub}>
-              Rekomendasi AI telah disematkan. Klik untuk memantau status persetujuan.
+              Ketuk untuk memantau status persetujuan izin Anda.
             </Text>
           </View>
           <Text style={styles.pendingStudentAction}>Cek Status →</Text>
         </Pressable>
       )}
 
-      {/* Metrics Overview Cards (Matching Halaman 1 style) */}
+      {/* Metrics Overview Cards */}
       <View style={styles.metricsGrid}>
         <View style={styles.metricCard}>
           <Text style={styles.metricVal}>{totalSesi}</Text>
           <Text style={styles.metricLbl}>Total Sesi</Text>
-          <Text style={styles.metricDesc}>Modul PPK & BDD</Text>
+          <Text style={styles.metricDesc}>Terjadwal</Text>
         </View>
 
         <View style={[styles.metricCard, styles.metricCardDibuka]}>
@@ -332,6 +330,14 @@ export default function PraktikanJadwalScreen() {
             count={scopedSesiList.length}
             onPress={() => setFilter('semua')}
           />
+          {studentLabId && sesiList.length > scopedSesiList.length ? (
+            <FilterChip
+              label="Semua Lab"
+              active={filter === 'semua-lab'}
+              count={sesiList.length}
+              onPress={() => setFilter('semua-lab')}
+            />
+          ) : null}
           {userDoc && studentClass ? (
             <FilterChip
               label={`Kelas Saya (${studentClass})`}
@@ -389,7 +395,7 @@ export default function PraktikanJadwalScreen() {
               message={
                 filter === 'kelas-saya'
                   ? `Tidak ada sesi praktikum yang terdaftar untuk Kelas ${studentClass || '-'}.`
-                  : filter === 'semua'
+                  : filter === 'semua' || filter === 'semua-lab'
                   ? 'Belum ada jadwal praktikum yang tersedia saat ini.'
                   : `Tidak ada sesi praktikum dengan status "${filter}".`
               }
@@ -633,14 +639,15 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5.5,
-    borderRadius: 16,
+    minHeight: 34,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
     borderWidth: 1,
   },
   chipInactive: {
     backgroundColor: '#FFFFFF',
-    borderColor: '#E2E8F0',
+    borderColor: '#CBD5E1',
   },
   chipActive: {
     backgroundColor: '#EA580C',
@@ -650,7 +657,7 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
   chipText: {
-    fontSize: 11.5,
+    fontSize: 12,
     fontWeight: '700',
   },
   chipTextInactive: {

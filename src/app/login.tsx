@@ -116,19 +116,13 @@ export default function LoginScreen() {
                     </Text>
                   </View>
                 </View>
-
-                <View style={styles.statusPill}>
-                  <Text style={styles.statusPillText}>
-                    Firebase Authentication & Cloud Firestore
-                  </Text>
-                </View>
               </View>
 
               {/* Auth Card */}
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>Masuk ke Portal</Text>
                 <Text style={styles.cardSubtitle}>
-                  Gunakan akun terdaftar Anda untuk mengakses jadwal praktikum, presensi real-time, atau kontrol sesi asprak.
+                  Masuk menggunakan akun terdaftar Anda untuk melanjutkan.
                 </Text>
 
                 {!firebaseReady ? (
